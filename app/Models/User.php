@@ -18,7 +18,7 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
     'u_username',
     'u_password',
     'u_role',
-    'tenant_id',
+    'tenants_t_id',
 ])]
 
 #[Hidden([
@@ -40,7 +40,7 @@ class User extends Authenticatable implements PasskeyUser
 
     public function tenant()
     {
-        return $this->belongsTo(Tenant::class, 'tenant_id', 't_id');
+        return $this->belongsTo(Tenant::class, 'tenants_t_id',, 't_id');
     }
 
     protected function casts(): array

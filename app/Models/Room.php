@@ -6,8 +6,12 @@ use Illuminate\Database\Eloquent\Model;
 use App\Models\Rental;
 use App\Models\Meter;
 use App\Models\Repair;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Room extends Model {
+
+    use SoftDeletes;
+
 
     protected $fillable = [
     'r_name',
@@ -16,6 +20,9 @@ class Room extends Model {
     'r_rent',
     'r_status',
     ];
+
+
+    protected $primaryKey = 'r_id';
 
     public function rentals() {
         return $this->hasMany(Rental::class, 'rooms_r_id', 'r_id');

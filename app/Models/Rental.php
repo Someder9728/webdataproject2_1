@@ -7,9 +7,13 @@ use App\Models\Tenant;
 use App\Models\Room;
 use App\Models\Contract;
 use App\Models\Invoice;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Rental extends Model
 {
+
+    use SoftDeletes;
+
     protected $fillable = [
     'rt_movein',
     'rt_moveout',
@@ -17,6 +21,8 @@ class Rental extends Model
     'rooms_r_id',
     'tenants_t_id',
 ];
+
+    protected $primaryKey = 'rt_id';
 
     public function tenant() {
         return $this->belongsTo(Tenant::class, 'tenants_t_id', 't_id');

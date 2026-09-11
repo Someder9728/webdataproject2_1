@@ -4,10 +4,14 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use App\Models\Rental;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 
 class Contract extends Model
 {
+
+    use SoftDeletes;
+
     protected $fillable = [
     'c_number',
     'c_start',
@@ -17,6 +21,8 @@ class Contract extends Model
     'c_status',
     'rentals_rt_id',
 ];
+
+    protected $primaryKey = 'c_id';
 
     public function rental()
     {

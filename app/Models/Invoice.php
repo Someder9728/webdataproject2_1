@@ -3,11 +3,15 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use App\Model\Rental;
-use App\Model\Payment;
+use App\Models\Rental;
+use App\Models\Payment;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Invoice extends Model
 {
+
+    use SoftDeletes;
+
     protected $fillable = [
     'i_date',
     'i_rent',
@@ -17,6 +21,8 @@ class Invoice extends Model
     'i_due',
     'rentals_rt_id',
 ];
+
+    protected $primaryKey = 'i_id';
 
     public function payment() {
         return $this->hasOne(Payment::class, 'invoices_i_id', 'i_id');
