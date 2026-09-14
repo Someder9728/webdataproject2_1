@@ -2,6 +2,9 @@
 
 namespace App\Providers;
 
+
+use App\Http\Middleware\EnsurePasswordIsChanged;
+use Livewire\Livewire;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
@@ -24,6 +27,11 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->configureDefaults();
+
+
+        Livewire::addPersistentMiddleware([
+        EnsurePasswordIsChanged::class,
+        ]);
     }
 
     /**

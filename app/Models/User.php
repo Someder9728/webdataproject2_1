@@ -47,6 +47,20 @@ class User extends Authenticatable implements PasskeyUser
     {
         return [
             'u_password' => 'hashed',
+            'is_active' => 'boolean',
+            'must_change_password' => 'boolean',
         ];
     }
+
+    public function getAuthPasswordName(): string
+    {
+        return 'u_password';
+    }
+
+    public function initials(): string
+{
+    return mb_strtoupper(
+        mb_substr((string) $this->u_username, 0, 2)
+    );
+}
 }
