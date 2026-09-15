@@ -14,11 +14,11 @@ class EnsurePasswordIsChanged
 
         if ($user && $user->must_change_password) {
             if ($request->expectsJson()) {
-                return response()->json([
+                abort(response()->json([
                     'message' => 'กรุณาเปลี่ยนรหัสผ่านก่อนใช้งาน',
                     'errors' => (object) [],
                     'code' => 'PASSWORD_CHANGE_REQUIRED',
-                ], 403);
+                ], 403));
             }
 
             return redirect()->route('security.edit');

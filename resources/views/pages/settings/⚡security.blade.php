@@ -7,6 +7,8 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Title;
 use Livewire\Component;
+use Illuminate\Support\Facades\Session;
+
 
 new #[Title('เปลี่ยนรหัสผ่าน')] class extends Component {
     public string $current_password = '';
@@ -68,10 +70,10 @@ new #[Title('เปลี่ยนรหัสผ่าน')] class extends Comp
         );
 
         Auth::logout();
-        request()->session()->invalidate();
-        request()->session()->regenerateToken();
+        Session::invalidate();
+        Session::regenerateToken();
 
-        request()->session()->flash(
+        Session::flash(
             'status',
             'เปลี่ยนรหัสผ่านสำเร็จ กรุณาเข้าสู่ระบบด้วยรหัสใหม่'
         );
