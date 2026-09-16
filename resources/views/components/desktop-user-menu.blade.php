@@ -1,37 +1,18 @@
 <flux:dropdown position="bottom" align="start">
+    <flux:sidebar.profile :name="auth()->user()->u_username"
+        :initials="mb_strtoupper(mb_substr(auth()->user()->u_username, 0, 2))" icon:trailing="chevrons-up-down"
+        data-test="sidebar-menu-button" />
 
-    {{-- Sidebar User Profile --}}
-    <button type="button" class="flex w-full items-center gap-3 px-2 py-3 text-left">
-        <div
-            class="flex size-10 shrink-0 items-center justify-center rounded-lg bg-[#555B62] text-lg font-medium text-white">
-            {{ auth()->user()->initials() }}
-        </div>
-
-        <div class="min-w-0 flex-1">
-            <div class="truncate text-sm font-semibold text-white">
-                ผู้ดูแลระบบ
-            </div>
-
-            <div class="truncate text-xs text-[#90A1B9]">
-                Administrator
-            </div>
-        </div>
-
-        <flux:icon name="chevrons-up-down" class="size-5 text-[#90A1B9]" />
-    </button>
-
-    {{-- Dropdown เดิม --}}
     <flux:menu>
         <div class="flex items-center gap-2 px-1 py-1.5 text-start text-sm">
-            <flux:avatar :name="auth()->user()->name" :initials="auth()->user()->initials()" />
-
+            <flux:avatar :name="auth()->user()->u_username"
+                :initials="mb_strtoupper(mb_substr(auth()->user()->u_username, 0, 2))" />
             <div class="grid flex-1 text-start text-sm leading-tight">
                 <flux:heading class="truncate">
-                    {{ auth()->user()->name }}
+                    {{ auth()->user()->u_username }}
                 </flux:heading>
-
                 <flux:text class="truncate">
-                    {{ auth()->user()->email }}
+                    {{ auth()->user()->u_role }}
                 </flux:text>
             </div>
         </div>
@@ -45,7 +26,6 @@
 
             <form method="POST" action="{{ route('logout') }}" class="w-full">
                 @csrf
-
                 <flux:menu.item as="button" type="submit" icon="arrow-right-start-on-rectangle"
                     class="w-full cursor-pointer" data-test="logout-button">
                     {{ __('Log out') }}
@@ -53,5 +33,4 @@
             </form>
         </flux:menu.radio.group>
     </flux:menu>
-
 </flux:dropdown>
