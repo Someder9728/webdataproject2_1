@@ -19,7 +19,7 @@ class EnsureAccountIsActive
             $request->session()->invalidate();
             $request->session()->regenerateToken();
 
-            if ($request->expectsJson()) {
+            if ($request->is('api/*') || $request->expectsJson()) {
                 return response()->json([
                     'message' => 'บัญชีถูกระงับ กรุณาติดต่อผู้ดูแล',
                     'errors' => (object) [],

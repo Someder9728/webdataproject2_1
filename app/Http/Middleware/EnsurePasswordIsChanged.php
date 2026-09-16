@@ -13,7 +13,7 @@ class EnsurePasswordIsChanged
         $user = $request->user();
 
         if ($user && $user->must_change_password) {
-            if ($request->expectsJson()) {
+            if ($request->is('api/*') || $request->expectsJson()) {
                 abort(response()->json([
                     'message' => 'กรุณาเปลี่ยนรหัสผ่านก่อนใช้งาน',
                     'errors' => (object) [],

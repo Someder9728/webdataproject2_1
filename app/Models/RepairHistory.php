@@ -17,11 +17,17 @@ class RepairHistory extends Model
     'rph_status',
     'rph_type',
     'repairs_rp_id',
+    'changed_by_user_id',
 ];
 
     protected $primaryKey = 'rph_id';
 
     public function repair()  {
         return $this->belongsTo(Repair::class, 'repairs_rp_id', 'rp_id');
+    }
+
+    public function changedBy()
+    {
+        return $this->belongsTo(User::class, 'changed_by_user_id', 'u_id');
     }
 }
