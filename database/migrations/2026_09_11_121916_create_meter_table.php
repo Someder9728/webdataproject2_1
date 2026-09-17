@@ -18,7 +18,9 @@ return new class extends Migration
             $table->decimal('m_elec', 10, 2);
             $table->foreignId('rooms_r_id')
                 ->constrained('rooms', 'r_id');
-
+            $table->string('m_type')
+                ->default('monthly')
+                ->after('rooms_r_id');
 
             $table->timestamps();
             $table->softDeletes();
@@ -31,5 +33,9 @@ return new class extends Migration
     public function down(): void
     {
         Schema::dropIfExists('meters');
+        
+        Schema::table('meters', function (Blueprint $table){
+            $table->dropColumn('m_type');
+        });
     }
 };
