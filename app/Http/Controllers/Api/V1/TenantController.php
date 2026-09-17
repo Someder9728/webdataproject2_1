@@ -7,6 +7,8 @@ use App\Models\Tenant;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use App\Actions\Tenants\CreateTenant;
+use App\Actions\Tenants\UpdateTenant;
 
 class TenantController extends Controller
 {
@@ -87,4 +89,48 @@ class TenantController extends Controller
             'message' => 'อ่านข้อมูลผู้เช่าสำเร็จ',
         ]);
     }
+
+    public function store(
+            Request $request,
+            CreateTenant $action
+        ): JsonResponse {
+            $tenant = $action->handle(
+                $request->user(),
+                $request->only([
+                    't_Fname',
+                    't_Lname',
+                    't_tel',
+                    't_mail',
+                    't_address',
+                ])
+            );
+
+            return response()->json([
+                'data' => $tenant->only(self::COLUMNS),
+                'message' => 'สร้างข้อมูลผู้เช่าสำเร็จ',
+            ], 201);
+        }
+
+    public function update(
+        Request $request,
+        Tenant $tenant,
+        UpdateTenant $action
+        ): JsonResponse {
+            $updatedTenant = $action->handle(
+                $request->user(),
+                $tenant,
+                $request->only([
+                    't_Fname',
+                    't_Lname',
+                    't_tel',
+                    't_mail',
+                    't_address',
+                ])
+            );
+
+            return response()->json([
+                'data' => $updatedTenant->only(self::COLUMNS),
+                'message' => 'แก้ไขข้อมูลผู้เช่าสำเร็จ',
+            ]);
+        }
 }

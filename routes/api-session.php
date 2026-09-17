@@ -32,5 +32,12 @@ Route::prefix('api/v1')
         Route::get('/tenants/{tenant}', [TenantController::class, 'show'])
             ->whereNumber('tenant')
             ->name('tenants.show');
+
+        Route::post('/tenants', [TenantController::class, 'store'])
+            ->name('tenants.store');
+
+        Route::patch('/tenants/{tenant}', [TenantController::class, 'update'])
+            ->whereNumber('tenant')
+            ->name('tenants.update');
     });
 
