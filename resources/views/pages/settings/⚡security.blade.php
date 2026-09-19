@@ -43,7 +43,7 @@ new #[Title('เปลี่ยนรหัสผ่าน')] class extends Comp
             ]);
         }
 
-        if (Hash::check($validated['password'], $user->u_password)) {
+        if (Hash::check($validated['password'], $user->password)) {
             throw ValidationException::withMessages([
                 'password' => 'กรุณาใช้รหัสผ่านใหม่ที่ต่างจากรหัสเดิม',
             ]);
@@ -51,7 +51,7 @@ new #[Title('เปลี่ยนรหัสผ่าน')] class extends Comp
 
         DB::transaction(function () use ($user, $validated) {
             // User Model มี hashed cast จัดการ hash ให้แล้ว
-            $user->u_password = $validated['password'];
+            $user->password = $validated['password'];
             $user->must_change_password = false;
             $user->remember_token = Str::random(60);
             $user->save();

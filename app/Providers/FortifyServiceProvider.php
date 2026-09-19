@@ -2,8 +2,6 @@
 
 namespace App\Providers;
 
-
-
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use App\Actions\Fortify\CreateNewUser;
@@ -17,16 +15,16 @@ use Laravel\Fortify\Fortify;
 
 class FortifyServiceProvider extends ServiceProvider
 {
-    /**
-     * Register any application services.
+    /*
+      Register any application services.
      */
     public function register(): void
     {
         //
     }
 
-    /**
-     * Bootstrap any application services.
+    /*
+      Bootstrap any application services.
      */
     public function boot(): void
     {
@@ -34,33 +32,21 @@ class FortifyServiceProvider extends ServiceProvider
         $this->configureViews();
         $this->configureRateLimiting();
 
-
         Fortify::authenticateUsing(function (Request $request) {
-        $username = Str::lower(trim(
-            (string) $request->input('u_username')
-        ));
+            $email = Str::lower(trim((string) $request->input('email')));
 
-        $user = User::where('u_username', $username)->first();
+            $user = User::where('email', $email)->first();
 
-        if (
-            $user &&
-            $user->is_active &&
-            Hash::check(
-                (string) $request->input('password'),
-                $user->u_password
-            )
-            ) {
-            return $user;
+            if ($user && $user->is_active && Hash::check((string) $request->input('password'), $user->password)) {
+                return $user;
             }
 
-        return null;
+            return null;
         });
-
-        
     }
 
-    /**
-     * Configure Fortify actions.
+    /*
+      Configure Fortify actions.
      */
     private function configureActions(): void
     {
@@ -68,22 +54,22 @@ class FortifyServiceProvider extends ServiceProvider
         Fortify::createUsersUsing(CreateNewUser::class);
     }
 
-    /**
-     * Configure Fortify views.
+    /*
+      Configure Fortify views.
      */
     private function configureViews(): void
     {
-        Fortify::loginView(fn () => view('pages::auth.login'));
-        Fortify::verifyEmailView(fn () => view('pages::auth.verify-email'));
-        Fortify::twoFactorChallengeView(fn () => view('pages::auth.two-factor-challenge'));
-        Fortify::confirmPasswordView(fn () => view('pages::auth.confirm-password'));
-        Fortify::registerView(fn () => view('pages::auth.register'));
-        Fortify::resetPasswordView(fn () => view('pages::auth.reset-password'));
-        Fortify::requestPasswordResetLinkView(fn () => view('pages::auth.forgot-password'));
+        Fortify::loginView(fn() => view('pages::auth.login'));
+        Fortify::verifyEmailView(fn() => view('pages::auth.verify-email'));
+        Fortify::twoFactorChallengeView(fn() => view('pages::auth.two-factor-challenge'));
+        Fortify::confirmPasswordView(fn() => view('pages::auth.confirm-password'));
+        Fortify::registerView(fn() => view('pages::auth.register'));
+        Fortify::resetPasswordView(fn() => view('pages::auth.reset-password'));
+        Fortify::requestPasswordResetLinkView(fn() => view('pages::auth.forgot-password'));
     }
 
-    /**
-     * Configure rate limiting.
+    /*
+      Configure rate limiting.
      */
     private function configureRateLimiting(): void
     {
@@ -92,7 +78,7 @@ class FortifyServiceProvider extends ServiceProvider
         });
 
         RateLimiter::for('login', function (Request $request) {
-            $throttleKey = Str::transliterate(Str::lower($request->input(Fortify::username())).'|'.$request->ip());
+            $throttleKey = Str::transliterate(Str::lower($request->input(Fortify::username())) . '|' . $request->ip());
 
             return Limit::perMinute(5)->by($throttleKey);
         });
@@ -100,9 +86,7 @@ class FortifyServiceProvider extends ServiceProvider
         RateLimiter::for('passkeys', function (Request $request) {
             $credentialId = $request->input('credential.id');
 
-            return Limit::perMinute(10)->by(
-                ($credentialId ?: $request->session()->getId()).'|'.$request->ip(),
-            );
+            return Limit::perMinute(10)->by(($credentialId ?: $request->session()->getId()) . '|' . $request->ip());
         });
     }
 }

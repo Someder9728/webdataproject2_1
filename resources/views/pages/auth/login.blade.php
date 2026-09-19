@@ -2,7 +2,7 @@
     <div class="flex flex-col gap-6">
         <x-auth-header
             :title="__('เข้าสู่ระบบ')"
-            :description="__('กรอกชื่อผู้ใช้และรหัสผ่านของคุณ')"
+            :description="__('กรอกอีเมลและรหัสผ่านของคุณ')"
         />
 
         <x-auth-session-status
@@ -18,14 +18,13 @@
             @csrf
 
             <flux:input
-                name="u_username"
-                :label="__('ชื่อผู้ใช้')"
-                :value="old('u_username')"
-                type="text"
+                name="email"
+                :label="__('อีเมล')"
+                :value="old('email')"
+                type="email"
                 required
                 autofocus
                 autocomplete="username"
-                maxlength="45"
             />
 
             <flux:input

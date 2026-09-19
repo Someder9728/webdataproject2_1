@@ -14,27 +14,14 @@ use Laravel\Fortify\Contracts\PasskeyUser;
 use Laravel\Fortify\PasskeyAuthenticatable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 
-#[Fillable([
-    'u_username',
-    'u_password',
-    'u_role',
-    'tenants_t_id',
-])]
-
-#[Hidden([
-    'u_password',
-    'remember_token',
-])]
+#[Fillable(['name', 'email', 'password', 'is_active', 'must_change_password', 'tenants_t_id'])]
+#[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable implements PasskeyUser
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory,
-        Notifiable,
-        PasskeyAuthenticatable,
-        TwoFactorAuthenticatable,
-        SoftDeletes;
+    use HasFactory, Notifiable, PasskeyAuthenticatable, TwoFactorAuthenticatable, SoftDeletes;
 
-    protected $primaryKey = 'u_id';
+    protected $primaryKey = 'id';
 
     protected $table = 'users';
 
@@ -46,7 +33,7 @@ class User extends Authenticatable implements PasskeyUser
     protected function casts(): array
     {
         return [
-            'u_password' => 'hashed',
+            'password' => 'hashed',
             'is_active' => 'boolean',
             'must_change_password' => 'boolean',
         ];
@@ -54,13 +41,11 @@ class User extends Authenticatable implements PasskeyUser
 
     public function getAuthPasswordName(): string
     {
-        return 'u_password';
+        return 'password';
     }
 
     public function initials(): string
-{
-    return mb_strtoupper(
-        mb_substr((string) $this->u_username, 0, 2)
-    );
-}
+    {
+        return mb_strtoupper(mb_substr((string) $this->name, 0, 2));
+    }
 }
