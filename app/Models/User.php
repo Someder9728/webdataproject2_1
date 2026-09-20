@@ -18,7 +18,6 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable implements PasskeyUser
 {
-    /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable, PasskeyAuthenticatable, TwoFactorAuthenticatable, SoftDeletes;
 
     protected $primaryKey = 'id';

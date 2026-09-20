@@ -3,214 +3,480 @@
 
 <head>
     @include('partials.head')
+
+    <style>
+        .sidebar-link,
+        .sidebar-bottom-link {
+            color: #90A1B9;
+            transition: all .2s ease;
+            cursor: pointer;
+        }
+
+        .sidebar-link:hover,
+        .sidebar-bottom-link:hover {
+            background-color: #304966;
+            color: #ffffff;
+        }
+
+        .sidebar-link.active {
+            background-color: #155DFC;
+            color: #ffffff;
+        }
+
+        .sidebar-link.active:hover {
+            background-color: #155DFC;
+            color: #ffffff;
+        }
+
+        .cursor-pointer {
+            cursor: pointer !important;
+        }
+    </style>
 </head>
 
-<body class="min-h-screen bg-[#F8FAFC]">
+<body class="bg-light">
 
-    <flux:sidebar sticky collapsible="mobile"
-        class="border-e border-[#2E425C] bg-[#162D4A] dark:border-[#2E425C] dark:bg-[#162D4A]">
+    {{-- sidebar --}}
+    <aside id="sidebar" class="d-flex flex-column position-fixed top-0 start-0 vh-100 text-white"
+        style="
+            width: 260px;
+            background-color: #162D4A;
+            z-index: 1040;
+        ">
 
-        <!-- Sidebar Header -->
-        <flux:sidebar.header class="flex-col items-stretch">
+        {{-- Sidebar Header --}}
+        <div class="p-4">
 
-            <x-app-logo :sidebar="true" href="{{ route('dashboard') }}" wire:navigate />
+            {{-- Logo --}}
+            <a href="{{ route('dashboard') }}" wire:navigate
+                class="text-decoration-none text-white d-flex align-items-center gap-3">
 
-            <div class="px-2 pb-3">
-                <span class="inline-block rounded-md bg-[#1A3D6F] px-3 py-1 text-xs font-medium text-[#90A1B9]">
-                    ผู้ดูแลระบบ (Admin)
-                </span>
-            </div>
-
-            <flux:sidebar.collapse class="lg:hidden" />
-
-        </flux:sidebar.header>
-
-
-        <!-- Sidebar Navigation -->
-        <flux:sidebar.nav>
-
-            <flux:sidebar.group :heading="__('เมนูหลัก')" class="grid">
-
-                <!-- Dashboard -->
-                <flux:sidebar.item icon="home" :href="route('dashboard')" :current="request()->routeIs('dashboard')"
-                    wire:navigate class="text-[#90A1B9] data-current:bg-[#155DFC]! data-current:text-white!">
-                    {{ __('Dashboard') }}
-                </flux:sidebar.item>
-
-
-                <!-- ผู้เช่า -->
-                <flux:sidebar.item icon="users" href="#">
-                    {{ __('ผู้เช่า') }}
-                </flux:sidebar.item>
-
-
-                <!-- ห้องพัก -->
-                <flux:sidebar.item icon="building-office" href="#">
-                    {{ __('ห้องพัก') }}
-                </flux:sidebar.item>
-
-
-                <!-- การเช่า -->
-                <flux:sidebar.item icon="key" href="#">
-                    {{ __('การเช่า') }}
-                </flux:sidebar.item>
-
-
-                <!-- ค่าน้ำ-ค่าไฟ -->
-                <flux:sidebar.item icon="bolt" href="#">
-                    {{ __('ค่าน้ำ-ค่าไฟ') }}
-                </flux:sidebar.item>
-
-
-                <!-- ใบแจ้งหนี้ / การชำระ -->
-                <flux:sidebar.item icon="credit-card" href="#">
-                    {{ __('ใบแจ้งหนี้ / การชำระ') }}
-                </flux:sidebar.item>
-
-
-                <!-- แจ้งซ่อม -->
-                <flux:sidebar.item icon="wrench" href="#">
-                    {{ __('แจ้งซ่อม') }}
-                </flux:sidebar.item>
-
-            </flux:sidebar.group>
-
-        </flux:sidebar.nav>
-
-
-        <!-- Spacer -->
-        <flux:spacer />
-
-
-        <!-- Desktop User Menu -->
-        <x-desktop-user-menu class="hidden lg:block" :name="auth()->user()->u_username" />
-
-    </flux:sidebar>
-
-
-    <!-- Desktop Header -->
-    <flux:header class="hidden border-b border-[#2E425C] bg-white lg:flex">
-
-        <flux:spacer />
-
-        <div class="flex items-center gap-4">
-
-            <!-- Notification -->
-            <flux:button variant="ghost" icon="bell" class="text-[#90A1B9]" />
-
-
-            <!-- Divider -->
-            <div class="h-6 w-px bg-[#2E425C]"></div>
-
-
-            <!-- Admin Information -->
-            <div class="text-right">
-
-                <div class="text-sm font-semibold text-[#162D4A]">
-                    ผู้ดูแลระบบ
+                {{-- Logo Icon --}}
+                <div class="d-flex align-items-center justify-content-center rounded-3"
+                    style="
+                        width: 42px;
+                        height: 42px;
+                        background-color: #155DFC;
+                    ">
+                    <i class="bi bi-buildings-fill"></i>
                 </div>
 
-                <div class="text-xs text-[#90A1B9]">
-                    Administrator
+                {{-- Logo Text --}}
+                <div class="lh-sm">
+
+                    <div class="fw-bold">
+                        หอพักสุขสบาย
+                    </div>
+
+                    <small style="color: #90A1B9;">
+                        ระบบจัดการหอพัก
+                    </small>
+
                 </div>
 
-            </div>
+            </a>
 
         </div>
 
-    </flux:header>
+        {{-- Admin Badge --}}
+        <div class="px-4 py-3 border-top border-bottom" style="border-color: #2E425C !important;">
+
+            <span class="badge rounded-pill d-inline-flex align-items-center gap-2 px-3 py-2"
+                style="
+                    background-color: #3B4A36;
+                    color: #FACC15;
+                    font-size: 12px;
+                ">
+
+                <span class="rounded-circle"
+                    style="
+                        width: 6px;
+                        height: 6px;
+                        background-color: #FACC15;"></span>
+                ผู้ดูแลระบบ (Admin)
+            </span>
+        </div>
 
 
-    <!-- Mobile Header / User Menu -->
-    <flux:header class="lg:hidden">
+        {{-- Navigation --}}
+        <nav class="flex-grow-1 overflow-auto px-3 py-4">
 
-        <!-- Sidebar Toggle -->
-        <flux:sidebar.toggle class="lg:hidden" icon="bars-2" inset="left" />
-
-        <flux:spacer />
-
-
-        <!-- Mobile User Dropdown -->
-        <flux:dropdown position="top" align="end">
-
-            <flux:profile :initials="mb_strtoupper(mb_substr(auth()->user()->u_username, 0, 2))"
-                icon-trailing="chevron-down" />
+            <div class="text-uppercase fw-semibold mb-3 px-2"
+                style="
+                    color: #90A1B9;
+                    font-size: 11px;
+                    letter-spacing: .5px;
+                ">
+                เมนูหลัก
+            </div>
 
 
-            <flux:menu>
+            {{-- Dashboard --}}
+            <a href="{{ route('dashboard') }}" wire:navigate
+                class="
+                    sidebar-link
+                    d-flex
+                    align-items-center
+                    gap-3
+                    text-decoration-none
+                    rounded-3
+                    px-3
+                    py-2
+                    mb-1
+                    {{ request()->routeIs('dashboard') ? 'active' : '' }}
+                ">
+                <i class="bi bi-house-door fs-5"></i>
 
-                <flux:menu.radio.group>
-
-                    <!-- User Information -->
-                    <div class="p-0 text-sm font-normal">
-
-                        <div class="flex items-center gap-2 px-1 py-1.5 text-start text-sm">
-
-                            <flux:avatar :name="auth()->user()->u_username"
-                                :initials="mb_strtoupper(mb_substr(auth()->user()->u_username, 0, 2))" />
+                <span>Dashboard</span>
+            </a>
 
 
-                            <div class="grid flex-1 text-start text-sm leading-tight">
+            {{-- ผู้เช่า --}}
+            <a href="#"
+                class="
+                    sidebar-link
+                    d-flex
+                    align-items-center
+                    gap-3
+                    text-decoration-none
+                    rounded-3
+                    px-3
+                    py-2
+                    mb-1
+                ">
+                <i class="bi bi-people fs-5"></i>
 
-                                <flux:heading class="truncate">
-                                    {{ auth()->user()->u_username }}
-                                </flux:heading>
+                <span>ผู้เช่า</span>
+            </a>
 
-                                <flux:text class="truncate">
-                                    {{ auth()->user()->u_role }}
-                                </flux:text>
 
-                            </div>
+            {{-- ห้องพัก --}}
+            <a href="#"
+                class="
+                    sidebar-link
+                    d-flex
+                    align-items-center
+                    gap-3
+                    text-decoration-none
+                    rounded-3
+                    px-3
+                    py-2
+                    mb-1
+                ">
+                <i class="bi bi-building fs-5"></i>
 
-                        </div>
+                <span>ห้องพัก</span>
+            </a>
 
+            {{-- การเช่า --}}
+            <a href="#"
+                class="
+                    sidebar-link
+                    d-flex
+                    align-items-center
+                    gap-3
+                    text-decoration-none
+                    rounded-3
+                    px-3
+                    py-2
+                    mb-1
+                ">
+                <i class="bi bi-key fs-5"></i>
+
+                <span>การเช่า</span>
+            </a>
+
+            {{-- ค่าน้ำ-ค่าไฟ --}}
+            <a href="#"
+                class="
+                    sidebar-link
+                    d-flex
+                    align-items-center
+                    gap-3
+                    text-decoration-none
+                    rounded-3
+                    px-3
+                    py-2
+                    mb-1
+                ">
+                <i class="bi bi-lightning-charge fs-5"></i>
+
+                <span>ค่าน้ำ-ค่าไฟ</span>
+            </a>
+
+            {{-- ใบแจ้งหนี้ / การชำระ --}}
+            <a href="#"
+                class="
+                    sidebar-link
+                    d-flex
+                    align-items-center
+                    gap-3
+                    text-decoration-none
+                    rounded-3
+                    px-3
+                    py-2
+                    mb-1
+                ">
+                <i class="bi bi-credit-card fs-5"></i>
+
+                <span>ใบแจ้งหนี้ / การชำระ</span>
+            </a>
+
+            {{-- แจ้งซ่อม --}}
+            <a href="#"
+                class="
+                    sidebar-link
+                    d-flex
+                    align-items-center
+                    gap-3
+                    text-decoration-none
+                    rounded-3
+                    px-3
+                    py-2
+                    mb-1
+                ">
+                <i class="bi bi-tools fs-5"></i>
+
+                <span>แจ้งซ่อม</span>
+            </a>
+
+        </nav>
+
+        {{-- User Footer --}}
+        <div class="border-top p-3" style="border-color: #2E425C !important;">
+
+            {{-- User Information --}}
+            <div class="d-flex align-items-center gap-3 mb-3">
+
+                {{-- Avatar --}}
+                <div class="rounded-circle d-flex align-items-center justify-content-center fw-bold text-white flex-shrink-0"
+                    style="
+                        width: 40px;
+                        height: 40px;
+                        background-color: #2D7FF9;
+                    ">
+                    {{ auth()->user()->initials() }}
+                </div>
+
+                {{-- Name / Role --}}
+                <div class="min-w-0">
+
+                    <div class="text-white fw-semibold text-truncate">
+                        ผู้ดูแลระบบ
                     </div>
 
-                </flux:menu.radio.group>
+                    <div class="small text-truncate" style="color: #90A1B9;">
+                        Administrator
+                    </div>
+
+                </div>
+
+            </div>
+
+            {{-- Settings --}}
+            <a href="{{ route('profile.edit') }}" wire:navigate
+                class="
+                    sidebar-bottom-link
+                    d-flex
+                    align-items-center
+                    gap-3
+                    text-decoration-none
+                    rounded-3
+                    px-3
+                    py-2
+                    mb-1
+                ">
+                <i class="bi bi-gear fs-5"></i>
+
+                <span>Settings</span>
+            </a>
+
+            {{-- Logout --}}
+            <form method="POST" action="{{ route('logout') }}">
+                @csrf
+
+                <button type="submit"
+                    class="
+                        sidebar-bottom-link
+                        d-flex
+                        align-items-center
+                        gap-3
+                        w-100
+                        border-0
+                        rounded-3
+                        px-3
+                        py-2
+                        bg-transparent
+                        text-start
+                        cursor-pointer
+                    ">
+
+                    <i class="bi bi-box-arrow-right fs-5"></i>
+
+                    <span>ออกจากระบบ</span>
+                </button>
+            </form>
+        </div>
+    </aside>
+
+    {{-- Main Area --}}
+    <div style="
+            margin-left: 260px;
+            min-height: 100vh;
+        ">
+
+        {{-- Desktop Header --}}
+        <header class="bg-white border-bottom d-none d-lg-flex align-items-center justify-content-between px-4"
+            style="height: 70px;">
+
+            {{-- Breadcrumb --}}
+            <div class="d-flex align-items-center gap-2 small">
+
+                <span style="color: #90A1B9;">
+                    หอพักสุขสบาย
+                </span>
+
+                <span style="color: #90A1B9;">
+                    /
+                </span>
+
+                <span class="fw-semibold" style="color: #162D4A;">
+                    Dashboard
+                </span>
+
+            </div>
 
 
-                <!-- Menu Divider -->
-                <flux:menu.separator />
+            {{-- Right Side --}}
+            <div class="d-flex align-items-center gap-4">
 
+                {{-- Notification --}}
+                <button type="button" class="btn border-0 p-2" style="color: #162D4A;">
+                    <i class="bi bi-bell fs-5"></i>
+                </button>
 
-                <!-- Settings -->
-                <flux:menu.radio.group>
+                {{-- Divider --}}
+                <div
+                    style="
+                        width: 1px;
+                        height: 28px;
+                        background-color: #D9E2EC;
+                    ">
+                </div>
 
-                    <flux:menu.item :href="route('profile.edit')" icon="cog" wire:navigate>
-                        {{ __('Settings') }}
-                    </flux:menu.item>
+                {{-- Admin Information --}}
+                <div class="d-flex align-items-center gap-3">
 
-                </flux:menu.radio.group>
+                    {{-- Avatar --}}
+                    <div class="rounded-circle d-flex align-items-center justify-content-center fw-bold text-white"
+                        style="
+                            width: 36px;
+                            height: 36px;
+                            background-color: #1E3A5F;
+                            font-size: 12px;
+                        ">
+                        {{ auth()->user()->initials() }}
+                    </div>
 
+                    {{-- Name --}}
+                    <div>
 
-                <!-- Menu Divider -->
-                <flux:menu.separator />
+                        <div class="small fw-semibold" style="color: #162D4A;">
+                            ผู้ดูแลระบบ
+                        </div>
 
+                        <div
+                            style="
+                                color: #90A1B9;
+                                font-size: 11px;
+                            ">
+                            Administrator
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
 
-                <!-- Logout -->
-                <form method="POST" action="{{ route('logout') }}" class="w-full">
+        {{-- Mobile Header --}}
+        <header class="bg-white border-bottom d-flex d-lg-none align-items-center justify-content-between px-3"
+            style="height: 60px;">
 
-                    @csrf
+            {{-- Mobile Menu --}}
+            <button type="button" class="btn border-0" onclick="toggleSidebar()">
+                <i class="bi bi-list fs-3"></i>
+            </button>
 
-                    <flux:menu.item as="button" type="submit" icon="arrow-right-start-on-rectangle"
-                        class="w-full cursor-pointer" data-test="logout-button">
-                        {{ __('Log out') }}
-                    </flux:menu.item>
+            {{-- Logo --}}
+            <div class="fw-bold" style="color: #162D4A;">
+                หอพักสุขสบาย
+            </div>
 
-                </form>
+            {{-- User --}}
+            <div class="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold"
+                style="
+                    width: 36px;
+                    height: 36px;
+                    background-color: #2D7FF9;
+                    font-size: 12px;
+                ">
+                {{ auth()->user()->initials() }}
+            </div>
+        </header>
 
-            </flux:menu>
+        {{-- Page Content --}}
+        <main class="p-4 p-lg-5">
+            {{ $slot }}
+        </main>
+    </div>
 
-        </flux:dropdown>
+    {{-- Mobile Sidebar overlay --}}
+    <div id="sidebarOverlay" class="position-fixed top-0 start-0 w-100 h-100 d-none"
+        style="
+            background: rgba(0, 0, 0, .45);
+            z-index: 1035;
+        "
+        onclick="toggleSidebar()">
+    </div>
 
-    </flux:header>
+    <style>
+        @media (max-width: 991.98px) {
+            #sidebar {
+                transform: translateX(-100%);
+                transition: transform .25s ease;
+            }
 
+            #sidebar.show {
+                transform: translateX(0);
+            }
 
-    <!-- Page Content -->
-    {{ $slot }}
+            #sidebarOverlay.show {
+                display: block !important;
+            }
 
+            body.sidebar-open {
+                overflow: hidden;
+            }
 
-    <!-- Toast -->
+            #sidebar+div {
+                margin-left: 0 !important;
+            }
+
+        }
+    </style>
+
+    {{-- Mobile Sidebar Scripts --}}
+    <script>
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            sidebar.classList.toggle('show');
+            overlay.classList.toggle('show');
+            document.body.classList.toggle('sidebar-open');
+
+        }
+    </script>
+
+    {{-- Toast --}}
     @persist('toast')
         <flux:toast.group>
             <flux:toast />
@@ -218,7 +484,7 @@
     @endpersist
 
 
-    <!-- Flux Scripts -->
+    {{-- Flux Scripts --}}
     @fluxScripts
 
 </body>

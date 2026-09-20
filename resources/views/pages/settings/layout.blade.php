@@ -1,362 +1,487 @@
-<div class="min-h-screen px-4 py-6 text-slate-800 md:px-8 md:py-8">
+<div class="settings-page">
 
-    <div class="mx-auto max-w-6xl">
+    <div class="container-fluid settings-container">
 
-        {{-- ========================= --}}
         {{-- PAGE HEADER --}}
-        {{-- ========================= --}}
-        <div class="mb-7">
+        <div class="settings-page-header">
 
-            <div class="flex items-center gap-4">
+            <div class="d-flex align-items-center gap-3">
 
                 {{-- Settings Icon --}}
-                <div
-                    class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl
-                           bg-blue-600 shadow-lg shadow-blue-600/20">
-
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24"
-                        stroke="currentColor" stroke-width="1.8">
-
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0
-                               a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826
-                               2.37 2.37a1.724 1.724 0 001.065 2.572
-                               c1.756.426 1.756 2.924 0 3.35
-                               a1.724 1.724 0 00-1.066 2.573
-                               c.94 1.543-.826 3.31-2.37 2.37
-                               a1.724 1.724 0 00-2.572 1.065
-                               c-.426 1.756-2.924 1.756-3.35 0
-                               a1.724 1.724 0 00-2.573-1.066
-                               c-1.543.608-2.296.07-2.572-1.065z" />
-
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-
-                    </svg>
+                <div class="settings-header-icon">
+                    <i class="bi bi-gear-fill"></i>
                 </div>
 
                 {{-- Title --}}
                 <div>
-                    <h1 class="text-2xl font-bold tracking-tight text-slate-800 md:text-3xl">
+                    <h1 class="settings-title">
                         Settings
                     </h1>
 
-                    <p class="mt-1 text-sm text-slate-500">
+                    <p class="settings-subtitle">
                         จัดการข้อมูลบัญชีและการตั้งค่าของคุณ
                     </p>
                 </div>
-
             </div>
-
         </div>
 
-
-        {{-- ========================= --}}
         {{-- SETTINGS CARD --}}
-        {{-- ========================= --}}
-        <div class="overflow-hidden rounded-2xl border border-slate-200
-                   bg-white shadow-sm">
+        <div class="settings-card">
 
-            <div class="flex min-h-[600px] flex-col md:flex-row">
+            <div class="row g-0 settings-card-body">
 
-
-                {{-- ========================= --}}
                 {{-- LEFT SIDEBAR --}}
-                {{-- ========================= --}}
-                <aside
-                    class="w-full shrink-0 border-b border-slate-200
-                           bg-slate-50 md:w-[250px]
-                           md:border-b-0 md:border-r">
+                <aside class="col-12 col-md-3 settings-sidebar">
 
-                    <div class="p-5">
+                    <div class="settings-sidebar-inner">
 
                         {{-- Sidebar Header --}}
-                        <div class="mb-5 px-2">
+                        <div class="settings-sidebar-header">
 
-                            <p
-                                class="text-[11px] font-bold uppercase
-                                       tracking-[0.18em] text-slate-400">
+                            <div class="settings-section-label">
+                                ACCOUNT
+                            </div>
 
-                                Account
-
-                            </p>
-
-                            <p class="mt-1 text-xs text-slate-400">
+                            <div class="settings-section-subtitle">
                                 การตั้งค่าบัญชี
-                            </p>
+                            </div>
 
                         </div>
 
 
                         {{-- Navigation --}}
-                        <nav class="space-y-2">
+                        <nav class="settings-nav">
 
                             {{-- PROFILE --}}
-                            <a href="{{ route('profile.edit') }}" wire:navigate
-                                class="group flex items-center gap-3 rounded-xl
-                                       px-3.5 py-3 text-sm font-medium
-                                       transition-all duration-200
+                            <a
+                                href="{{ route('profile.edit') }}"
+                                wire:navigate
+                                class="settings-nav-item
+                                    {{ request()->routeIs('profile.edit') ? 'active' : '' }}"
+                            >
 
-                                       {{ request()->routeIs('profile.edit')
-                                           ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20'
-                                           : 'text-slate-600 hover:bg-blue-50 hover:text-blue-700' }}">
-
-                                <span
-                                    class="flex h-9 w-9 shrink-0 items-center
-                                           justify-center rounded-lg
-
-                                           {{ request()->routeIs('profile.edit')
-                                               ? 'bg-white/15 text-white'
-                                               : 'bg-white text-slate-400 shadow-sm group-hover:text-blue-600' }}">
-
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
-                                        viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0
-                                               3.75 3.75 0 017.5 0z" />
-
-                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                            d="M4.5 20.25a8.25 8.25 0 0115 0" />
-
-                                    </svg>
-
+                                <span class="settings-nav-icon">
+                                    <i class="bi bi-person"></i>
                                 </span>
 
-                                <span class="flex-1">
+                                <span class="settings-nav-text">
                                     Profile
                                 </span>
 
                                 @if (request()->routeIs('profile.edit'))
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
-                                        viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
-
-                                    </svg>
+                                    <i class="bi bi-chevron-right settings-nav-arrow"></i>
                                 @endif
 
                             </a>
 
 
                             {{-- SECURITY --}}
-                            <a href="{{ route('security.edit') }}" wire:navigate
-                                class="group flex items-center gap-3 rounded-xl
-                                       px-3.5 py-3 text-sm font-medium
-                                       transition-all duration-200
+                            <a
+                                href="{{ route('security.edit') }}"
+                                wire:navigate
+                                class="settings-nav-item
+                                    {{ request()->routeIs('security.edit') ? 'active' : '' }}"
+                            >
 
-                                       {{ request()->routeIs('security.edit')
-                                           ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20'
-                                           : 'text-slate-600 hover:bg-blue-50 hover:text-blue-700' }}">
-
-                                <span
-                                    class="flex h-9 w-9 shrink-0 items-center
-                                           justify-center rounded-lg
-
-                                           {{ request()->routeIs('security.edit')
-                                               ? 'bg-white/15 text-white'
-                                               : 'bg-white text-slate-400 shadow-sm group-hover:text-blue-600' }}">
-
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
-                                        viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 15.75a3 3 0 100-6
-                                               3 3 0 000 6z" />
-
-                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                            d="M19.5 10.5V8.25a7.5 7.5 0 00-15 0v2.25" />
-
-                                        <rect x="3.75" y="10.5" width="16.5" height="9.75" rx="2" />
-
-                                    </svg>
-
+                                <span class="settings-nav-icon">
+                                    <i class="bi bi-shield-lock"></i>
                                 </span>
 
-                                <span class="flex-1">
+                                <span class="settings-nav-text">
                                     Security
                                 </span>
 
                                 @if (request()->routeIs('security.edit'))
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
-                                        viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
-
-                                    </svg>
+                                    <i class="bi bi-chevron-right settings-nav-arrow"></i>
                                 @endif
 
                             </a>
-
-
-                            {{-- APPEARANCE --}}
-                            <a href="{{ route('appearance.edit') }}" wire:navigate
-                                class="group flex items-center gap-3 rounded-xl
-                                       px-3.5 py-3 text-sm font-medium
-                                       transition-all duration-200
-
-                                       {{ request()->routeIs('appearance.edit')
-                                           ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20'
-                                           : 'text-slate-600 hover:bg-blue-50 hover:text-blue-700' }}">
-
-                                <span
-                                    class="flex h-9 w-9 shrink-0 items-center
-                                           justify-center rounded-lg
-
-                                           {{ request()->routeIs('appearance.edit')
-                                               ? 'bg-white/15 text-white'
-                                               : 'bg-white text-slate-400 shadow-sm group-hover:text-blue-600' }}">
-
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
-                                        viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-
-                                        <circle cx="12" cy="12" r="8.5" />
-
-                                        <path stroke-linecap="round" d="M12 3v18" />
-
-                                        <path stroke-linecap="round" d="M3 12h18" />
-
-                                    </svg>
-
-                                </span>
-
-                                <span class="flex-1">
-                                    Appearance
-                                </span>
-
-                                @if (request()->routeIs('appearance.edit'))
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
-                                        viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
-
-                                    </svg>
-                                @endif
-
-                            </a>
-
                         </nav>
 
-
                         {{-- ACCOUNT INFO --}}
-                        <div
-                            class="mt-8 rounded-xl border border-blue-100
-                                   bg-blue-50 p-4">
+                        <div class="settings-account-info">
 
-                            <div class="flex gap-3">
+                            <div class="d-flex gap-3">
 
-                                <div class="mt-0.5 shrink-0">
-
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-500" fill="none"
-                                        viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-
-                                        <circle cx="12" cy="12" r="9" />
-
-                                        <path stroke-linecap="round" d="M12 10v6" />
-
-                                        <path stroke-linecap="round" d="M12 7.5h.01" />
-
-                                    </svg>
-
+                                <div class="settings-info-icon">
+                                    <i class="bi bi-info-circle"></i>
                                 </div>
 
                                 <div>
 
-                                    <p class="text-xs font-semibold text-blue-700">
+                                    <div class="settings-info-title">
                                         บัญชีของคุณ
-                                    </p>
+                                    </div>
 
-                                    <p
-                                        class="mt-1 text-[11px]
-                                               leading-5 text-blue-600/80">
-
+                                    <div class="settings-info-text">
                                         ตรวจสอบข้อมูลและการตั้งค่าบัญชี
                                         ของคุณได้จากเมนูด้านบน
-
-                                    </p>
+                                    </div>
 
                                 </div>
-
                             </div>
-
                         </div>
-
                     </div>
-
                 </aside>
 
-
-                {{-- ========================= --}}
                 {{-- RIGHT CONTENT --}}
-                {{-- ========================= --}}
-                <main class="min-w-0 flex-1 bg-white">
+                <main class="col-12 col-md-9 settings-content">
 
-                    <div class="p-6 md:p-9 lg:p-11">
+                    <div class="settings-content-inner">
 
                         {{-- Content Header --}}
-                        <div class="mb-8 border-b border-slate-200 pb-6">
+                        <div class="settings-content-header">
 
-                            <h2
-                                class="text-2xl font-bold tracking-tight
-                                       text-slate-800">
-
+                            <h2 class="settings-content-title">
                                 {{ $heading ?? 'Settings' }}
-
                             </h2>
 
                             @if ($subheading ?? false)
-                                <p
-                                    class="mt-2 max-w-xl text-sm
-                                           leading-6 text-slate-500">
 
+                                <p class="settings-content-subtitle">
                                     {{ $subheading }}
-
                                 </p>
+
                             @endif
 
                         </div>
 
-
-                        {{-- ========================= --}}
                         {{-- ACTUAL PAGE CONTENT --}}
-                        {{-- ========================= --}}
-                        <div
-                            class="
-                                w-full max-w-2xl
-                                text-slate-700
-
-                                [&_label]:mb-2
-                                [&_label]:block
-                                [&_label]:text-sm
-                                [&_label]:font-semibold
-                                [&_label]:text-slate-700
-
-                                [&_input]:!border-slate-300
-                                [&_input]:!bg-white
-                                [&_input]:!text-slate-900
-                                [&_input]:!placeholder-slate-400
-
-                                [&_input]:focus:!border-blue-500
-
-                                [&_textarea]:!border-slate-300
-                                [&_textarea]:!bg-white
-                                [&_textarea]:!text-slate-900
-
-                                [&_select]:!border-slate-300
-                                [&_select]:!bg-white
-                                [&_select]:!text-slate-900
-
-                                [&_button]:cursor-pointer
-                            ">
+                        <div class="settings-form-content">
 
                             {{ $slot }}
 
                         </div>
-
                     </div>
-
                 </main>
-
             </div>
-
         </div>
-
     </div>
-
 </div>
+
+
+<style>
+
+    /* SETTINGS PAGE */
+    .settings-page {
+        min-height: 100vh;
+        padding: 32px;
+        background: #ffffff;
+        color: #24344D;
+    }
+
+    .settings-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0;
+    }
+
+
+    /* PAGE HEADER */
+
+    .settings-page-header {
+        margin-bottom: 28px;
+    }
+
+    .settings-header-icon {
+        width: 48px;
+        height: 48px;
+        min-width: 48px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 12px;
+        background: #2161F5;
+        color: #ffffff;
+        font-size: 21px;
+        box-shadow: 0 8px 20px rgba(33, 97, 245, 0.18);
+    }
+
+    .settings-title {
+        margin: 0;
+        color: #24344D;
+        font-size: 28px;
+        font-weight: 700;
+        line-height: 1.2;
+        letter-spacing: -0.02em;
+    }
+
+    .settings-subtitle {
+        margin: 5px 0 0;
+        color: #7B8CA5;
+        font-size: 14px;
+        line-height: 1.5;
+    }
+
+
+    /* MAIN CARD */
+    .settings-card {
+        overflow: hidden;
+        border: 1px solid #DDE5EF;
+        border-radius: 16px;
+        background: #ffffff;
+        box-shadow: 0 4px 18px rgba(36, 52, 77, 0.06);
+    }
+
+    .settings-card-body {
+        min-height: 600px;
+    }
+
+
+    /* LEFT SIDEBAR */
+    .settings-sidebar {
+        background: #F8FAFC;
+        border-right: 1px solid #E2E8F0;
+    }
+
+    .settings-sidebar-inner {
+        padding: 24px 20px;
+    }
+
+    .settings-sidebar-header {
+        margin-bottom: 20px;
+        padding: 0 8px;
+    }
+
+    .settings-section-label {
+        color: #94A3B8;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.18em;
+    }
+
+    .settings-section-subtitle {
+        margin-top: 4px;
+        color: #94A3B8;
+        font-size: 12px;
+    }
+
+
+    /* SETTINGS NAVIGATION */
+    .settings-nav {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .settings-nav-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        width: 100%;
+        padding: 10px 12px;
+        border-radius: 10px;
+        color: #52627A;
+        text-decoration: none;
+        font-size: 14px;
+        font-weight: 500;
+        transition:
+            background-color 0.15s ease,
+            color 0.15s ease,
+            box-shadow 0.15s ease;
+    }
+
+    .settings-nav-item:hover {
+        background: #EFF6FF;
+        color: #2161F5;
+    }
+
+    .settings-nav-item.active {
+        background: #2161F5;
+        color: #ffffff;
+        box-shadow: 0 6px 14px rgba(33, 97, 245, 0.18);
+    }
+
+    .settings-nav-icon {
+        width: 36px;
+        height: 36px;
+        min-width: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 9px;
+        background: #ffffff;
+        color: #94A3B8;
+        font-size: 17px;
+        box-shadow: 0 1px 4px rgba(36, 52, 77, 0.06);
+        transition:
+            background-color 0.15s ease,
+            color 0.15s ease;
+    }
+
+    .settings-nav-item:hover .settings-nav-icon {
+        color: #2161F5;
+    }
+
+    .settings-nav-item.active .settings-nav-icon {
+        background: rgba(255, 255, 255, 0.15);
+        color: #ffffff;
+        box-shadow: none;
+    }
+
+    .settings-nav-text {
+        flex: 1;
+    }
+
+    .settings-nav-arrow {
+        font-size: 13px;
+        opacity: 0.9;
+    }
+
+    /* ACCOUNT INFO */
+    .settings-account-info {
+        margin-top: 32px;
+        padding: 14px;
+        border: 1px solid #DBEAFE;
+        border-radius: 10px;
+        background: #EFF6FF;
+    }
+
+    .settings-info-icon {
+        flex-shrink: 0;
+        margin-top: 1px;
+        color: #3B82F6;
+        font-size: 18px;
+    }
+
+    .settings-info-title {
+        color: #1D4ED8;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .settings-info-text {
+        margin-top: 4px;
+        color: #2563EB;
+        font-size: 11px;
+        line-height: 1.7;
+    }
+
+
+    /* RIGHT CONTENT */
+    .settings-content {
+        min-width: 0;
+
+        background: #ffffff;
+    }
+
+    .settings-content-inner {
+        padding: 44px;
+    }
+
+    .settings-content-header {
+        margin-bottom: 28px;
+        padding-bottom: 22px;
+        border-bottom: 1px solid #E2E8F0;
+    }
+
+    .settings-content-title {
+        margin: 0;
+        color: #24344D;
+        font-size: 24px;
+        font-weight: 700;
+        line-height: 1.3;
+        letter-spacing: -0.015em;
+    }
+
+    .settings-content-subtitle {
+        max-width: 600px;
+        margin: 8px 0 0;
+        color: #7B8CA5;
+        font-size: 14px;
+        line-height: 1.7;
+    }
+
+    .settings-form-content {
+        width: 100%;
+        max-width: 680px;
+        color: #42526B;
+    }
+
+
+    /* FORM ELEMENTS */
+    .settings-form-content label {
+        display: block;
+        margin-bottom: 8px;
+        color: #42526B;
+        font-size: 14px;
+        font-weight: 600;
+    }
+
+    .settings-form-content input,
+    .settings-form-content textarea,
+    .settings-form-content select {
+        border-color: #CBD5E1;
+        background: #ffffff;
+        color: #172033;
+    }
+
+    .settings-form-content input::placeholder,
+    .settings-form-content textarea::placeholder {
+        color: #94A3B8;
+    }
+
+    .settings-form-content input:focus,
+    .settings-form-content textarea:focus,
+    .settings-form-content select:focus {
+        border-color: #2161F5;
+        box-shadow: 0 0 0 0.2rem rgba(33, 97, 245, 0.12);
+    }
+
+    .settings-form-content button {
+        cursor: pointer;
+    }
+
+
+    /* RESPONSIVE */
+    @media (max-width: 767.98px) {
+
+        .settings-page {
+            padding: 20px 16px;
+        }
+
+        .settings-title {
+            font-size: 24px;
+        }
+
+        .settings-header-icon {
+            width: 44px;
+            height: 44px;
+            min-width: 44px;
+        }
+
+        .settings-sidebar {
+            border-right: 0;
+            border-bottom: 1px solid #E2E8F0;
+        }
+
+        .settings-sidebar-inner {
+            padding: 20px 16px;
+        }
+
+        .settings-content-inner {
+            padding: 28px 20px;
+        }
+
+        .settings-card-body {
+            min-height: auto;
+        }
+
+    }
+
+    @media (min-width: 768px) and (max-width: 991.98px) {
+
+        .settings-page {
+            padding: 24px;
+        }
+
+        .settings-content-inner {
+            padding: 32px;
+        }
+
+        .settings-sidebar-inner {
+            padding: 20px 14px;
+        }
+
+    }
+</style>
