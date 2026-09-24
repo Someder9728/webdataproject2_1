@@ -3,6 +3,7 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\V1\TenantController;
+use App\Http\Controllers\Api\V1\RentalController;
 
 
 Route::prefix('api/v1')
@@ -39,5 +40,17 @@ Route::prefix('api/v1')
         Route::patch('/tenants/{tenant}', [TenantController::class, 'update'])
             ->whereNumber('tenant')
             ->name('tenants.update');
+
+        
+
+            Route::get('/rentals', [RentalController::class, 'index'])->name('rentals.index');
+        
+            // Route สำหรับก้อนถัดไปตามแผนงาน:
+            // Route::post('/rentals', [RentalController::class, 'store']);
+            // Route::get('/rentals/{rental}', [RentalController::class, 'show']);
+            // Route::get('/rentals/{rental}/contract', [RentalController::class, 'showContract']);
+            // Route::patch('/rentals/{rental}/contract', [RentalController::class, 'updateContract']);
+            // Route::post('/rentals/{rental}/move-out', [RentalController::class, 'moveOut']);
+        
     });
 

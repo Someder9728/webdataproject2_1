@@ -39,4 +39,20 @@ class Rental extends Model
     public function invoices() {
         return $this->hasMany(Invoice::class, 'rentals_rt_id', 'rt_id');
     }
+    public function scopeSearch($query, ?string $term)
+    {
+        if (blank($term)) {
+            return $query;
+        }
+
+        return $query->where(function ($q) use ($term) {
+            $q->whereHas('tenant', function ($tq) use ($term) {
+                $tq->where('t_Fname', 'like', "%{$term}%")
+                   ->orWhere('t_Lname', 'like', "%{$term}%")
+                   ->orWhere('t_tel', 'like', "%{$term}%");
+            })->orWhereHas('room', function ($rq) use ($term) {
+                $rq->where('r_name', 'like', "%{$term}%");
+            });
+        });
+    }
 }
