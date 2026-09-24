@@ -35,4 +35,12 @@ class Room extends Model {
     public function repairs() {
         return $this->hasMany(Repair::class, 'rooms_r_id', 'r_id');
     }
+
+    protected function casts(): array
+    {
+        return [
+            'r_floor' => 'integer',
+            'r_rent' => 'decimal:2',
+        ];
+    }
 }

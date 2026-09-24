@@ -46,4 +46,9 @@ class RoomPolicy
     {
         return $user->is_active && $user->u_role === 'admin';
     }
+
+    public function delete(User $user, Room $room): bool
+    {
+        return $user->is_active && $user->u_role === 'admin';
+    }
 }

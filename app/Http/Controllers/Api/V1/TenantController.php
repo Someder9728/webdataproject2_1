@@ -133,4 +133,17 @@ class TenantController extends Controller
                 'message' => 'แก้ไขข้อมูลผู้เช่าสำเร็จ',
             ]);
         }
+
+        public function destroy(
+        Request $request,
+        Tenant $tenant,
+        \App\Actions\DeleteUnusedRecord $action
+    ): JsonResponse {
+        $action->handle($request->user(), $tenant);
+
+        return response()->json([
+            'data' => null,
+            'message' => 'ลบข้อมูลผู้เช่าสำเร็จ',
+        ]);
+    }
 }

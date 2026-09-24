@@ -35,12 +35,17 @@ class TenantPolicy
     }
 
     public function create(User $user): bool
-    {
-        return $user->is_active && $user->u_role === 'admin';
-    }
+        {
+            return $user->is_active && $user->u_role === 'admin';
+        }
 
     public function update(User $user, Tenant $tenant): bool
-    {
+        {
+            return $user->is_active && $user->u_role === 'admin';
+        }
+
+    public function delete(User $user, Tenant $tenant): bool
+        {
         return $user->is_active && $user->u_role === 'admin';
-    }
+        }
 }

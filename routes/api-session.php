@@ -3,7 +3,9 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\V1\TenantController;
-
+use App\Http\Controllers\Api\V1\TenantAccountController;
+use App\Http\Controllers\Api\V1\AccountController;
+use App\Http\Controllers\Api\V1\RoomController;
 
 Route::prefix('api/v1')
     ->name('api.v1.')
@@ -39,5 +41,62 @@ Route::prefix('api/v1')
         Route::patch('/tenants/{tenant}', [TenantController::class, 'update'])
             ->whereNumber('tenant')
             ->name('tenants.update');
+
+
+        Route::post(
+            '/tenants/{tenant}/account',
+            [TenantAccountController::class, 'store']
+        )
+            ->whereNumber('tenant')
+            ->middleware('role:admin')
+            ->name('tenants.account.store');
+
+        Route::post(
+            '/accounts/{account}/reset-password',
+            [AccountController::class, 'resetPassword']
+        )
+            ->whereNumber('account')
+            ->middleware('role:admin')
+            ->name('accounts.reset-password');
+
+        Route::post(
+            '/accounts/{account}/suspend',
+            [AccountController::class, 'suspend']
+        )
+            ->whereNumber('account')
+            ->middleware('role:admin')
+            ->name('accounts.suspend');
+
+
+        Route::get('/rooms', [RoomController::class, 'index'])
+            ->name('rooms.index');
+
+        Route::get('/rooms/{room}', [RoomController::class, 'show'])
+            ->whereNumber('room')
+            ->name('rooms.show');
+
+        Route::post('/rooms', [RoomController::class, 'store'])
+            ->name('rooms.store');
+
+        Route::patch('/rooms/{room}', [RoomController::class, 'update'])
+            ->whereNumber('room')
+            ->name('rooms.update');
+
+        Route::get('/tenants/{tenant}/account', [
+            TenantAccountController::class, 'show',
+        ])
+            ->whereNumber('tenant')
+            ->middleware('role:admin')
+            ->name('tenants.account.show');
+
+        Route::delete('/tenants/{tenant}', [TenantController::class, 'destroy'])
+            ->whereNumber('tenant')
+            ->middleware('role:admin')
+            ->name('tenants.destroy');
+
+        Route::delete('/rooms/{room}', [RoomController::class, 'destroy'])
+            ->whereNumber('room')
+            ->middleware('role:admin')
+            ->name('rooms.destroy');
     });
 
