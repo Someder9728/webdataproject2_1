@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\V1\TenantController;
 use App\Http\Controllers\Api\V1\TenantAccountController;
 use App\Http\Controllers\Api\V1\AccountController;
 use App\Http\Controllers\Api\V1\RoomController;
+use App\Http\Controllers\Api\V1\RentalController;
 
 Route::prefix('api/v1')
     ->name('api.v1.')
@@ -41,6 +42,7 @@ Route::prefix('api/v1')
         Route::patch('/tenants/{tenant}', [TenantController::class, 'update'])
             ->whereNumber('tenant')
             ->name('tenants.update');
+
 
 
         Route::post(
@@ -97,6 +99,10 @@ Route::prefix('api/v1')
         Route::delete('/rooms/{room}', [RoomController::class, 'destroy'])
             ->whereNumber('room')
             ->middleware('role:admin')
-            ->name('rooms.destroy');
+            ->name('rooms.destroy');        
+
+        Route::get('/rentals', [RentalController::class, 'index'])->name('rentals.index');
+        
+
     });
 
