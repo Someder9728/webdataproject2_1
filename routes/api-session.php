@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\V1\TenantAccountController;
 use App\Http\Controllers\Api\V1\AccountController;
 use App\Http\Controllers\Api\V1\RoomController;
 use App\Http\Controllers\Api\V1\RentalController;
+use App\Http\Controllers\Api\V1\InvoiceController;
 
 Route::prefix('api/v1')
     ->name('api.v1.')
@@ -118,6 +119,14 @@ Route::prefix('api/v1')
         Route::post('/rentals', [RentalController::class, 'store'])
             ->middleware('role:admin')
             ->name('rentals.store');
+
+        Route::post('/invoices/preview', [InvoiceController::class, 'preview'])
+            ->middleware('role:admin')
+            ->name('invoices.preview');
+
+        Route::post('/invoices', [InvoiceController::class, 'store'])
+            ->middleware('role:admin')
+            ->name('invoices.store');
         
 
     });
