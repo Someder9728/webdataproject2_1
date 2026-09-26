@@ -11,18 +11,15 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // m_type มีอยู่แล้วตั้งแต่ create_meter_table (ไม่ต้องเพิ่มซ้ำ)
+        // เหลือแค่เปลี่ยน unique จาก (room+date) เป็น (room+date+type)
         Schema::table('meters', function (Blueprint $table) {
-            $table->enum('m_type', [
-                'move_in',
-                'monthly',
-                'move_out'
-            ])->after('m_date');
+            $table->dropUnique('meters_room_date_unique');
 
-            $table->unique([
-                'rooms_r_id',
-                'm_date',
-                'm_type'
-            ], 'meter_unique_room_date_type');
+            $table->unique(
+                ['rooms_r_id', 'm_date', 'm_type'],
+                'meter_unique_room_date_type'
+            );
         });
     }
 
@@ -33,7 +30,11 @@ return new class extends Migration
     {
         Schema::table('meters', function (Blueprint $table) {
             $table->dropUnique('meter_unique_room_date_type');
-            $table->dropColumn('m_type');
+
+            $table->unique(
+                ['rooms_r_id', 'm_date'],
+                'meters_room_date_unique'
+            );
         });
     }
 };

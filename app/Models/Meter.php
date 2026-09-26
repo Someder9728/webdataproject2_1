@@ -56,6 +56,20 @@ class Meter extends Model
             ->first();
     }
 
+    /**
+     * หา Meter record ถัดไปของห้องเดียวกัน (ตรงข้ามกับ previousReading)
+     * ใช้หาปลายช่วงของรอบบิลเมื่อรู้แค่ต้นช่วง
+     */
+    public function nextReading(): ?self
+    {
+        return static::query()
+            ->where('rooms_r_id', $this->rooms_r_id)
+            ->where('m_date', '>', $this->m_date)
+            ->orderBy('m_date')
+            ->orderBy('m_id')
+            ->first();
+    }
+
     public function usage(): ?array
     {
         $previous = $this->previousReading();

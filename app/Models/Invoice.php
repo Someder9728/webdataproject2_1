@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Validation\ValidationException;
 
 class Invoice extends Model
 {
@@ -31,6 +32,36 @@ class Invoice extends Model
         'elec_rate',
         'rent_rate',
     ];
+
+    /**
+     * ทุก Invoice ต้องมี Payment คู่กันตั้งแต่สร้าง (เริ่มที่ PENDING)
+     * ตาม Flow: สร้าง Invoice → สร้าง Payment (PENDING) → ผู้เช่าอัปโหลด
+     * หลักฐาน → Admin อนุมัติ (PAID) / ปฏิเสธ (REJECTED)
+     *
+     * แก้ไข Invoice ได้เฉพาะตอน Payment คู่กันยังเป็น PENDING เท่านั้น
+     * เมื่อขยับเป็น PAID/REJECTED แล้วถือว่า "มีการดำเนินการแล้ว" แก้ไม่ได้อีก
+     *
+     * Soft delete (ยกเลิกบิล) ยังทำได้ตามปกติ เพราะ SoftDeletes
+     * อัปเดต deleted_at ผ่าน query builder ตรง ๆ ไม่ผ่าน event นี้
+     */
+    protected static function booted(): void
+    {
+        static::created(function (Invoice $invoice) {
+            $invoice->payment()->create([
+                'p_status' => 'PENDING',
+                'p_amount' => $invoice->i_total,
+            ]);
+        });
+
+        static::updating(function (Invoice $invoice) {
+            $payment = $invoice->payment()->first();
+            if ($payment && $payment->p_status !== 'PENDING') {
+                throw ValidationException::withMessages([
+                    'invoice' => 'ไม่สามารถแก้ไขบิลที่มีการดำเนินการแล้ว',
+                ]);
+            }
+        });
+    }
 
     protected function casts(): array
     {

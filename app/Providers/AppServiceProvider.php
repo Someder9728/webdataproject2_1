@@ -18,6 +18,8 @@ use App\Models\Rental;
 use App\Policies\RentalPolicy;
 use App\Models\Room;
 use App\Policies\RoomPolicy;
+use App\Models\Repair;
+use App\Policies\RepairPolicy;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -45,6 +47,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Tenant::class, TenantPolicy::class);
         Gate::policy(Rental::class, RentalPolicy::class);
         Gate::policy(Room::class, RoomPolicy::class);
+        Gate::policy(Repair::class, RepairPolicy::class);
     }
 
     /**
