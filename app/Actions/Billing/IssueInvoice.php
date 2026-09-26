@@ -6,13 +6,14 @@ use App\Models\AuditEvent;
 use App\Models\Invoice;
 use App\Models\Rental;
 use App\Models\User;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use App\Support\SqliteTransaction;
 
 class IssueInvoice
 {
     public function __construct(
-        private CalculateInvoice $calculator
+        private CalculateInvoice $calculator,
+        private SqliteTransaction $transactions
     ) {}
 
     public function handle(
@@ -20,7 +21,7 @@ class IssueInvoice
         array $input,
         bool $persist = false
     ): array {
-        return DB::transaction(function () use ($actor, $input, $persist) {
+        return $this->transactions->run(function () use ($actor, $input, $persist) {
             $actor = User::find($actor->getKey());
 
             abort_unless(
@@ -87,6 +88,6 @@ class IssueInvoice
                     'p_type' => null,
                 ],
             ];
-        }, 3);
+        });
     }
 }
