@@ -55,4 +55,12 @@ class Rental extends Model
             });
         });
     }
+
+    protected function casts(): array
+    {
+        return [
+            'rt_movein' => 'date',
+            'rt_moveout' => 'date',
+        ];
+    }
 }

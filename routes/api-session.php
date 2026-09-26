@@ -102,6 +102,22 @@ Route::prefix('api/v1')
             ->name('rooms.destroy');        
 
         Route::get('/rentals', [RentalController::class, 'index'])->name('rentals.index');
+
+
+        Route::get('/rentals/{rental}', [RentalController::class, 'show'])
+            ->whereNumber('rental')
+            ->name('rentals.show');
+
+        Route::get('/rentals/{rental}/contract', [
+            RentalController::class,
+            'showContract',
+        ])
+            ->whereNumber('rental')
+            ->name('rentals.contract.show');
+
+        Route::post('/rentals', [RentalController::class, 'store'])
+            ->middleware('role:admin')
+            ->name('rentals.store');
         
 
     });
