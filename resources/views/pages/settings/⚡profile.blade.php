@@ -1,134 +1,72 @@
 <?php
 
-use App\Concerns\ProfileValidationRules;
-/* @chisel-email-verification */
-use Illuminate\Contracts\Auth\MustVerifyEmail;
-/* @end-chisel-email-verification */
-use Flux\Flux;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Session;
-use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
-new #[Title('Profile settings')] class extends Component {
-    use ProfileValidationRules;
-
-    public string $name = '';
-    public string $email = '';
-
-    /**
-     * Mount the component.
-     */
-    public function mount(): void
+new #[Title('Profile settings')] class extends Component
+{
+    public function getUserProperty()
     {
-        $this->name = Auth::user()->name;
-        $this->email = Auth::user()->email;
+        return Auth::user();
     }
+};
 
-    /**
-     * Update the profile information for the currently authenticated user.
-     */
-    public function updateProfileInformation(): void
-    {
-        $user = Auth::user();
+?>
 
-        $validated = $this->validate($this->profileRules($user->id));
+<x-pages::settings.layout>
 
-        $user->fill($validated);
+    <h2>บัญชีของฉัน</h2>
 
-        if ($user->isDirty('email')) {
-            $user->email_verified_at = null;
-        }
+    <p class="settings-description">
+        ข้อมูลบัญชีสำหรับเข้าสู่ระบบ
+    </p>
 
-        $user->save();
+    <div class="settings-divider"></div>
 
-        Flux::toast(variant: 'success', text: __('Profile updated.'));
-    }
+    {{-- USERNAME --}}
+    <div class="settings-field">
 
-    /* @chisel-email-verification */
-    /**
-     * Send an email verification notification to the current user.
-     */
-    public function resendVerificationNotification(): void
-    {
-        $user = Auth::user();
+        <label>
+            ชื่อผู้ใช้
+        </label>
 
-        if ($user->hasVerifiedEmail()) {
-            $this->redirectIntended(default: route('dashboard', absolute: false));
+        <input type="text" value="{{ $this->user?->u_username }}" disabled>
 
-            return;
-        }
+    </div>
 
-        $user->sendEmailVerificationNotification();
 
-        Session::flash('status', 'verification-link-sent');
-    }
+    {{-- ROLE --}}
+    <div class="settings-field">
 
-    #[Computed]
-    public function hasUnverifiedEmail(): bool
-    {
-        return Auth::user() instanceof MustVerifyEmail && ! Auth::user()->hasVerifiedEmail();
-    }
+        <label>
+            บทบาท
+        </label>
 
-    #[Computed]
-    public function showDeleteUser(): bool
-    {
-        return ! Auth::user() instanceof MustVerifyEmail
-            || (Auth::user() instanceof MustVerifyEmail && Auth::user()->hasVerifiedEmail());
-    }
-    /* @end-chisel-email-verification */
-}; ?>
+        <input type="text" value="{{ $this->user?->u_role === 'admin' ? 'ผู้ดูแลระบบ' : 'ผู้ใช้งาน' }}" disabled>
 
-<section class="w-full">
-    @include('partials.settings-heading')
+    </div>
 
-    <flux:heading level="2" class="sr-only">{{ __('Profile settings') }}</flux:heading>
+    {{-- INFORMATION --}}
+    <div class="settings-content-box">
 
-    <x-pages::settings.layout :heading="__('Profile')" :subheading="__('Update your name and email address')">
-        <form wire:submit="updateProfileInformation" class="my-6 w-full space-y-6">
-            <flux:input wire:model="name" :label="__('Name')" type="text" required autofocus autocomplete="name" />
+        <div class="settings-content-box-icon">
+            <i class="bi bi-info-circle"></i>
+        </div>
 
-            <div>
-                <flux:input wire:model="email" :label="__('Email')" type="email" required autocomplete="email" />
+        <div>
 
-                {{-- @chisel-email-verification --}}
-                @if ($this->hasUnverifiedEmail)
-                    <div>
-                        <flux:text class="mt-4">
-                            {{ __('Your email address is unverified.') }}
-
-                            <flux:link class="text-sm cursor-pointer" wire:click.prevent="resendVerificationNotification">
-                                {{ __('Click here to re-send the verification email.') }}
-                            </flux:link>
-                        </flux:text>
-
-                        @if (session('status') === 'verification-link-sent')
-                            <flux:text class="mt-2 font-medium !dark:text-green-400 !text-green-600">
-                                {{ __('A new verification link has been sent to your email address.') }}
-                            </flux:text>
-                        @endif
-                    </div>
-                @endif
-                {{-- @end-chisel-email-verification --}}
+            <div class="settings-content-box-title">
+                ข้อมูลบัญชี
             </div>
 
-            <div class="flex items-center gap-4">
-                <div class="flex items-center justify-end">
-                    <flux:button variant="primary" type="submit" class="w-full" data-test="update-profile-button">
-                        {{ __('Save') }}
-                    </flux:button>
-                </div>
-
+            <div class="settings-content-box-text">
+                หากต้องการแก้ไขข้อมูลผู้ใช้งาน
+                กรุณาติดต่อผู้ดูแลระบบ
             </div>
-        </form>
 
-        {{-- @chisel-email-verification --}}
-        @if ($this->showDeleteUser)
-        {{-- @end-chisel-email-verification --}}
-            <livewire:pages::settings.delete-user-form />
-        {{-- @chisel-email-verification --}}
-        @endif
-        {{-- @end-chisel-email-verification --}}
-    </x-pages::settings.layout>
-</section>
+        </div>
+
+    </div>
+
+</x-pages::settings.layout>

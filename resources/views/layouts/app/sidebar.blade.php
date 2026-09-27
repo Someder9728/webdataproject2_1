@@ -1,8 +1,41 @@
+@php
+$user = auth()->user();
+$isAdmin = $user && $user->u_role === 'admin';
+
+// ข้อมูลที่แสดงด้านล่าง Sidebar
+if ($isAdmin) {
+$displayName = 'ผู้ดูแลระบบ';
+$displayRole = 'Administrator';
+$roleLabel = 'ผู้ดูแลระบบ (Admin)';
+} else {
+$displayName = $user?->tenant
+? trim($user->tenant->t_Fname . ' ' . $user->tenant->t_Lname)
+: ($user?->u_username ?? 'ผู้ใช้งาน');
+
+$displayRole = 'Tenant';
+$roleLabel = 'ผู้เช่า (User)';
+}
+
+$initials = $user?->initials() ?? 'U';
+@endphp
+
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 
 <head>
-    @include('partials.head')
+    <meta charset="utf-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>
+        {{ $title ?? 'หอพักสุขสบาย' }}
+    </title>
+
+    {{-- Bootstrap --}}
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    {{-- Bootstrap Icons --}}
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
 
     <style>
     :root {
@@ -10,256 +43,548 @@
         --sidebar-border: #2E425C;
         --sidebar-active: #1A3D6F;
         --sidebar-text: #90A1B9;
+        --sidebar-white: #FFFFFF;
+        --sidebar-blue: #2F80FF;
     }
 
-    html,
+    * {
+        box-sizing: border-box;
+    }
+
     body {
         margin: 0;
-        padding: 0;
-        min-height: 100%;
-    }
-
-    body {
-        background-color: #f8fafc;
+        background: #F5F7FA;
+        color: #162D4A;
+        font-family:
+            "Segoe UI",
+            Tahoma,
+            Arial,
+            sans-serif;
     }
 
     /* SIDEBAR */
-
     .app-sidebar {
-        width: 250px;
-        min-height: 100vh;
-        background-color: var(--sidebar-bg);
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 230px;
+        height: 100vh;
+        background: var(--sidebar-bg);
         border-right: 1px solid var(--sidebar-border);
+        display: flex;
+        flex-direction: column;
+        z-index: 1000;
     }
 
-    .app-brand {
-        height: 70px;
+    /* BRAND */
+
+    .sidebar-brand {
+        min-height: 84px;
         display: flex;
         align-items: center;
-        padding: 0 22px;
-        color: #ffffff;
-        text-decoration: none;
-        font-size: 20px;
-        font-weight: 700;
+        padding: 18px 14px;
         border-bottom: 1px solid var(--sidebar-border);
     }
 
-    .app-brand:hover {
-        color: #ffffff;
-    }
-
-    .sidebar-title {
-        padding: 24px 20px 10px;
-        color: var(--sidebar-text);
-        font-size: 12px;
-        font-weight: 600;
-        letter-spacing: .05em;
-    }
-
-    .sidebar-link {
+    .sidebar-brand-icon {
+        width: 36px;
+        height: 36px;
         display: flex;
         align-items: center;
-        margin: 3px 12px;
-        padding: 11px 14px;
+        justify-content: center;
+        flex-shrink: 0;
+        border-radius: 8px;
+        background: var(--sidebar-blue);
+        color: white;
+        font-size: 19px;
+    }
+
+    .sidebar-brand-text {
+        margin-left: 10px;
+        line-height: 1.15;
+    }
+
+    .sidebar-brand-name {
+        color: #FFFFFF;
+        font-size: 14px;
+        font-weight: 700;
+        margin: 0;
+    }
+
+    .sidebar-brand-subtitle {
+        color: #B7C7DC;
+        font-size: 11px;
+        margin-top: 3px;
+    }
+
+    /* ROLE BADGE */
+    .sidebar-role-area {
+        padding: 10px 14px;
+        border-bottom: 1px solid var(--sidebar-border);
+    }
+
+    .sidebar-role {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 4px 9px;
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: 600;
+    }
+
+    .sidebar-role.admin {
+        color: #FFC107;
+        background: rgba(255, 193, 7, 0.10);
+    }
+
+    .sidebar-role.user {
+        color: #55A7FF;
+        background: rgba(47, 128, 255, 0.18);
+    }
+
+    .sidebar-role-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+    }
+
+    .admin .sidebar-role-dot {
+        background: #FFC107;
+    }
+
+    .user .sidebar-role-dot {
+        background: #2F80FF;
+    }
+
+    /* MENU */
+    .sidebar-menu-wrapper {
+        flex: 1;
+        overflow-y: auto;
+        padding: 14px 8px;
+    }
+
+    .sidebar-section-title {
+        color: #71869F;
+        font-size: 10px;
+        font-weight: 500;
+        padding: 0 6px;
+        margin-bottom: 7px;
+        letter-spacing: 0.2px;
+    }
+
+    .sidebar-menu {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .sidebar-menu-item {
+        min-height: 40px;
+        display: flex;
+        align-items: center;
+        padding: 0 13px;
         border-radius: 8px;
         color: var(--sidebar-text);
         text-decoration: none;
-        font-size: 14px;
-        transition: .2s ease;
+        font-size: 13px;
+        font-weight: 400;
+        transition:
+            background 0.15s ease,
+            color 0.15s ease;
     }
 
-    .sidebar-link:hover {
-        color: #ffffff;
-        background-color: rgba(255, 255, 255, 0.08);
+    .sidebar-menu-item i {
+        width: 22px;
+        margin-right: 7px;
+        font-size: 17px;
+        text-align: center;
     }
 
-    .sidebar-link.active {
-        color: #ffffff;
-        background-color: var(--sidebar-active);
+    .sidebar-menu-item:hover {
+        color: #FFFFFF;
+        background: rgba(255, 255, 255, 0.05);
     }
 
-    .sidebar-link i {
-        width: 20px;
-        font-size: 16px;
+    .sidebar-menu-item.active {
+        color: #FFFFFF;
+        background: #2168F3;
+        font-weight: 600;
+        box-shadow:
+            0 3px 8px rgba(0, 0, 0, 0.12);
     }
 
-    /* USER PANEL*/
+    /* BOTTOM USER AREA */
+    .sidebar-bottom {
+        border-top: 1px solid var(--sidebar-border);
+        padding: 14px 13px 13px;
+    }
 
     .sidebar-user {
-        margin-top: auto;
-        padding: 16px;
-        border-top: 1px solid var(--sidebar-border);
+        display: flex;
+        align-items: center;
+        margin-bottom: 9px;
     }
 
-    .user-avatar {
-        width: 40px;
-        height: 40px;
+    .sidebar-avatar {
+        width: 34px;
+        height: 34px;
         flex-shrink: 0;
         display: flex;
         align-items: center;
         justify-content: center;
         border-radius: 50%;
-        background-color: var(--sidebar-active);
-        color: #ffffff;
-        font-size: 14px;
-        font-weight: 600;
-    }
-
-    .user-name {
-        color: #ffffff;
-        font-size: 14px;
-        font-weight: 600;
-    }
-
-    .user-email {
-        max-width: 145px;
-        color: var(--sidebar-text);
+        background: #2F80FF;
+        color: white;
         font-size: 12px;
+        font-weight: 700;
+    }
+
+    .sidebar-user-info {
+        min-width: 0;
+        margin-left: 9px;
+    }
+
+    .sidebar-user-name {
+        color: #FFFFFF;
+        font-size: 11px;
+        font-weight: 700;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
     }
 
-    /* TOP NAVBAR */
-    .app-navbar {
-        height: 70px;
-        background-color: #ffffff;
-        border-bottom: 1px solid #e5e7eb;
+    .sidebar-user-role {
+        color: #A5B7CC;
+        font-size: 10px;
+        margin-top: 2px;
     }
 
-    .navbar-title {
+    .sidebar-logout {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        padding: 7px 4px;
+        border: 0;
+        background: transparent;
+        color: var(--sidebar-text);
+        font-size: 12px;
+        text-decoration: none;
+        cursor: pointer;
+    }
+
+    .sidebar-logout i {
+        width: 20px;
+        margin-right: 7px;
+        font-size: 15px;
+    }
+
+    .sidebar-logout:hover {
+        color: #FFFFFF;
+    }
+
+    /* MAIN CONTENT */
+    .app-main {
+        min-height: 100vh;
+        margin-left: 230px;
+    }
+
+    .app-topbar {
+        height: 60px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 26px;
+        background: #FFFFFF;
+        border-bottom: 1px solid #DEE3E8;
+    }
+
+    .app-page-title {
+        display: flex;
+        align-items: center;
+        gap: 10px;
         color: #162D4A;
         font-size: 18px;
         font-weight: 600;
     }
 
-    /* CONTENT */
+    .app-brand-name {
+        color: #162D4A;
+        font-size: 18px;
+        font-weight: 700;
+    }
+
+    .app-breadcrumb {
+        color: #94A3B8;
+        font-size: 18px;
+        font-weight: 400;
+    }
+
+    .app-current-page {
+        color: #475569;
+        font-size: 15px;
+        font-weight: 500;
+    }
+
+    .app-top-avatar {
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        background: #6C7782;
+        color: #FFFFFF;
+        font-size: 12px;
+        font-weight: 600;
+    }
 
     .app-content {
-        min-height: calc(100vh - 70px);
-        padding: 28px;
+        min-height: calc(100vh - 60px);
+        background: #F5F7FA;
     }
     </style>
+    @livewireStyles
 </head>
+
 
 <body>
 
-    <div class="d-flex min-vh-100">
+    {{-- SIDEBAR --}}
+    <aside class="app-sidebar">
 
-        {{-- SIDEBAR --}}
-        <aside class="app-sidebar d-flex flex-column flex-shrink-0">
+        {{-- BRAND --}}
+        <div class="sidebar-brand">
 
-            {{-- Logo / Brand --}}
-            <a href="{{ route('dashboard') }}" class="app-brand">
-                หอพักสุขสบาย
-            </a>
+            <div class="sidebar-brand-icon">
+                <i class="bi bi-building"></i>
+            </div>
 
+            <div class="sidebar-brand-text">
 
-            {{-- Main Menu --}}
-            <nav class="mt-1">
-
-                <div class="sidebar-title">
-                    เมนูหลัก
+                <div class="sidebar-brand-name">
+                    หอพักสุขสบาย
                 </div>
 
-                {{-- Dashboard --}}
-                <a href="{{ route('dashboard') }}"
-                    class="sidebar-link {{ request()->routeIs('dashboard') ? 'active' : '' }}">
-                    <i class="bi bi-grid"></i>
-                    <span>Dashboard</span>
-                </a>
-
-            </nav>
-
-
-            {{-- User Area --}}
-            <div class="sidebar-user">
-
-                <div class="d-flex align-items-center gap-3">
-
-                    <div class="user-avatar">
-                        {{ auth()->user()->initials() }}
-                    </div>
-
-                    <div class="flex-grow-1 overflow-hidden">
-
-                        <div class="user-name">
-                            {{ auth()->user()->name }}
-                        </div>
-
-                        <div class="user-email">
-                            {{ auth()->user()->email }}
-                        </div>
-
-                    </div>
-
+                <div class="sidebar-brand-subtitle">
+                    ระบบจัดการหอพัก
                 </div>
-
-
-                {{-- Settings --}}
-                <a href="{{ route('profile.edit') }}" class="sidebar-link mt-3">
-                    <i class="bi bi-gear"></i>
-                    <span>Settings</span>
-                </a>
-
-
-                {{-- Logout --}}
-                <form method="POST" action="{{ route('logout') }}">
-                    @csrf
-
-                    <button type="submit" class="sidebar-link w-100 border-0 bg-transparent text-start">
-                        <i class="bi bi-box-arrow-right"></i>
-                        <span>Log out</span>
-                    </button>
-                </form>
 
             </div>
 
-        </aside>
+        </div>
 
 
-        {{-- MAIN AREA --}}
-        <div class="flex-grow-1">
+        {{-- ROLE --}}
+        <div class="sidebar-role-area">
 
-            {{-- Top Navbar --}}
-            <nav class="app-navbar navbar px-4">
+            @if($isAdmin)
 
-                <div class="container-fluid p-0">
+            <div class="sidebar-role admin">
+                <span class="sidebar-role-dot"></span>
+                <span>ผู้ดูแลระบบ (Admin)</span>
+            </div>
 
-                    <span class="navbar-title">
-                        {{ $title ?? 'Dashboard' }}
-                    </span>
+            @else
 
-                    <div class="d-flex align-items-center gap-2">
+            <div class="sidebar-role user">
+                <span class="sidebar-role-dot"></span>
+                <span>ผู้เช่า (User)</span>
+            </div>
 
-                        <span class="text-secondary small">
-                            {{ auth()->user()->name }}
-                        </span>
+            @endif
 
-                        <div class="user-avatar bg-secondary">
-                            {{ auth()->user()->initials() }}
-                        </div>
+        </div>
 
+
+        {{-- MENU --}}
+        <div class="sidebar-menu-wrapper">
+
+            <div class="sidebar-section-title">
+                เมนูหลัก
+            </div>
+
+            <div class="sidebar-menu">
+
+                @if($isAdmin)
+
+                {{-- Dashboard --}}
+                <a href="{{ route('dashboard') }}"
+                    class="sidebar-menu-item {{ request()->routeIs('dashboard') ? 'active' : '' }}">
+                    <i class="bi bi-house-door"></i>
+                    <span>Dashboard</span>
+                </a>
+
+                {{-- ผู้เช่า --}}
+                <a href="{{ route('tenants.index') }}"
+                    class="sidebar-menu-item {{ request()->routeIs('tenants.*') ? 'active' : '' }}">
+                    <i class="bi bi-people"></i>
+                    <span>ผู้เช่า</span>
+                </a>
+
+                {{-- ห้องพัก --}}
+                <a href="{{ route('rooms.index') }}"
+                    class="sidebar-menu-item {{ request()->routeIs('rooms.*') ? 'active' : '' }}">
+                    <i class="bi bi-building"></i>
+                    <span>ห้องพัก</span>
+                </a>
+
+                {{-- การเช่า --}}
+                <a href="#" class="sidebar-menu-item">
+                    <i class="bi bi-key"></i>
+                    <span>การเช่า</span>
+                </a>
+
+                {{-- ค่าน้ำ-ค่าไฟ --}}
+                <a href="#" class="sidebar-menu-item">
+                    <i class="bi bi-lightning-charge"></i>
+                    <span>ค่าน้ำ-ค่าไฟ</span>
+                </a>
+
+                {{-- ใบแจ้งหนี้ / การชำระ --}}
+                <a href="#" class="sidebar-menu-item">
+                    <i class="bi bi-credit-card"></i>
+                    <span>ใบแจ้งหนี้ / การชำระ</span>
+                </a>
+
+                {{-- แจ้งซ่อม --}}
+                <a href="#" class="sidebar-menu-item">
+                    <i class="bi bi-gear"></i>
+                    <span>แจ้งซ่อม</span>
+                </a>
+
+                @else
+
+                {{-- Dashboard --}}
+                <a href="{{ route('user.dashboard') }}" class="sidebar-menu-item active">
+                    <i class="bi bi-house-door"></i>
+                    <span>Dashboard ของฉัน</span>
+                </a>
+
+                {{-- การเช่าของฉัน --}}
+                <a href="#" class="sidebar-menu-item">
+                    <i class="bi bi-key"></i>
+                    <span>การเช่าของฉัน</span>
+                </a>
+
+                {{-- สัญญาของฉัน --}}
+                <a href="#" class="sidebar-menu-item">
+                    <i class="bi bi-file-earmark-text"></i>
+                    <span>สัญญาของฉัน</span>
+                </a>
+
+                {{-- ค่าน้ำ-ค่าไฟของฉัน --}}
+                <a href="#" class="sidebar-menu-item">
+                    <i class="bi bi-lightning-charge"></i>
+                    <span>ค่าน้ำ-ค่าไฟของฉัน</span>
+                </a>
+
+                {{-- ค่าเช่าและการชำระเงิน --}}
+                <a href="#" class="sidebar-menu-item">
+                    <i class="bi bi-credit-card"></i>
+                    <span>ค่าเช่าและการชำระเงิน</span>
+                </a>
+
+                {{-- แจ้งซ่อม --}}
+                <a href="#" class="sidebar-menu-item">
+                    <i class="bi bi-gear"></i>
+                    <span>แจ้งซ่อม</span>
+                </a>
+
+                {{-- ข้อมูลส่วนตัว --}}
+                <a href="#" class="sidebar-menu-item">
+                    <i class="bi bi-person"></i>
+                    <span>ข้อมูลส่วนตัว</span>
+                </a>
+
+                @endif
+
+            </div>
+
+        </div>
+
+
+        {{-- BOTTOM USER --}}
+        <div class="sidebar-bottom">
+
+            <div class="sidebar-user">
+
+                <div class="sidebar-avatar">
+                    {{ $initials }}
+                </div>
+
+                <div class="sidebar-user-info">
+
+                    <div class="sidebar-user-name">
+                        {{ $displayName }}
+                    </div>
+
+                    <div class="sidebar-user-role">
+                        {{ $displayRole }}
                     </div>
 
                 </div>
 
-            </nav>
+            </div>
 
 
-            {{-- Page Content --}}
-            <main class="app-content">
-                {{ $slot }}
-            </main>
+            {{-- Logout --}}
+            <form method="POST" action="{{ route('logout') }}">
+                @csrf
+
+                <button type="submit" class="sidebar-logout">
+                    <i class="bi bi-box-arrow-right"></i>
+                    <span>ออกจากระบบ</span>
+                </button>
+
+            </form>
 
         </div>
 
-    </div>
+    </aside>
+
+    {{-- MAIN --}}
+    <main class="app-main">
+
+        <div class="app-topbar">
+
+            {{-- Dynamic Header --}}
+            <div class="app-page-title">
+
+                <span class="app-brand-name">
+                    หอพักสุขสบาย
+                </span>
+
+                <span class="app-breadcrumb">
+                    /
+                </span>
+
+                <span class="app-current-page">
+                    {{ $title ?? 'Dashboard' }}
+                </span>
+
+            </div>
 
 
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+            {{-- User Avatar --}}
+            <div class="app-top-avatar">
+                {{ $initials }}
+            </div>
+
+        </div>
+
+
+        <div class="app-content">
+            {{ $slot }}
+        </div>
+
+    </main>
+
+    @vite(['resources/js/app.js'])
+    @stack('scripts')
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
+    @livewireScripts
 </body>
 
 </html>

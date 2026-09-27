@@ -1,363 +1,484 @@
 <?php
 
-use App\Concerns\PasswordValidationRules;
-use Flux\Flux;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
-use Laravel\Fortify\Actions\DisableTwoFactorAuthentication;
-use Laravel\Fortify\Features;
-use Laravel\Fortify\Fortify;
 use Livewire\Attributes\Title;
 use Livewire\Component;
-/* @chisel-passkeys */
-use Laravel\Passkeys\Actions\DeletePasskey;
-use Livewire\Attributes\Locked;
-/* @end-chisel-passkeys */
-/* @chisel-2fa */
-use Livewire\Attributes\On;
-/* @end-chisel-2fa */
+use Illuminate\Support\Facades\Session;
 
-new #[Title('Security settings')] class extends Component {
-    use PasswordValidationRules;
-
+new #[Title('เปลี่ยนรหัสผ่าน')] class extends Component {
     public string $current_password = '';
     public string $password = '';
     public string $password_confirmation = '';
 
-    /* @chisel-2fa */
-    public bool $canManageTwoFactor;
-
-    public bool $twoFactorEnabled;
-
-    public bool $requiresConfirmation;
-    /* @end-chisel-2fa */
-
-    /* @chisel-passkeys */
-    #[Locked]
-    public bool $canManagePasskeys;
-
-    #[Locked]
-    public array $passkeys = [];
-
-    public bool $showDeleteModal = false;
-
-    #[Locked]
-    public ?int $deletingPasskeyId = null;
-
-    #[Locked]
-    public string $deletingPasskeyName = '';
-    /* @end-chisel-passkeys */
-
-    /**
-     * Mount the component.
-     */
-    public function mount(DisableTwoFactorAuthentication $disableTwoFactorAuthentication): void
-    {
-        /* @chisel-2fa */
-        $this->canManageTwoFactor = Features::canManageTwoFactorAuthentication();
-
-        if ($this->canManageTwoFactor) {
-            if (Fortify::confirmsTwoFactorAuthentication() && is_null(auth()->user()->two_factor_confirmed_at)) {
-                $disableTwoFactorAuthentication(auth()->user());
-            }
-
-            $this->twoFactorEnabled = auth()->user()->hasEnabledTwoFactorAuthentication();
-            $this->requiresConfirmation = Features::optionEnabled(Features::twoFactorAuthentication(), 'confirm');
-        }
-        /* @end-chisel-2fa */
-
-        /* @chisel-passkeys */
-        $this->canManagePasskeys = Features::canManagePasskeys();
-
-        if ($this->canManagePasskeys) {
-            $this->loadPasskeys();
-        }
-        /* @end-chisel-passkeys */
-    }
-
-    /**
-     * Update the password for the currently authenticated user.
-     */
     public function updatePassword(): void
     {
-        try {
-            $validated = $this->validate([
-                'current_password' => $this->currentPasswordRules(),
-                'password' => $this->passwordRules(),
-            ]);
-        } catch (ValidationException $e) {
-            $this->reset('current_password', 'password', 'password_confirmation');
+        $user = Auth::user();
 
-            throw $e;
+        abort_unless($user && $user->is_active, 403);
+
+        $validated = $this->validate([
+            'current_password' => ['required', 'string', 'current_password:web'],
+            'password' => ['required', 'string', 'min:12', 'max:72', 'confirmed'],
+        ]);
+
+        // จำกัดขนาดตาม bcrypt ที่โปรเจกต์ใช้อยู่
+        if (strlen($validated['password']) > 72) {
+            throw ValidationException::withMessages([
+                'password' => 'รหัสผ่านต้องไม่เกิน 72 ไบต์',
+            ]);
         }
 
-        Auth::user()->update([
-            'password' => $validated['password'],
-        ]);
+        if (Hash::check($validated['password'], $user->u_password)) {
+            throw ValidationException::withMessages([
+                'password' => 'กรุณาใช้รหัสผ่านใหม่ที่ต่างจากรหัสเดิม',
+            ]);
+        }
+
+        DB::transaction(function () use ($user, $validated) {
+            // User Model มี hashed cast จัดการ hash ให้แล้ว
+            $user->u_password = $validated['password'];
+            $user->must_change_password = false;
+            $user->remember_token = Str::random(60);
+            $user->save();
+
+            // โปรเจกต์ใช้ database session:
+            // ยกเลิก session เดิมของบัญชีนี้ทุกอุปกรณ์
+            DB::table('sessions')->where('user_id', $user->getKey())->delete();
+        });
 
         $this->reset('current_password', 'password', 'password_confirmation');
 
-        Flux::toast(variant: 'success', text: __('Password updated.'));
+        Auth::logout();
+        Session::invalidate();
+        Session::regenerateToken();
+
+        Session::flash('status', 'เปลี่ยนรหัสผ่านสำเร็จ กรุณาเข้าสู่ระบบด้วยรหัสใหม่');
+
+        $this->redirectRoute('login');
     }
+};
 
-    /* @chisel-passkeys */
-    /**
-     * Load the user's passkeys.
-     */
-    public function loadPasskeys(): void
-    {
-        $this->passkeys = auth()->user()->passkeys()
-            ->select(['id', 'name', 'credential', 'created_at', 'last_used_at'])
-            ->latest()
-            ->get()
-            ->map(fn ($passkey) => [
-                'id' => $passkey->id,
-                'name' => $passkey->name,
-                'authenticator' => $passkey->authenticator,
-                'created_at_diff' => $passkey->created_at->diffForHumans(),
-                'last_used_at_diff' => $passkey->last_used_at?->diffForHumans(),
-            ])
-            ->toArray();
-    }
+?>
 
-    /**
-     * Show the delete confirmation modal.
-     */
-    public function confirmDelete(int $passkeyId): void
-    {
-        $passkey = auth()->user()->passkeys()->findOrFail($passkeyId);
+<style>
+/* SECURITY FORM */
+.security-form {
+    width: 100%;
+    max-width: 680px;
+}
 
-        $this->deletingPasskeyId = $passkey->id;
-        $this->deletingPasskeyName = $passkey->name;
-        $this->showDeleteModal = true;
-    }
+/* WARNING */
+.security-warning {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 24px;
+    padding: 15px 16px;
+    border: 1px solid #FDE68A;
+    border-radius: 12px;
+    background: #FFFBEB;
+}
 
-    /**
-     * Delete the passkey.
-     */
-    public function deletePasskey(DeletePasskey $deletePasskey): void
-    {
-        if (! $this->deletingPasskeyId) {
-            return;
-        }
+.security-warning-icon {
+    flex-shrink: 0;
+    color: #D97706;
+    font-size: 18px;
+    line-height: 1.5;
+}
 
-        $passkey = auth()->user()->passkeys()->findOrFail($this->deletingPasskeyId);
+.security-warning-title {
+    margin-bottom: 3px;
+    color: #92400E;
+    font-size: 13px;
+    font-weight: 700;
+}
 
-        $deletePasskey(auth()->user(), $passkey);
+.security-warning-text {
+    color: #A16207;
+    font-size: 12px;
+    line-height: 1.6;
+}
 
-        $this->closeDeleteModal();
-        $this->loadPasskeys();
-    }
 
-    /**
-     * Close the delete confirmation modal.
-     */
-    public function closeDeleteModal(): void
-    {
-        $this->showDeleteModal = false;
-        $this->deletingPasskeyId = null;
-        $this->deletingPasskeyName = '';
-    }
-    /* @end-chisel-passkeys */
+/*FIELD */
+.security-field {
+    margin-bottom: 22px;
+}
 
-    /* @chisel-2fa */
-    /**
-     * Handle the two-factor authentication enabled event.
-     */
-    #[On('two-factor-enabled')]
-    public function onTwoFactorEnabled(): void
-    {
-        $this->twoFactorEnabled = true;
-    }
+.security-label {
+    display: block;
+    margin-bottom: 8px;
+    color: #42526B;
+    font-size: 14px;
+    font-weight: 600;
+}
 
-    /**
-     * Disable two-factor authentication for the user.
-     */
-    public function disable(DisableTwoFactorAuthentication $disableTwoFactorAuthentication): void
-    {
-        $disableTwoFactorAuthentication(auth()->user());
 
-        $this->twoFactorEnabled = false;
-    }
-    /* @end-chisel-2fa */
-}; ?>
+/* INPUT */
+.security-input-wrapper {
+    position: relative;
+}
 
-<section class="w-full">
-    @include('partials.settings-heading')
+.security-input-icon {
+    position: absolute;
+    top: 50%;
+    left: 14px;
+    z-index: 2;
+    transform: translateY(-50%);
+    color: #94A3B8;
+    font-size: 17px;
+    pointer-events: none;
+}
 
-    <flux:heading level="2" class="sr-only">{{ __('Security settings') }}</flux:heading>
+.security-input {
+    min-height: 46px;
+    padding-top: 10px;
+    padding-right: 46px;
+    padding-bottom: 10px;
+    padding-left: 44px;
+    border: 1px solid #CBD5E1;
+    border-radius: 9px;
+    background: #ffffff;
+    color: #172033;
+    font-size: 14px;
+    box-shadow: none;
+}
 
-    <x-pages::settings.layout :heading="__('Update password')" :subheading="__('Ensure your account is using a long, random password to stay secure')">
-        <form method="POST" wire:submit="updatePassword" class="mt-6 space-y-6">
-            <flux:input
-                wire:model="current_password"
-                :label="__('Current password')"
-                type="password"
-                required
-                autocomplete="current-password"
-                viewable
-            />
-            <flux:input
-                wire:model="password"
-                :label="__('New password')"
-                type="password"
-                required
-                autocomplete="new-password"
-                passwordrules="{{ \Illuminate\Validation\Rules\Password::defaults()->toPasswordRulesString() }}"
-                viewable
-            />
-            <flux:input
-                wire:model="password_confirmation"
-                :label="__('Confirm password')"
-                type="password"
-                required
-                autocomplete="new-password"
-                passwordrules="{{ \Illuminate\Validation\Rules\Password::defaults()->toPasswordRulesString() }}"
-                viewable
-            />
+.security-input:hover {
+    border-color: #94A3B8;
+}
 
-            <div class="flex items-center gap-4">
-                <flux:button variant="primary" type="submit" data-test="update-password-button">
-                    {{ __('Save') }}
-                </flux:button>
+.security-input:focus {
+    border-color: #2161F5;
+    background: #ffffff;
+    color: #172033;
+    box-shadow: 0 0 0 0.2rem rgba(33, 97, 245, 0.12);
+}
+
+
+/* PASSWORD TOGGLE */
+.security-password-toggle {
+    position: absolute;
+    top: 50%;
+    right: 12px;
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    transform: translateY(-50%);
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: #94A3B8;
+    font-size: 16px;
+    cursor: pointer;
+}
+
+.security-password-toggle:hover {
+    background: #F1F5F9;
+    color: #2161F5;
+}
+
+
+/* HELP TEXT */
+.security-help {
+    margin-top: 6px;
+    color: #94A3B8;
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+
+/* ERROR */
+
+.security-error {
+    margin-top: 6px;
+    color: #DC2626;
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+
+/* REQUIREMENTS */
+.security-requirements {
+    margin-top: 6px;
+    margin-bottom: 26px;
+    padding: 15px 16px;
+    border: 1px solid #E2E8F0;
+    border-radius: 10px;
+    background: #F8FAFC;
+}
+
+.security-requirements-title {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    margin-bottom: 7px;
+    color: #42526B;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.security-requirements-title i {
+    color: #2161F5;
+}
+
+.security-requirements ul {
+    margin: 0;
+    padding-left: 20px;
+    color: #7B8CA5;
+    font-size: 12px;
+    line-height: 1.8;
+}
+
+
+/* SUBMIT */
+.security-submit {
+    padding-top: 2px;
+}
+
+.security-submit-button {
+    min-height: 44px;
+    padding: 10px 18px;
+    border: 0;
+    border-radius: 8px;
+    background: #23416B;
+    color: #ffffff;
+    font-size: 14px;
+    font-weight: 600;
+    box-shadow: 0 4px 10px rgba(35, 65, 107, 0.16);
+    transition:
+        background-color 0.15s ease,
+        transform 0.15s ease,
+        box-shadow 0.15s ease;
+}
+
+.security-submit-button:hover {
+    background: #1C3558;
+    color: #ffffff;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 14px rgba(35, 65, 107, 0.22);
+}
+
+.security-submit-button:active {
+    transform: translateY(0);
+}
+
+.security-submit-button:disabled {
+    opacity: 0.65;
+    transform: none;
+    cursor: not-allowed;
+}
+</style>
+
+<section class="w-100">
+
+    <x-pages::settings.layout :heading="__('เปลี่ยนรหัสผ่าน')" :subheading="__('ใช้รหัสผ่านอย่างน้อย 12 ตัวอักษร')">
+
+        {{-- PASSWORD CHANGE NOTICE --}}
+        @if (auth()->user()->must_change_password)
+        <div class="security-warning">
+
+            <div class="security-warning-icon">
+                <i class="bi bi-exclamation-triangle-fill"></i>
             </div>
+
+            <div>
+
+                <div class="security-warning-title">
+                    ต้องเปลี่ยนรหัสผ่าน
+                </div>
+
+                <div class="security-warning-text">
+                    กรุณาเปลี่ยนรหัสผ่านชั่วคราวก่อนเข้าใช้งานระบบ
+                </div>
+
+            </div>
+
+        </div>
+        @endif
+
+        {{-- PASSWORD FORM --}}
+        <form wire:submit="updatePassword" class="security-form">
+
+            {{-- CURRENT PASSWORD --}}
+            <div class="security-field">
+
+                <label for="current_password" class="security-label">
+                    รหัสผ่านปัจจุบัน
+                </label>
+
+                <div class="security-input-wrapper">
+
+                    <i class="bi bi-lock security-input-icon"></i>
+
+                    <input id="current_password" type="password" wire:model="current_password"
+                        autocomplete="current-password" required class="form-control security-input">
+
+                    <button type="button" class="security-password-toggle"
+                        onclick="toggleSecurityPassword('current_password', this)" aria-label="แสดงรหัสผ่าน">
+                        <i class="bi bi-eye"></i>
+                    </button>
+
+                </div>
+
+                @error('current_password')
+                <div class="security-error">
+                    {{ $message }}
+                </div>
+                @enderror
+
+            </div>
+
+
+            {{-- NEW PASSWORD --}}
+            <div class="security-field">
+
+                <label for="password" class="security-label">
+                    รหัสผ่านใหม่
+                </label>
+
+                <div class="security-input-wrapper">
+
+                    <i class="bi bi-shield-lock security-input-icon"></i>
+
+                    <input id="password" type="password" wire:model="password" autocomplete="new-password"
+                        minlength="12" maxlength="72" required class="form-control security-input">
+
+                    <button type="button" class="security-password-toggle"
+                        onclick="toggleSecurityPassword('password', this)" aria-label="แสดงรหัสผ่าน">
+                        <i class="bi bi-eye"></i>
+                    </button>
+
+                </div>
+
+                <div class="security-help">
+                    รหัสผ่านต้องมีอย่างน้อย 12 ตัวอักษร
+                </div>
+
+                @error('password')
+                <div class="security-error">
+                    {{ $message }}
+                </div>
+                @enderror
+
+            </div>
+
+
+            {{-- CONFIRM PASSWORD --}}
+            <div class="security-field">
+
+                <label for="password_confirmation" class="security-label">
+                    ยืนยันรหัสผ่านใหม่
+                </label>
+
+                <div class="security-input-wrapper">
+
+                    <i class="bi bi-check2-circle security-input-icon"></i>
+
+                    <input id="password_confirmation" type="password" wire:model="password_confirmation"
+                        autocomplete="new-password" minlength="12" maxlength="72" required
+                        class="form-control security-input">
+
+                    <button type="button" class="security-password-toggle"
+                        onclick="toggleSecurityPassword('password_confirmation', this)" aria-label="แสดงรหัสผ่าน">
+                        <i class="bi bi-eye"></i>
+                    </button>
+
+                </div>
+
+                @error('password_confirmation')
+                <div class="security-error">
+                    {{ $message }}
+                </div>
+                @enderror
+
+            </div>
+
+
+            {{-- PASSWORD REQUIREMENTS --}}
+            <div class="security-requirements">
+
+                <div class="security-requirements-title">
+                    <i class="bi bi-info-circle"></i>
+                    ข้อกำหนดรหัสผ่าน
+                </div>
+
+                <ul>
+                    <li>มีความยาวอย่างน้อย 12 ตัวอักษร</li>
+                    <li>รหัสผ่านใหม่ต้องแตกต่างจากรหัสผ่านเดิม</li>
+                    <li>ต้องกรอกรหัสผ่านใหม่ให้ตรงกันทั้งสองช่อง</li>
+                </ul>
+
+            </div>
+
+
+            {{-- SUBMIT --}}
+            <div class="security-submit">
+
+                <button type="submit" class="btn security-submit-button" wire:loading.attr="disabled"
+                    wire:target="updatePassword">
+
+                    <span wire:loading.remove wire:target="updatePassword">
+                        <i class="bi bi-shield-check me-2"></i>
+                        เปลี่ยนรหัสผ่าน
+                    </span>
+
+                    <span wire:loading wire:target="updatePassword">
+                        <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
+                        กำลังเปลี่ยนรหัสผ่าน...
+                    </span>
+
+                </button>
+
+            </div>
+
         </form>
 
-        {{-- @chisel-2fa --}}
-        @if ($canManageTwoFactor)
-            <section class="mt-12">
-                <flux:heading>{{ __('Two-factor authentication') }}</flux:heading>
-                <flux:subheading>{{ __('Manage your two-factor authentication settings') }}</flux:subheading>
-
-                <div class="flex flex-col w-full mx-auto space-y-6 text-sm" wire:cloak>
-                    @if ($twoFactorEnabled)
-                        <div class="space-y-4">
-                            <flux:text>
-                                {{ __('You will be prompted for a secure, random pin during login, which you can retrieve from the TOTP-supported application on your phone.') }}
-                            </flux:text>
-
-                            <div class="flex justify-start">
-                                <flux:button
-                                    variant="danger"
-                                    wire:click="disable"
-                                >
-                                    {{ __('Disable 2FA') }}
-                                </flux:button>
-                            </div>
-
-                            <livewire:pages::settings.two-factor.recovery-codes :$requiresConfirmation />
-                        </div>
-                    @else
-                        <div class="space-y-4">
-                            <flux:text variant="subtle">
-                                {{ __('When you enable two-factor authentication, you will be prompted for a secure pin during login. This pin can be retrieved from a TOTP-supported application on your phone.') }}
-                            </flux:text>
-
-                            <flux:modal.trigger name="two-factor-setup-modal">
-                                <flux:button
-                                    variant="primary"
-                                    wire:click="$dispatch('start-two-factor-setup')"
-                                >
-                                    {{ __('Enable 2FA') }}
-                                </flux:button>
-                            </flux:modal.trigger>
-
-                            <livewire:pages::settings.two-factor-setup-modal :requires-confirmation="$requiresConfirmation" />
-                        </div>
-                    @endif
-                </div>
-            </section>
-        @endif
-        {{-- @end-chisel-2fa --}}
-
-        {{-- @chisel-passkeys --}}
-        @if ($canManagePasskeys)
-            <section class="mt-12">
-                <flux:heading>{{ __('Passkeys') }}</flux:heading>
-                <flux:subheading>{{ __('Manage your passkeys for passwordless sign-in') }}</flux:subheading>
-
-                <div class="mt-6 flex flex-col w-full mx-auto space-y-6 text-sm" wire:cloak>
-                    <div class="border rounded-lg border-zinc-200 dark:border-zinc-700 overflow-hidden">
-                        @forelse ($passkeys as $passkey)
-                            <div class="flex items-center justify-between p-4 {{ ! $loop->last ? 'border-b border-zinc-200 dark:border-zinc-700' : '' }}">
-                                <div class="flex items-center gap-4">
-                                    <div class="flex size-10 shrink-0 items-center justify-center rounded-xl bg-zinc-100 dark:bg-zinc-800">
-                                        <flux:icon.key class="size-5 text-zinc-500 dark:text-zinc-400" />
-                                    </div>
-                                    <div class="space-y-1">
-                                        <div class="flex items-center gap-2.5">
-                                            <p class="font-medium tracking-tight">{{ $passkey['name'] }}</p>
-                                            @if ($passkey['authenticator'])
-                                                <flux:badge size="sm">{{ $passkey['authenticator'] }}</flux:badge>
-                                            @endif
-                                        </div>
-                                        <p class="text-zinc-500 dark:text-zinc-400 text-xs">
-                                            {{ __('Added :time', ['time' => $passkey['created_at_diff']]) }}
-                                            @if ($passkey['last_used_at_diff'])
-                                                <span class="opacity-50 mx-1">/</span>
-                                                {{ __('Last used :time', ['time' => $passkey['last_used_at_diff']]) }}
-                                            @endif
-                                        </p>
-                                    </div>
-                                </div>
-
-                                <flux:button
-                                    variant="ghost"
-                                    size="sm"
-                                    icon="trash"
-                                    icon:variant="outline"
-                                    wire:click="confirmDelete({{ $passkey['id'] }})"
-                                    class="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/50"
-                                />
-                            </div>
-                        @empty
-                            <div class="p-8 text-center">
-                                <div class="mx-auto mb-4 flex size-14 items-center justify-center rounded-2xl bg-zinc-100 dark:bg-zinc-800">
-                                    <flux:icon.key class="size-7 text-zinc-400 dark:text-zinc-500" />
-                                </div>
-                                <p class="font-medium">{{ __('No passkeys yet') }}</p>
-                                <flux:text class="mt-1">{{ __('Add a passkey to sign in without a password') }}</flux:text>
-                            </div>
-                        @endforelse
-                    </div>
-
-                    <x-passkey-registration />
-                </div>
-            </section>
-        @endif
-        {{-- @end-chisel-passkeys --}}
     </x-pages::settings.layout>
 
-    {{-- @chisel-passkeys --}}
-    <flux:modal
-        name="delete-passkey-modal"
-        class="max-w-md md:min-w-md"
-        @close="closeDeleteModal"
-        wire:model="showDeleteModal"
-    >
-        <div class="space-y-6">
-            <div class="space-y-2">
-                <flux:heading size="lg">{{ __('Remove passkey') }}</flux:heading>
-                <flux:text>
-                    {{ __('Are you sure you want to remove the passkey ":name"? You will no longer be able to use it to sign in.', ['name' => $deletingPasskeyName]) }}
-                </flux:text>
-            </div>
-
-            <div class="flex gap-3 justify-end">
-                <flux:button
-                    variant="outline"
-                    wire:click="closeDeleteModal"
-                >
-                    {{ __('Cancel') }}
-                </flux:button>
-                <flux:button
-                    variant="danger"
-                    wire:click="deletePasskey"
-                >
-                    {{ __('Remove passkey') }}
-                </flux:button>
-            </div>
-        </div>
-    </flux:modal>
-    {{-- @end-chisel-passkeys --}}
 </section>
+
+
+<script>
+function toggleSecurityPassword(inputId, button) {
+
+    const input = document.getElementById(inputId);
+
+    if (!input) {
+        return;
+    }
+
+    const icon = button.querySelector('i');
+
+    if (input.type === 'password') {
+
+        input.type = 'text';
+
+        if (icon) {
+            icon.classList.remove('bi-eye');
+            icon.classList.add('bi-eye-slash');
+        }
+
+        button.setAttribute('aria-label', 'ซ่อนรหัสผ่าน');
+
+    } else {
+
+        input.type = 'password';
+
+        if (icon) {
+            icon.classList.remove('bi-eye-slash');
+            icon.classList.add('bi-eye');
+        }
+
+        button.setAttribute('aria-label', 'แสดงรหัสผ่าน');
+    }
+}
+</script>
