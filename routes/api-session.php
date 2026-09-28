@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\V1\AccountController;
 use App\Http\Controllers\Api\V1\RoomController;
 use App\Http\Controllers\Api\V1\RentalController;
 use App\Http\Controllers\Api\V1\InvoiceController;
+use App\Http\Controllers\Api\V1\PaymentProofController;
 
 Route::prefix('api/v1')
     ->name('api.v1.')
@@ -142,6 +143,21 @@ Route::prefix('api/v1')
         ])
             ->whereNumber('invoice')
             ->name('invoices.payment.show');
+
+        Route::post('/invoices/{invoice}/payment/submit', [
+            PaymentProofController::class,
+            'store',
+        ])
+            ->whereNumber('invoice')
+            ->middleware('role:tenant')
+            ->name('invoices.payment.submit');
+
+        Route::get('/invoices/{invoice}/payment/proof', [
+            PaymentProofController::class,
+            'show',
+        ])
+            ->whereNumber('invoice')
+            ->name('invoices.payment.proof');
         
 
     });

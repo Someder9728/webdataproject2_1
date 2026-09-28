@@ -36,4 +36,36 @@ class InvoicePolicy
 
         return Response::denyAsNotFound();
     }
+
+    public function submitPayment(User $user, Invoice $invoice): Response
+    {
+        if (! $user->is_active || $user->must_change_password) {
+            return Response::deny();
+        }
+
+        // Admin รับเงินผ่าน Walk-in แยกจากการส่งหลักฐานของ Tenant
+        if ($user->u_role !== 'tenant') {
+            return Response::deny();
+        }
+
+        if (
+            $user->tenants_t_id !== null &&
+            $invoice->rental()
+                ->where('tenants_t_id', $user->tenants_t_id)
+                ->exists()
+        ) {
+            return Response::allow();
+        }
+
+        return Response::denyAsNotFound();
+    }
+
+    public function viewPaymentProof(User $user, Invoice $invoice): Response
+    {
+        if ($user->must_change_password) {
+            return Response::deny();
+        }
+
+        return $this->view($user, $invoice);
+    }
 }

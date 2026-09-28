@@ -44,10 +44,5 @@ class PaymentEvent extends Model
         return $this->belongsTo(User::class, 'actor_user_id', 'u_id');
     }
 
-    public function events(): \Illuminate\Database\Eloquent\Relations\HasMany
-    {
-        return $this->hasMany(PaymentEvent::class, 'payments_p_id', 'p_id')
-            ->orderBy('created_at')
-            ->orderBy('pe_id');
-    }
+
 }
