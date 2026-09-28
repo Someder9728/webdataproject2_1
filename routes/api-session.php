@@ -127,6 +127,21 @@ Route::prefix('api/v1')
         Route::post('/invoices', [InvoiceController::class, 'store'])
             ->middleware('role:admin')
             ->name('invoices.store');
+
+
+        Route::get('/invoices', [InvoiceController::class, 'index'])
+            ->name('invoices.index');
+
+        Route::get('/invoices/{invoice}', [InvoiceController::class, 'show'])
+            ->whereNumber('invoice')
+            ->name('invoices.show');
+
+        Route::get('/invoices/{invoice}/payment', [
+            InvoiceController::class,
+            'payment',
+        ])
+            ->whereNumber('invoice')
+            ->name('invoices.payment.show');
         
 
     });

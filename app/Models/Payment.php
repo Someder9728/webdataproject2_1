@@ -38,4 +38,12 @@ class Payment extends Model
             ->orderBy('created_at')
             ->orderBy('pe_id');
     }
-}
+
+    protected function casts(): array
+    {
+        return [
+            'p_amount' => 'decimal:2',
+            'p_date' => 'date',
+        ];
+    }
+    }
