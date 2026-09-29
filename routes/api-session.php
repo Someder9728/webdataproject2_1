@@ -152,6 +152,22 @@ Route::prefix('api/v1')
             ->middleware('role:tenant')
             ->name('invoices.payment.submit');
 
+        Route::post('/invoices/{invoice}/payment/review', [
+            \App\Http\Controllers\Api\V1\PaymentReviewController::class,
+            'store',
+        ])
+            ->whereNumber('invoice')
+            ->middleware('role:admin')
+            ->name('invoices.payment.review');
+
+        Route::post('/invoices/{invoice}/payment/walk-in', [
+            \App\Http\Controllers\Api\V1\WalkInPaymentController::class,
+            'store',
+        ])
+            ->whereNumber('invoice')
+            ->middleware('role:admin')
+            ->name('invoices.payment.walk-in');
+
         Route::get('/invoices/{invoice}/payment/proof', [
             PaymentProofController::class,
             'show',

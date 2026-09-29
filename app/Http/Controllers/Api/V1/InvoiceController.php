@@ -235,6 +235,7 @@ class InvoiceController extends Controller
             'p_type' => $payment->p_type,
             'p_reject_reason' => $payment->p_reject_reason,
             'has_proof' => filled($payment->p_proof),
+            'latest_event_id' => $payment->events()->reorder()->orderByDesc('pe_id')->value('pe_id'),
         ];
     }
 }
