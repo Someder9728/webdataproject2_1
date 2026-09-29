@@ -110,7 +110,7 @@ if (($argv[1] ?? '') === 'worker') {
 
         settlementRaceCheck(
             in_array($label, ['a', 'b'], true)
-            && in_array($operation, ['approve', 'reject', 'walk-in'], true),
+                    && in_array($operation, ['approve', 'reject', 'walk-in', 'submit'], true),
             'Invalid worker operation.'
         );
 
@@ -138,7 +138,22 @@ if (($argv[1] ?? '') === 'worker') {
         $status = 200;
 
         try {
-            if ($operation === 'walk-in') {
+            if ($operation === 'submit') {
+                $upload = new \Illuminate\Http\UploadedFile(
+                    $directory.'/input.png',
+                    'receipt.png',
+                    'image/png',
+                    UPLOAD_ERR_OK,
+                    true
+                );
+
+                app(\App\Actions\Payments\SubmitPaymentProof::class)
+                    ->handle($actor, $invoice, [
+                        'amount' => '3494.00',
+                        'payment_date' => '2026-10-02',
+                        'proof' => $upload,
+                    ]);
+            } elseif ($operation === 'walk-in') {
                 app(\App\Actions\Payments\RecordWalkInPayment::class)
                     ->handle($actor, $invoice, [
                         'amount' => '3494.00',
@@ -189,6 +204,8 @@ $cases = [
     ['approve vs reject', 'PENDING', 'approve', 'reject'],
     ['walk-in unpaid', 'UNPAID', 'walk-in', 'walk-in'],
     ['walk-in rejected', 'REJECTED', 'walk-in', 'walk-in'],
+    ['submit vs walk-in unpaid', 'UNPAID', 'submit', 'walk-in'],
+    ['submit vs walk-in rejected', 'REJECTED', 'submit', 'walk-in'],
 ];
 
 foreach ($cases as [$caseName, $initialStatus, $operationA, $operationB]) {
@@ -351,6 +368,15 @@ foreach ($cases as [$caseName, $initialStatus, $operationA, $operationB]) {
         $baselineEvents = \App\Models\PaymentEvent::count();
         $baselineAudits = \App\Models\AuditEvent::count();
 
+        $uploadBytes = base64_decode(
+            'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aRZkAAAAASUVORK5CYII='
+        );
+
+        settlementRaceCheck(
+            file_put_contents($directory.'/input.png', $uploadBytes) !== false,
+            'Cannot create upload fixture.'
+        );
+
         DB::disconnect('sqlite');
 
         foreach (['a' => $operationA, 'b' => $operationB] as $label => $operation) {
@@ -361,7 +387,9 @@ foreach ($cases as [$caseName, $initialStatus, $operationA, $operationB]) {
                 $directory,
                 $label,
                 $operation,
-                (string) $admins[$label]->getKey(),
+                (string) ($operation === 'submit'
+                    ? $owner->getKey()
+                    : $admins[$label]->getKey()),
                 (string) $invoice->getKey(),
                 $expectedEventId === null ? 'null' : (string) $expectedEventId,
             ], $root);
@@ -413,17 +441,29 @@ foreach ($cases as [$caseName, $initialStatus, $operationA, $operationB]) {
             fn (array $result) => $result['status'] === 200
         ))[0];
 
-        $expectedStatus = $winner['operation'] === 'reject'
-            ? 'REJECTED'
-            : 'PAID';
+
+        $submittedWon = $winner['operation'] === 'submit';
+        $walkIn = $winner['operation'] === 'walk-in';
+
+        $expectedActorId = $submittedWon
+            ? $owner->getKey()
+            : $admins[$winner['label']]->getKey();
+
+        $expectedStatus = match ($winner['operation']) {
+            'submit' => 'PENDING',
+            'reject' => 'REJECTED',
+            default => 'PAID',
+        };
 
         $expectedType = match ($winner['operation']) {
+            'submit' => 'PROOF_SUBMITTED',
             'approve' => 'PAYMENT_APPROVED',
             'reject' => 'PAYMENT_REJECTED',
             'walk-in' => 'WALK_IN_RECORDED',
         };
 
         $expectedAction = match ($winner['operation']) {
+            'submit' => 'payment_proof_submitted',
             'approve' => 'payment_approved',
             'reject' => 'payment_rejected',
             'walk-in' => 'walk_in_payment_recorded',
@@ -457,29 +497,43 @@ foreach ($cases as [$caseName, $initialStatus, $operationA, $operationB]) {
             $event->event_type === $expectedType
                 && $event->from_status === $initialStatus
                 && $event->to_status === $expectedStatus
-                && (string) $event->actor_user_id
-                    === (string) $admins[$winner['label']]->getKey(),
+                && (string) $event->actor_user_id === (string) $expectedActorId,
             'Event does not match the winning operation.'
         );
 
         settlementRaceCheck(
             $audit->action === $expectedAction
-                && (string) $audit->actor_user_id
-                    === (string) $admins[$winner['label']]->getKey()
+                && (string) $audit->actor_user_id === (string) $expectedActorId
                 && (string) $audit->entity_id === (string) $payment->getKey(),
             'Audit does not match the winning operation.'
         );
-
-        $walkIn = $winner['operation'] === 'walk-in';
 
         settlementRaceCheck(
             $payment->p_type === ($walkIn ? 'CASH' : 'TRANSFER')
                 && $event->method === $payment->p_type
                 && $event->amount === $payment->p_amount
-                && $payment->p_proof === ($walkIn ? null : $proofPath)
                 && $event->proof_path === $payment->p_proof,
             'Payment method or proof snapshot mismatch.'
         );
+
+        if ($submittedWon) {
+            settlementRaceCheck(
+                filled($payment->p_proof)
+                    && $payment->p_proof !== $proofPath,
+                'Winning submission must reference a new proof.'
+            );
+
+            settlementRaceCheck(
+                Storage::disk('payment_proofs')->get($payment->p_proof)
+                    === $uploadBytes,
+                'Winning proof content mismatch.'
+            );
+        } else {
+            settlementRaceCheck(
+                $payment->p_proof === ($walkIn ? null : $proofPath),
+                'Unexpected current proof.'
+            );
+        }
 
         settlementRaceCheck(
             $payment->p_reject_reason === (
@@ -506,11 +560,20 @@ foreach ($cases as [$caseName, $initialStatus, $operationA, $operationB]) {
             );
         }
 
+        $expectedFiles = $proofPath === null ? [] : [$proofPath];
+
+        if ($submittedWon) {
+            $expectedFiles[] = $payment->p_proof;
+        }
+
         $actualFiles = Storage::disk('payment_proofs')->allFiles();
 
+        sort($expectedFiles);
+        sort($actualFiles);
+
         settlementRaceCheck(
-            $actualFiles === ($proofPath === null ? [] : [$proofPath]),
-            'Unexpected proof files.'
+            $actualFiles === $expectedFiles,
+            'Missing proof or orphan file from losing submission.'
         );
 
         echo "PASS: {$caseName} - 200/409; one event/audit; history preserved"
