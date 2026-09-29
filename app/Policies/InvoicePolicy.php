@@ -60,6 +60,15 @@ class InvoicePolicy
         return Response::denyAsNotFound();
     }
 
+    public function viewPaymentHistory(User $user, Invoice $invoice): Response
+    {
+        if ($user->must_change_password) {
+            return Response::deny();
+        }
+
+        return $this->view($user, $invoice);
+    }
+
     public function viewPaymentProof(User $user, Invoice $invoice): Response
     {
         if ($user->must_change_password) {

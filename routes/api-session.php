@@ -168,6 +168,20 @@ Route::prefix('api/v1')
             ->middleware('role:admin')
             ->name('invoices.payment.walk-in');
 
+        Route::get('/invoices/{invoice}/payment/events', [
+            \App\Http\Controllers\Api\V1\PaymentHistoryController::class,
+            'index',
+        ])
+            ->whereNumber('invoice')
+            ->name('invoices.payment.events');
+
+        Route::get('/payment-events/{paymentEvent}/proof', [
+            \App\Http\Controllers\Api\V1\PaymentHistoryController::class,
+            'proof',
+        ])
+            ->whereNumber('paymentEvent')
+            ->name('payment-events.proof');
+
         Route::get('/invoices/{invoice}/payment/proof', [
             PaymentProofController::class,
             'show',
