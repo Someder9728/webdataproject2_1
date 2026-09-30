@@ -20,6 +20,15 @@ class Meter extends Model
 
     protected $primaryKey = 'm_id';
 
+    protected function casts(): array
+    {
+        return [
+            'm_date' => 'date:Y-m-d',
+            'm_water' => 'decimal:2',
+            'm_elec' => 'decimal:2',
+        ];
+    }
+
     public function room() {
         return $this->belongsTo(Room::class, 'rooms_r_id', 'r_id');
     }

@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\V1\RoomController;
 use App\Http\Controllers\Api\V1\RentalController;
 use App\Http\Controllers\Api\V1\InvoiceController;
 use App\Http\Controllers\Api\V1\PaymentProofController;
+use App\Http\Controllers\Api\V1\MeterController;
 
 Route::prefix('api/v1')
     ->name('api.v1.')
@@ -70,6 +71,17 @@ Route::prefix('api/v1')
             ->whereNumber('account')
             ->middleware('role:admin')
             ->name('accounts.suspend');
+
+
+        Route::get('/rooms/{room}/meters', [MeterController::class, 'index'])
+            ->whereNumber('room')
+            ->middleware('role:admin')
+            ->name('rooms.meters.index');
+
+        Route::post('/rooms/{room}/meters', [MeterController::class, 'store'])
+            ->whereNumber('room')
+            ->middleware('role:admin')
+            ->name('rooms.meters.store');
 
 
         Route::get('/rooms', [RoomController::class, 'index'])

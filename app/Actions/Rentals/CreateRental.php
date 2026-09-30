@@ -8,16 +8,23 @@ use App\Models\Rental;
 use App\Models\Room;
 use App\Models\Tenant;
 use App\Models\User;
-use Illuminate\Support\Facades\DB;
+use App\Support\SqliteTransaction;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 
 class CreateRental
+
+
 {
+
+    public function __construct(
+        private SqliteTransaction $transactions
+    ) {}
+
     public function handle(User $actor, array $input): Rental
     {
-        return DB::transaction(function () use ($actor, $input) {
+        return $this->transactions->run(function () use ($actor, $input) {
             $actor = User::find($actor->getKey());
 
             abort_unless(
@@ -98,7 +105,7 @@ class CreateRental
 
             $hasOpeningMeter = Meter::query()
                 ->where('rooms_r_id', $room->getKey())
-                ->where('m_date', $today)
+                ->whereDate('m_date', $today)
                 ->exists();
 
             if (! $hasOpeningMeter) {
@@ -167,6 +174,6 @@ class CreateRental
             ]);
 
             return $rental->load(['tenant', 'room', 'contract']);
-        }, 3);
+        });
     }
 }
