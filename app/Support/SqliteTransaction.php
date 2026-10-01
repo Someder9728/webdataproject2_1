@@ -26,11 +26,26 @@ class SqliteTransaction
             try {
                 return $connection->transaction($callback, 1);
             } catch (PDOException $exception) {
-                $nativeCode = (int) ($exception->errorInfo[1] ?? 0);
-                $primaryCode = $nativeCode & 0xff;
+                // Laravel อาจห่อ SQLite error ไว้ใน DeadlockException
+                $isLockError = false;
+                $currentException = $exception;
 
-                // SQLITE_BUSY = 5, SQLITE_LOCKED = 6
-                $isLockError = in_array($primaryCode, [5, 6], true);
+                while ($currentException !== null) {
+                    if ($currentException instanceof PDOException) {
+                        $nativeCode = (int) (
+                            $currentException->errorInfo[1] ?? 0
+                        );
+
+                        $primaryCode = $nativeCode & 0xff;
+
+                        if (in_array($primaryCode, [5, 6], true)) {
+                            $isLockError = true;
+                            break;
+                        }
+                    }
+
+                    $currentException = $currentException->getPrevious();
+                }
 
                 if (
                     ! $isLockError ||

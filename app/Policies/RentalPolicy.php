@@ -42,6 +42,8 @@ class RentalPolicy
 
     public function moveOut(User $user, Rental $rental): bool
     {
-        return $user->is_active && $user->u_role === 'admin';
+        return $user->is_active
+            && ! $user->must_change_password
+            && $user->u_role === 'admin';
     }
 }

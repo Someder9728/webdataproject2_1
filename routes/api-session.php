@@ -113,7 +113,16 @@ Route::prefix('api/v1')
         Route::delete('/rooms/{room}', [RoomController::class, 'destroy'])
             ->whereNumber('room')
             ->middleware('role:admin')
-            ->name('rooms.destroy');        
+            ->name('rooms.destroy');     
+            
+            
+        Route::post('/rentals/{rental}/move-out', [
+            RentalController::class,
+            'moveOut',
+        ])
+            ->whereNumber('rental')
+            ->middleware('role:admin')
+            ->name('rentals.move-out');
 
         Route::get('/rentals', [RentalController::class, 'index'])->name('rentals.index');
 

@@ -7,6 +7,7 @@ use App\Models\Rental;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use App\Actions\Rentals\CreateRental;
+use App\Actions\Rentals\MoveOutRental;
 
 class RentalController extends Controller
 {
@@ -97,6 +98,26 @@ class RentalController extends Controller
                 'c_status' => $contract->c_status,
             ],
             'message' => 'อ่านสัญญาการเช่าสำเร็จ',
+        ]);
+    }
+
+    public function moveOut(
+        Request $request,
+        Rental $rental,
+        MoveOutRental $action
+    ) {
+        $result = $action->handle(
+            $request->user(),
+            $rental,
+            $request->only(['rt_moveout', 'reason'])
+        );
+
+        return response()->json([
+            'data' => [
+                'rental' => $this->transform($result['rental']),
+                'created_invoices' => $result['created_invoices'],
+            ],
+            'message' => 'บันทึกย้ายออกสำเร็จ',
         ]);
     }
 
