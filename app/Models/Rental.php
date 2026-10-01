@@ -24,6 +24,15 @@ class Rental extends Model
 
     protected $primaryKey = 'rt_id';
 
+    protected $casts = [
+        'rt_movein'  => 'date:Y-m-d',
+        'rt_moveout' => 'date:Y-m-d',
+    ];
+
+    // TODO(ยืนยันกับเกลือ): ค่าที่แท้จริงของ rt_status
+    public const STATUS_ACTIVE = 'ACTIVE';
+    public const STATUS_ENDED  = 'ENDED';
+
     public function tenant() {
         return $this->belongsTo(Tenant::class, 'tenants_t_id', 't_id');
     }
@@ -39,6 +48,7 @@ class Rental extends Model
     public function invoices() {
         return $this->hasMany(Invoice::class, 'rentals_rt_id', 'rt_id');
     }
+
     public function scopeSearch($query, ?string $term)
     {
         if (blank($term)) {
@@ -54,13 +64,5 @@ class Rental extends Model
                 $rq->where('r_name', 'like', "%{$term}%");
             });
         });
-    }
-
-    protected function casts(): array
-    {
-        return [
-            'rt_movein' => 'date',
-            'rt_moveout' => 'date',
-        ];
     }
 }

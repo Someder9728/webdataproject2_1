@@ -26,6 +26,7 @@ class AuditEvent extends Model
         return [
             'old_values' => 'array',
             'new_values' => 'array',
+            'created_at' => 'datetime',
         ];
     }
 

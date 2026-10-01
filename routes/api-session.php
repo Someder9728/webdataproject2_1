@@ -9,6 +9,8 @@ use App\Http\Controllers\Api\V1\RoomController;
 use App\Http\Controllers\Api\V1\RentalController;
 use App\Http\Controllers\Api\V1\InvoiceController;
 use App\Http\Controllers\Api\V1\PaymentProofController;
+use App\Http\Controllers\Api\V1\RentalContractController;
+use App\Http\Controllers\Api\V1\AuditEventController;
 use App\Http\Controllers\Api\V1\MeterController;
 
 Route::prefix('api/v1')
@@ -215,6 +217,15 @@ Route::prefix('api/v1')
             ->whereNumber('invoice')
             ->name('invoices.payment.proof');
         
+        Route::get('/audit-events', [AuditEventController::class, 'index'])
+            ->name('audit-events.index');
 
+        Route::patch('/rentals/{rental}/contract', [
+            RentalContractController::class,
+            'update',
+        ])
+            ->whereNumber('rental')
+            ->middleware('role:admin')
+            ->name('rentals.contract.update');
     });
 
