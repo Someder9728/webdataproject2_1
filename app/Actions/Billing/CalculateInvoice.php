@@ -17,7 +17,11 @@ class CalculateInvoice
      * ใช้ภายใน Action ที่ตรวจสิทธิ์และเปิด transaction แล้ว
      * คืน snapshot สำหรับ Preview หรือสร้าง Invoice
      */
-    public function handle(Rental $rental, array $input): array
+    public function handle(
+        Rental $rental,
+        array $input,
+        ?Invoice $editingInvoice = null
+    ): array
     {
         $validated = Validator::make($input, [
             'period_start' => ['required', 'date_format:Y-m-d'],
@@ -29,6 +33,16 @@ class CalculateInvoice
         ])->validate();
 
         $rental = Rental::findOrFail($rental->getKey());
+
+        if ($editingInvoice !== null) {
+            $editingInvoice = Invoice::findOrFail($editingInvoice->getKey());
+
+            abort_unless(
+                (int) $editingInvoice->rentals_rt_id === (int) $rental->getKey(),
+                409
+            );
+        }
+
         $contract = $rental->contract()->first();
 
         if (! $contract) {
@@ -87,6 +101,14 @@ class CalculateInvoice
             ->where('rentals_rt_id', $rental->getKey())
             ->whereDate('period_start', '<', $end->toDateString())
             ->whereDate('period_end', '>', $start->toDateString())
+            ->when(
+                $editingInvoice !== null,
+                fn ($query) => $query->where(
+                    'i_id',
+                    '<>',
+                    $editingInvoice->getKey()
+                )
+            )
             ->exists();
 
         abort_if($overlaps, 409);
@@ -116,16 +138,27 @@ class CalculateInvoice
         }
 
         $waterRate = $this->decimal(
-            config('dormitory.water_rate'),
+            $editingInvoice !== null
+                ? $editingInvoice->water_rate
+                : config('dormitory.water_rate'),
             'water_rate'
         );
 
         $elecRate = $this->decimal(
-            config('dormitory.elec_rate'),
+            $editingInvoice !== null
+                ? $editingInvoice->elec_rate
+                : config('dormitory.elec_rate'),
             'elec_rate'
         );
 
-        $rentRate = $this->decimal($contract->c_rent, 'c_rent');
+        $rentRate = $this->decimal(
+            $editingInvoice !== null
+                ? $editingInvoice->rent_rate
+                : $contract->c_rent,
+            'rent_rate'
+        );
+
+        
 
         $startWater = $this->decimal($startMeter->m_water, 'start_water');
         $endWater = $this->decimal($endMeter->m_water, 'end_water');
@@ -187,8 +220,13 @@ class CalculateInvoice
             'water_rate' => (string) $waterRate,
             'elec_rate' => (string) $elecRate,
             'rent_rate' => (string) $rentRate,
-            'i_date' => $today->toDateString(),
-            'i_due' => $today->addDays(7)->toDateString(),
+            'i_date' => $editingInvoice !== null
+                ? $editingInvoice->i_date->toDateString()
+                : $today->toDateString(),
+
+            'i_due' => $editingInvoice !== null
+                ? $editingInvoice->i_due->toDateString()
+                : $today->addDays(7)->toDateString(),
             'i_rent' => (string) $rent,
             'i_water' => (string) $water,
             'i_elec' => (string) $elec,

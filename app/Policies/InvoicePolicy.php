@@ -37,6 +37,13 @@ class InvoicePolicy
         return Response::denyAsNotFound();
     }
 
+    public function update(User $user, Invoice $invoice): bool
+    {
+        return $user->is_active
+            && ! $user->must_change_password
+            && $user->u_role === 'admin';
+    }
+
     public function submitPayment(User $user, Invoice $invoice): Response
     {
         if (! $user->is_active || $user->must_change_password) {

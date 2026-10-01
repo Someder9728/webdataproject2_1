@@ -11,6 +11,7 @@ use App\Models\Payment;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
+use App\Actions\Billing\UpdateInvoice;
 
 class InvoiceController extends Controller
 {
@@ -43,6 +44,31 @@ class InvoiceController extends Controller
             'data' => $data,
             'message' => 'ออกใบแจ้งหนี้สำเร็จ',
         ], 201);
+    }
+
+
+    public function update(
+        Request $request,
+        Invoice $invoice,
+        UpdateInvoice $action
+    ): JsonResponse {
+        $invoice = $action->handle(
+            $request->user(),
+            $invoice,
+            $request->only([
+                'period_start',
+                'period_end',
+                'i_due',
+                'reason',
+            ])
+        );
+
+        $invoice->load(['rental.tenant', 'rental.room', 'payment']);
+
+        return response()->json([
+            'data' => $this->invoiceData($invoice),
+            'message' => 'แก้ไขใบแจ้งหนี้สำเร็จ',
+        ]);
     }
 
     private function input(Request $request): array

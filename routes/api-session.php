@@ -145,6 +145,11 @@ Route::prefix('api/v1')
         Route::get('/invoices', [InvoiceController::class, 'index'])
             ->name('invoices.index');
 
+        Route::patch('/invoices/{invoice}', [InvoiceController::class, 'update'])
+            ->whereNumber('invoice')
+            ->middleware('role:admin')
+            ->name('invoices.update');
+
         Route::get('/invoices/{invoice}', [InvoiceController::class, 'show'])
             ->whereNumber('invoice')
             ->name('invoices.show');
