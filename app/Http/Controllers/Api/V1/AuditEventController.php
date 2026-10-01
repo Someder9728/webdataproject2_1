@@ -11,7 +11,7 @@ class AuditEventController extends Controller
     /**
      * GET /api/v1/audit-events?entity_type=contract&entity_id=101
      *
-     * TODO(ยืนยันกับเกลือ): endpoint/ชื่อ query param นี้เป็นการสมมติทั้งหมด
+     * TODO(ยืนยันกับเกลือ): endpoint/ชื่อ query param นี้เป็นการม่ั่วเอานะฮาฟฟู็
      * เพราะ database.sqlite ยืนยันแค่ว่ามีตาราง audit_events แบบ polymorphic
      * แต่ไม่มีข้อมูลว่า API เปิด endpoint นี้จริงหรือชื่ออะไร
      */
