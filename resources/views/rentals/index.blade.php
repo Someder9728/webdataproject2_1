@@ -6,7 +6,7 @@
 <div class="rentals-page">
     <div class="rentals-page__header">
         <h1>รายการการเช่า</h1>
-        <a href="#" class="btn btn--primary" id="btn-create-rental">
+        <a href="{{ route('rentals.create') }}" class="btn btn--primary" id="btn-create-rental">
             + สร้างการเช่า
         </a>
     </div>
@@ -67,10 +67,10 @@
 
 <script>
 (function () {
-    
+    // TODO(ยืนยันกับเกลือ): base URL / prefix ถ้า repo ตั้งไว้ไม่ตรงกับ /api/v1
     const API_BASE = '/api/v1/rentals';
 
-    
+    // TODO(ยืนยันกับเกลือ): ค่า rt_status จริง ตอนนี้ map แค่ ACTIVE/ENDED ไว้ก่อน
     const STATUS_LABEL = {
         ACTIVE: { text: 'กำลังเช่า', cls: 'badge--active' },
         ENDED:  { text: 'สิ้นสุดแล้ว', cls: 'badge--ended' },
@@ -94,6 +94,15 @@
     let state = { page: 1, perPage: 20, search: '', total: 0 };
     let searchDebounce = null;
     let inFlight = false; // กันยิงซ้ำระหว่างรอ response
+
+    // แสดง banner สั้น ๆ หลังสร้างการเช่าสำเร็จจากหน้า 
+    if (new URLSearchParams(window.location.search).get('created') === '1') {
+        const banner = document.createElement('div');
+        banner.textContent = 'สร้างการเช่าสำเร็จ';
+        banner.style.cssText = 'padding:10px 14px;margin-bottom:12px;background:#dcfce7;color:#166534;border-radius:4px;';
+        el.table.parentElement.insertBefore(banner, el.table.parentElement.querySelector('.rentals-page__toolbar').nextSibling);
+        window.history.replaceState({}, '', window.location.pathname);
+    }
 
     function showOnly(name) {
         ['loading', 'empty', 'error', 'table', 'pagination'].forEach((k) => {

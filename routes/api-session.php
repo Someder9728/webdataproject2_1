@@ -4,7 +4,10 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\V1\TenantController;
 use App\Http\Controllers\Api\V1\RentalController;
-
+use App\Http\Controllers\Api\V1\RoomController;
+use App\Http\Controllers\Api\V1\RentalContractController;
+use App\Http\Controllers\Api\V1\AuditEventController;
+use App\Http\Controllers\Api\V1\MeterController;
 
 Route::prefix('api/v1')
     ->name('api.v1.')
@@ -44,12 +47,15 @@ Route::prefix('api/v1')
         
 
             Route::get('/rentals', [RentalController::class, 'index'])->name('rentals.index');
-        
+            Route::get('/rentals/{rental}', [RentalController::class, 'show']);
+            Route::post('/rentals', [RentalController::class, 'store']);   
+            Route::get('/rooms', [RoomController::class, 'index']);
+            Route::get('/rooms/{room}/meters', [MeterController::class, 'index'])->middleware('role:admin');
+            Route::post('/rooms/{room}/meters', [MeterController::class, 'store'])->middleware('role:admin');
             // Route สำหรับก้อนถัดไปตามแผนงาน:
-            // Route::post('/rentals', [RentalController::class, 'store']);
-            // Route::get('/rentals/{rental}', [RentalController::class, 'show']);
-            // Route::get('/rentals/{rental}/contract', [RentalController::class, 'showContract']);
-            // Route::patch('/rentals/{rental}/contract', [RentalController::class, 'updateContract']);
+             Route::get('/audit-events', [AuditEventController::class, 'index']);
+            Route::get('/rentals/{rental}/contract', [RentalController::class, 'showContract']);
+            Route::patch('/rentals/{rental}/contract', [RentalContractController::class, 'update']);
             // Route::post('/rentals/{rental}/move-out', [RentalController::class, 'moveOut']);
         
     });

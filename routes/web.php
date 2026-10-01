@@ -7,6 +7,9 @@ Route::view('/', 'welcome')->name('home');
 
 Route::middleware(['auth'])->group(function () {
     Route::get('/rentals', [RentalPageController::class, 'index'])->name('rentals.index');
+    Route::get('/rentals/create', [RentalPageController::class, 'create'])->name('rentals.create');
+    Route::get('/rentals/{rental}', [RentalPageController::class, 'show'])->name('rentals.show');
+
 });
 
 Route::middleware(['auth', 'password.changed'])->group(function () {

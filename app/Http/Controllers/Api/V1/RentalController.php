@@ -1,49 +1,102 @@
 <?php
 
-namespace App\Http\Controllers\Api\v1;
+namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Models\Rental;
 use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Facades\Gate;
+use App\Actions\Rentals\CreateRental;
 
 class RentalController extends Controller
 {
-    /**
-     * GET /api/v1/rentals
-     * ตาราง R1 ในแผนงาน — list + search Tenant/Room + pagination
-     *
-     * Query params: search, page (default 1), per_page (default 20, max 100)
-     */
     public function index(Request $request)
     {
-        // TODO: เปลี่ยนเป็น $this->authorize('viewAny', Rental::class) เมื่อมี Policy จริง
-        // ถ้าไม่ authenticated ต้องคืน 401 (จัดการที่ auth middleware อยู่แล้ว)
+        Gate::authorize('viewAny', Rental::class);
 
-        $perPage = (int) $request->query('per_page', 20);
-        $perPage = max(1, min($perPage, 100)); // กันค่าเกิน 100 ตามที่ตกลงไว้
+        $validated = $request->validate([
+            'search' => ['nullable', 'string', 'max:100'],
+            'page' => ['sometimes', 'integer', 'min:1'],
+            'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
+        ]);
 
-        $rentals = Rental::query()
-            ->with(['tenant', 'room', 'contract'])
-            ->search($request->query('search'))
+        $user = $request->user();
+
+        $query = Rental::query()
+            ->with(['tenant', 'room', 'contract']);
+
+        if ($user->u_role === 'tenant') {
+            if ($user->tenants_t_id === null) {
+                $query->whereRaw('1 = 0');
+            } else {
+                $query->where('tenants_t_id', $user->tenants_t_id);
+            }
+        }
+
+        $rentals = $query
+            ->search(trim($validated['search'] ?? ''))
             ->orderByDesc('created_at')
             ->orderByDesc('rt_id')
-            ->paginate($perPage)
-            ->appends($request->query());
+            ->paginate(
+                (int) ($validated['per_page'] ?? 20),
+                ['*'],
+                'page',
+                (int) ($validated['page'] ?? 1)
+            )
+            ->appends($request->only(['search', 'per_page']));
 
         return response()->json([
-            'data' => $rentals->getCollection()->map(fn (Rental $r) => $this->transform($r)),
+            'data' => $rentals->getCollection()
+                ->map(fn (Rental $r) => $this->transform($r)),
+            'message' => 'อ่านรายการการเช่าสำเร็จ',
             'meta' => [
-                'page'     => $rentals->currentPage(),
+                // คง page ไว้ให้หน้าจอของ Big ใช้งานต่อได้
+                'page' => $rentals->currentPage(),
+                'current_page' => $rentals->currentPage(),
                 'per_page' => $rentals->perPage(),
-                'total'    => $rentals->total(),
+                'total' => $rentals->total(),
+                'last_page' => $rentals->lastPage(),
             ],
             'links' => [
                 'first' => $rentals->url(1),
-                'last'  => $rentals->url($rentals->lastPage()),
-                'next'  => $rentals->nextPageUrl(),
-                'prev'  => $rentals->previousPageUrl(),
+                'last' => $rentals->url($rentals->lastPage()),
+                'next' => $rentals->nextPageUrl(),
+                'prev' => $rentals->previousPageUrl(),
             ],
+        ]);
+    }
+
+
+    public function show(Rental $rental)
+    {
+        Gate::authorize('view', $rental);
+
+        $rental->load(['tenant', 'room', 'contract']);
+
+        return response()->json([
+            'data' => $this->transform($rental),
+            'message' => 'อ่านรายละเอียดการเช่าสำเร็จ',
+        ]);
+    }
+
+    public function showContract(Rental $rental)
+    {
+        Gate::authorize('view', $rental);
+
+        $contract = $rental->contract()->firstOrFail();
+
+        return response()->json([
+            'data' => [
+                'c_id' => $contract->getKey(),
+                'rentals_rt_id' => $rental->getKey(),
+                'c_number' => $contract->c_number,
+                'c_start' => $contract->c_start?->format('Y-m-d'),
+                'c_end' => $contract->c_end?->format('Y-m-d'),
+                'c_rent' => $contract->c_rent,
+                'c_deposit' => $contract->c_deposit,
+                'c_status' => $contract->c_status,
+            ],
+            'message' => 'อ่านสัญญาการเช่าสำเร็จ',
         ]);
     }
 
@@ -77,5 +130,24 @@ class RentalController extends Controller
             ] : null,
             'created_at' => optional($r->created_at)->toIso8601String(),
         ];
+    }
+
+    public function store(Request $request, CreateRental $action)
+    {
+        $rental = $action->handle(
+            $request->user(),
+            $request->only([
+                'tenants_t_id',
+                'rooms_r_id',
+                'c_end',
+                'c_rent',
+                'c_deposit',
+            ])
+        );
+
+        return response()->json([
+            'data' => $this->transform($rental),
+            'message' => 'รับผู้เช่าเข้าพักสำเร็จ',
+        ], 201);
     }
 }
