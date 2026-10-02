@@ -1,113 +1,140 @@
 {{-- resources/views/rentals/index.blade.php --}}
-{{-- R1: รายการการเช่า (Admin) — เรียก GET /api/v1/rentals --}}
+{{-- R1: รายการการเช่า (Admin) — เรียก GET /api/v1/rentals แล้วแยกแสดง "การเช่าปัจจุบัน" / "ประวัติการเช่า" ฝั่งหน้าเว็บ --}}
 
+<x-layouts::app :title="__('การเช่า')">
+@include('rentals._styles')
 
-<x-layouts::app :title="__('รายการการเช่า')">
-<div class="rentals-page">
-    <div class="rentals-page__header">
-        <h1>รายการการเช่า</h1>
-        <a href="{{ route('rentals.create') }}" class="btn btn--primary" id="btn-create-rental">
-            + สร้างการเช่า
-        </a>
+<div class="rt rt-page">
+    <div class="rt-head">
+        <div>
+            <div class="rt-crumb">การเช่า</div>
+            <h1 class="rt-title">การเช่า</h1>
+            <div class="rt-subtitle" id="rental-summary">&nbsp;</div>
+        </div>
+        <div class="rt-head-actions">
+            <a href="{{ route('rentals.create') }}" class="rt-btn rt-btn--primary" id="btn-create-rental">
+                + บันทึกการเช่า
+            </a>
+        </div>
     </div>
 
-    <div class="rentals-page__toolbar">
+    <div id="rental-banner" class="rt-notice rt-notice--ok" hidden></div>
+
+    <div class="rt-toolbar">
         <input
             type="search"
             id="rental-search"
-            placeholder="ค้นหาผู้เช่าหรือห้อง..."
-            aria-label="ค้นหาผู้เช่าหรือห้อง"
+            class="rt-search"
+            placeholder="ค้นหาผู้เช่าหรือเลขห้อง..."
+            aria-label="ค้นหาผู้เช่าหรือเลขห้อง"
         >
     </div>
 
-    <div id="rental-state-loading" class="state-box" hidden>กำลังโหลดข้อมูล...</div>
-    <div id="rental-state-empty" class="state-box" hidden>ยังไม่มีรายการการเช่า</div>
-    <div id="rental-state-error" class="state-box state-box--error" hidden>
+    <div id="rental-state-loading" class="rt-card rt-state" hidden>กำลังโหลดข้อมูล...</div>
+    <div id="rental-state-error" class="rt-state rt-state--error" hidden>
         <span id="rental-error-message">โหลดข้อมูลไม่สำเร็จ</span>
-        <button type="button" id="btn-retry">ลองใหม่</button>
+        <button type="button" id="btn-retry" class="rt-btn rt-btn--sm">ลองใหม่</button>
+    </div>
+    <div id="rental-state-empty" class="rt-card rt-state" hidden>ยังไม่มีรายการการเช่า</div>
+
+    <div id="rental-lists" class="rt-stack" hidden>
+        {{-- การเช่าปัจจุบัน (rt_status = ACTIVE) --}}
+        <section class="rt-card rt-card--flush" aria-labelledby="active-title">
+            <div class="rt-card-head">
+                <h2 class="rt-card-title rt-card-title--lg" id="active-title">การเช่าปัจจุบัน</h2>
+            </div>
+            <div class="rt-table-wrap">
+                <table class="rt-table" id="rental-table">
+                    <thead>
+                        <tr>
+                            <th>ผู้เช่า</th>
+                            <th>ห้อง</th>
+                            <th>วันที่เข้า</th>
+                            <th>วันที่ออก (ประมาณ)</th>
+                            <th>สถานะ</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="rental-table-body"></tbody>
+                </table>
+            </div>
+        </section>
+
+        {{-- ประวัติการเช่า (rt_status = ENDED) --}}
+        <section class="rt-card rt-card--flush" aria-labelledby="history-title">
+            <div class="rt-card-head">
+                <h2 class="rt-card-title rt-card-title--lg" id="history-title">ประวัติการเช่า</h2>
+            </div>
+            <div class="rt-table-wrap">
+                <table class="rt-table" id="rental-history-table">
+                    <thead>
+                        <tr>
+                            <th>ผู้เช่า</th>
+                            <th>ห้อง</th>
+                            <th>วันที่เข้า</th>
+                            <th>วันที่ออก</th>
+                            <th>สถานะ</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="rental-history-body"></tbody>
+                </table>
+            </div>
+        </section>
     </div>
 
-    <table id="rental-table" class="rental-table" hidden>
-        <thead>
-            <tr>
-                <th>ผู้เช่า</th>
-                <th>ห้อง</th>
-                <th>วันเข้า</th>
-                <th>วันออก</th>
-                <th>สถานะ</th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody id="rental-table-body"></tbody>
-    </table>
-
-    <div id="rental-pagination" class="pagination" hidden>
-        <button type="button" id="btn-prev-page">ก่อนหน้า</button>
+    <div id="rental-pagination" class="rt-pagination" hidden>
+        <button type="button" id="btn-prev-page" class="rt-btn rt-btn--sm">ก่อนหน้า</button>
         <span id="pagination-info"></span>
-        <button type="button" id="btn-next-page">ถัดไป</button>
+        <button type="button" id="btn-next-page" class="rt-btn rt-btn--sm">ถัดไป</button>
     </div>
 </div>
 
-<style>
-    .rentals-page { max-width: 960px; margin: 0 auto; padding: 24px 16px; }
-    .rentals-page__header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
-    .rentals-page__toolbar { margin-bottom: 12px; }
-    #rental-search { width: 100%; max-width: 320px; padding: 8px 12px; border: 1px solid #d0d0d0; border-radius: 4px; }
-    .btn { display: inline-block; padding: 8px 16px; border-radius: 4px; text-decoration: none; }
-    .btn--primary { background: #2563eb; color: #fff; }
-    .state-box { padding: 24px; text-align: center; color: #555; border: 1px dashed #ccc; border-radius: 6px; }
-    .state-box--error { color: #b91c1c; border-color: #fca5a5; background: #fef2f2; }
-    .rental-table { width: 100%; border-collapse: collapse; }
-    .rental-table th, .rental-table td { text-align: left; padding: 10px 8px; border-bottom: 1px solid #eee; }
-    .badge { padding: 2px 8px; border-radius: 999px; font-size: 0.85em; }
-    .badge--active { background: #dcfce7; color: #166534; }
-    .badge--ended { background: #f3f4f6; color: #4b5563; }
-    .pagination { display: flex; align-items: center; gap: 12px; margin-top: 16px; }
-</style>
-
 <script>
 (function () {
-    // TODO(ยืนยันกับเกลือ): base URL / prefix ถ้า repo ตั้งไว้ไม่ตรงกับ /api/v1
+    // ดึงทีละ 100 (สูงสุดที่ API อนุญาต) เพื่อให้แยกกำลังเช่า/สิ้นสุดแล้วฝั่งหน้าเว็บได้ครบในหน้าเดียวเท่าที่ทำได้
     const API_BASE = '/api/v1/rentals';
+    const PER_PAGE = 100;
 
-    // TODO(ยืนยันกับเกลือ): ค่า rt_status จริง ตอนนี้ map แค่ ACTIVE/ENDED ไว้ก่อน
+    // ค่า rt_status ยืนยันกับ backend แล้ว: ACTIVE / ENDED
     const STATUS_LABEL = {
-        ACTIVE: { text: 'กำลังเช่า', cls: 'badge--active' },
-        ENDED:  { text: 'สิ้นสุดแล้ว', cls: 'badge--ended' },
+        ACTIVE: { text: 'กำลังเช่า', cls: 'rt-badge--ok' },
+        ENDED:  { text: 'สิ้นสุดแล้ว', cls: 'rt-badge--off' },
     };
 
+    const $ = (id) => document.getElementById(id);
     const el = {
-        search: document.getElementById('rental-search'),
-        loading: document.getElementById('rental-state-loading'),
-        empty: document.getElementById('rental-state-empty'),
-        error: document.getElementById('rental-state-error'),
-        errorMsg: document.getElementById('rental-error-message'),
-        retry: document.getElementById('btn-retry'),
-        table: document.getElementById('rental-table'),
-        tbody: document.getElementById('rental-table-body'),
-        pagination: document.getElementById('rental-pagination'),
-        paginationInfo: document.getElementById('pagination-info'),
-        prevBtn: document.getElementById('btn-prev-page'),
-        nextBtn: document.getElementById('btn-next-page'),
+        search: $('rental-search'),
+        summary: $('rental-summary'),
+        banner: $('rental-banner'),
+        loading: $('rental-state-loading'),
+        empty: $('rental-state-empty'),
+        error: $('rental-state-error'),
+        errorMsg: $('rental-error-message'),
+        retry: $('btn-retry'),
+        lists: $('rental-lists'),
+        activeBody: $('rental-table-body'),
+        historyBody: $('rental-history-body'),
+        pagination: $('rental-pagination'),
+        paginationInfo: $('pagination-info'),
+        prevBtn: $('btn-prev-page'),
+        nextBtn: $('btn-next-page'),
     };
 
-    let state = { page: 1, perPage: 20, search: '', total: 0 };
+    let state = { page: 1, search: '' };
     let searchDebounce = null;
     let inFlight = false; // กันยิงซ้ำระหว่างรอ response
 
-    // แสดง banner สั้น ๆ หลังสร้างการเช่าสำเร็จจากหน้า 
+    // แสดง banner หลังสร้างการเช่าสำเร็จ (?created=1)
     if (new URLSearchParams(window.location.search).get('created') === '1') {
-        const banner = document.createElement('div');
-        banner.textContent = 'สร้างการเช่าสำเร็จ';
-        banner.style.cssText = 'padding:10px 14px;margin-bottom:12px;background:#dcfce7;color:#166534;border-radius:4px;';
-        el.table.parentElement.insertBefore(banner, el.table.parentElement.querySelector('.rentals-page__toolbar').nextSibling);
+        el.banner.textContent = 'สร้างการเช่าสำเร็จ';
+        el.banner.hidden = false;
         window.history.replaceState({}, '', window.location.pathname);
     }
 
     function showOnly(name) {
-        ['loading', 'empty', 'error', 'table', 'pagination'].forEach((k) => {
-            el[k].hidden = k !== name;
-        });
+        ['loading', 'empty', 'error', 'lists'].forEach((k) => { el[k].hidden = k !== name; });
+        if (name !== 'lists') el.pagination.hidden = true;
     }
 
     async function loadRentals() {
@@ -115,10 +142,7 @@
         inFlight = true;
         showOnly('loading');
 
-        const params = new URLSearchParams({
-            page: state.page,
-            per_page: state.perPage,
-        });
+        const params = new URLSearchParams({ page: state.page, per_page: PER_PAGE });
         if (state.search) params.set('search', state.search);
 
         try {
@@ -141,7 +165,6 @@
             }
 
             const body = await res.json();
-            state.total = body.meta.total;
             render(body.data, body.meta);
         } catch (err) {
             el.errorMsg.textContent = err.message || 'โหลดข้อมูลไม่สำเร็จ';
@@ -153,39 +176,92 @@
 
     function render(rows, meta) {
         if (!rows.length) {
+            el.summary.textContent = state.search ? 'ไม่พบรายการที่ค้นหา' : 'ยังไม่มีรายการ';
+            el.empty.textContent = state.search ? 'ไม่พบรายการการเช่าที่ตรงกับคำค้นหา' : 'ยังไม่มีรายการการเช่า';
             showOnly('empty');
             return;
         }
 
-        el.tbody.innerHTML = rows.map(rowHtml).join('');
-        el.paginationInfo.textContent = `หน้า ${meta.page} จาก ${Math.max(1, Math.ceil(meta.total / meta.per_page))} (ทั้งหมด ${meta.total} รายการ)`;
-        el.prevBtn.disabled = meta.page <= 1;
-        el.nextBtn.disabled = meta.page * meta.per_page >= meta.total;
+        const active = rows.filter((r) => r.rt_status === 'ACTIVE');
+        const ended = rows.filter((r) => r.rt_status !== 'ACTIVE');
 
-        showOnly('table');
-        el.pagination.hidden = false; // แสดงคู่กับตาราง
+        el.activeBody.innerHTML = active.length
+            ? active.map(activeRowHtml).join('')
+            : emptyRowHtml('ไม่มีการเช่าที่กำลังดำเนินอยู่');
+        el.historyBody.innerHTML = ended.length
+            ? ended.map(historyRowHtml).join('')
+            : emptyRowHtml('ยังไม่มีประวัติการเช่า');
+
+        // นับเฉพาะรายการที่โหลดมาในหน้านี้ (ถ้าทั้งหมดเกิน 100 รายการจะมีปุ่มเปลี่ยนหน้า)
+        const lastPage = Math.max(1, Math.ceil(meta.total / meta.per_page));
+        el.summary.textContent = lastPage > 1
+            ? `หน้านี้: กำลังเช่า ${active.length} รายการ · สิ้นสุดแล้ว ${ended.length} รายการ (ทั้งหมด ${meta.total} รายการ)`
+            : `กำลังเช่า ${active.length} รายการ · สิ้นสุดแล้ว ${ended.length} รายการ`;
+
+        el.paginationInfo.textContent = `หน้า ${meta.page} จาก ${lastPage}`;
+        el.prevBtn.disabled = meta.page <= 1;
+        el.nextBtn.disabled = meta.page >= lastPage;
+
+        showOnly('lists');
+        el.pagination.hidden = lastPage <= 1;
     }
 
-    function rowHtml(r) {
-        const status = STATUS_LABEL[r.rt_status] || { text: r.rt_status, cls: '' };
-        const tenantName = r.tenant ? `${r.tenant.t_Fname} ${r.tenant.t_Lname}` : '-';
-        const roomName = r.room ? r.room.r_name : '-';
+    function emptyRowHtml(text) {
+        return `<tr><td colspan="6" class="rt-muted" style="text-align:center;padding:20px;">${escapeHtml(text)}</td></tr>`;
+    }
+
+    function tenantName(r) {
+        return r.tenant ? `${r.tenant.t_Fname ?? ''} ${r.tenant.t_Lname ?? ''}`.trim() : '-';
+    }
+
+    function statusBadge(r) {
+        const s = STATUS_LABEL[r.rt_status] || { text: r.rt_status, cls: 'rt-badge--off' };
+        return `<span class="rt-badge ${s.cls}">${escapeHtml(s.text)}</span>`;
+    }
+
+    function activeRowHtml(r) {
+        const name = tenantName(r);
+        const initial = name !== '-' ? name.charAt(0) : '?';
+        const room = r.room ? r.room.r_name : '-';
+
+        // ปุ่ม "ย้ายออก" ยังไม่เปิดใช้งาน — รอทำหน้า Move-out (งานถัดไป) ผูกด้วย data-action="move-out" + data-rental-id
+        return `
+            <tr>
+                <td><div class="rt-person"><span class="rt-avatar">${escapeHtml(initial)}</span>${escapeHtml(name)}</div></td>
+                <td><span class="rt-badge rt-badge--info">${escapeHtml(room)}</span></td>
+                <td>${escapeHtml(r.rt_movein ?? '-')}</td>
+                <td class="rt-muted">${escapeHtml(r.rt_moveout ?? '-')}</td>
+                <td>${statusBadge(r)}</td>
+                <td class="rt-actions">
+                    <a href="/rentals/${r.rt_id}" class="rt-btn rt-btn--sm rt-btn--soft">ดูรายละเอียด</a>
+                    <button type="button" class="rt-btn rt-btn--sm" data-action="move-out" data-rental-id="${r.rt_id}"
+                            disabled title="ฟังก์ชันย้ายออกจะเปิดใช้งานเร็ว ๆ นี้">ย้ายออก</button>
+                </td>
+            </tr>
+        `;
+    }
+
+    function historyRowHtml(r) {
+        const name = tenantName(r);
+        const room = r.room ? r.room.r_name : '-';
 
         return `
             <tr>
-                <td>${escapeHtml(tenantName)}</td>
-                <td>${escapeHtml(roomName)}</td>
-                <td>${r.rt_movein ?? '-'}</td>
-                <td>${r.rt_moveout ?? '-'}</td>
-                <td><span class="badge ${status.cls}">${escapeHtml(status.text)}</span></td>
-                <td><a href="/rentals/${r.rt_id}">ดูรายละเอียด</a></td>
+                <td>${escapeHtml(name)}</td>
+                <td class="rt-link">${escapeHtml(room)}</td>
+                <td>${escapeHtml(r.rt_movein ?? '-')}</td>
+                <td>${escapeHtml(r.rt_moveout ?? '-')}</td>
+                <td>${statusBadge(r)}</td>
+                <td class="rt-actions">
+                    <a href="/rentals/${r.rt_id}" class="rt-btn rt-btn--sm rt-btn--soft">ดูรายละเอียด</a>
+                </td>
             </tr>
         `;
     }
 
     function escapeHtml(str) {
         const div = document.createElement('div');
-        div.textContent = str;
+        div.textContent = str ?? '';
         return div.innerHTML;
     }
 
