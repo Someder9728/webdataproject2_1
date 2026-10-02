@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\AuditEvent;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
@@ -58,7 +59,11 @@ new class extends Component
         $admin = $this->authorizeAdmin();
 
         $validated = $this->validate([
-            'selectedTenantId' => ['required', 'integer', 'exists:tenants,t_id'],
+            'selectedTenantId' => [
+                'required',
+                'integer',
+                'exists:tenants,t_id',
+            ],
             'username' => [
                 'required',
                 'string',
@@ -122,11 +127,23 @@ new class extends Component
             $user->u_role = 'tenant';
             $user->tenants_t_id = $tenant->getKey();
             $user->is_active = true;
-
-            // บัญชีที่ Admin สร้างต้องเปลี่ยนรหัสครั้งแรก
             $user->must_change_password = true;
 
             $user->save();
+
+            AuditEvent::create([
+                'actor_user_id' => $admin->getKey(),
+                'entity_type' => 'users',
+                'entity_id' => $user->getKey(),
+                'action' => 'tenant_account_created',
+                'new_values' => [
+                    'u_username' => $user->u_username,
+                    'u_role' => $user->u_role,
+                    'tenants_t_id' => $user->tenants_t_id,
+                    'is_active' => $user->is_active,
+                    'must_change_password' => $user->must_change_password,
+                ],
+            ]);
         });
 
         $this->reset([
@@ -181,15 +198,13 @@ new class extends Component
             ]);
         }
 
-        DB::transaction(function () use ($validated) {
+        DB::transaction(function () use ($admin, $validated) {
 
             $target = User::findOrFail(
                 $validated['resetUserId']
             );
 
-            if (
-                $target->u_role !== 'tenant'
-            ) {
+            if ($target->u_role !== 'tenant') {
                 throw ValidationException::withMessages([
                     'resetUserId' => 'สามารถ Reset ได้เฉพาะบัญชี Tenant',
                 ]);
@@ -206,6 +221,10 @@ new class extends Component
                 ]);
             }
 
+            $oldValues = [
+                'must_change_password' => $target->must_change_password,
+            ];
+
             $target->u_password = $validated['resetPassword'];
             $target->must_change_password = true;
             $target->remember_token = Str::random(60);
@@ -214,6 +233,18 @@ new class extends Component
             DB::table('sessions')
                 ->where('user_id', $target->getKey())
                 ->delete();
+
+            AuditEvent::create([
+                'actor_user_id' => $admin->getKey(),
+                'entity_type' => 'users',
+                'entity_id' => $target->getKey(),
+                'action' => 'account_password_reset',
+                'old_values' => $oldValues,
+                'new_values' => [
+                    'must_change_password' => true,
+                ],
+                'reason' => $validated['resetReason'] ?? null,
+            ]);
         });
 
         $this->reset([
@@ -250,7 +281,7 @@ new class extends Component
             'suspendUserId.exists' => 'ไม่พบบัญชี',
         ]);
 
-        DB::transaction(function () use ($validated) {
+        DB::transaction(function () use ($admin, $validated) {
 
             $target = User::findOrFail(
                 $validated['suspendUserId']
@@ -285,6 +316,20 @@ new class extends Component
             DB::table('sessions')
                 ->where('user_id', $target->getKey())
                 ->delete();
+
+            AuditEvent::create([
+                'actor_user_id' => $admin->getKey(),
+                'entity_type' => 'users',
+                'entity_id' => $target->getKey(),
+                'action' => 'account_suspended',
+                'old_values' => [
+                    'is_active' => true,
+                ],
+                'new_values' => [
+                    'is_active' => false,
+                ],
+                'reason' => $validated['suspendReason'] ?? null,
+            ]);
         });
 
         $this->reset([
