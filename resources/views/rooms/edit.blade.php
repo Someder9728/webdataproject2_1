@@ -17,7 +17,7 @@
                     </h1>
 
                     <p class="text-secondary mb-0">
-                        แก้ไขข้อมูลห้อง {{ $room->r_number }}
+                        แก้ไขข้อมูลห้อง {{ $room->r_name }}
                     </p>
                 </div>
 
@@ -60,15 +60,15 @@
                     {{-- Room Number --}}
                     <div class="mb-4">
 
-                        <label for="r_number" class="form-label fw-semibold">
+                        <label for="r_name" class="form-label fw-semibold">
                             เลขห้อง
                             <span class="text-danger">*</span>
                         </label>
 
-                        <input type="text" id="r_number" name="r_number" value="{{ old('r_number', $room->r_number) }}"
-                            class="form-control @error('r_number') is-invalid @enderror" maxlength="20" required>
+                        <input type="text" id="r_name" name="r_name" value="{{ old('r_name', $room->r_name) }}"
+                            class="form-control @error('r_name') is-invalid @enderror" maxlength="20" required>
 
-                        @error('r_number')
+                        @error('r_name')
                         <div class="invalid-feedback">
                             {{ $message }}
                         </div>
@@ -138,17 +138,15 @@
                     {{-- Price --}}
                     <div class="mb-4">
 
-                        <label for="r_price" class="form-label fw-semibold">
+                        <label for="r_rent" class="form-label fw-semibold">
                             ราคา/เดือน
                             <span class="text-danger">*</span>
                         </label>
 
                         <div class="input-group">
 
-                            <input type="number" id="r_price" name="r_price"
-                                value="{{ old('r_price', $room->r_price) }}"
-                                class="form-control @error('r_price') is-invalid @enderror" min="0" step="0.01"
-                                required>
+                            <input type="number" id="r_rent" name="r_rent" value="{{ old('r_rent', $room->r_rent) }}"
+                                class="form-control @error('r_rent') is-invalid @enderror" min="0" step="0.01" required>
 
                             <span class="input-group-text">
                                 บาท
@@ -156,7 +154,7 @@
 
                         </div>
 
-                        @error('r_price')
+                        @error('r_rent')
                         <div class="text-danger small mt-1">
                             {{ $message }}
                         </div>

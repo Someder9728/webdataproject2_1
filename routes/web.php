@@ -29,7 +29,7 @@ Route::middleware(['auth', 'password.changed'])->group(function () {
             ->count();
 
         $rooms = \App\Models\Room::orderBy('r_floor')
-            ->orderBy('r_number')
+            ->orderBy('r_name')
             ->get();
 
         return view('dashboard', compact(

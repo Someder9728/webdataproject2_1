@@ -38,8 +38,6 @@
         font-size: 13px;
     }
 
-    /* BUTTON */
-
     .btn-add-room {
         display: inline-flex;
         align-items: center;
@@ -1126,7 +1124,7 @@
                                 <div>
 
                                     <div class="room-card-number">
-                                        ห้อง ${escapeHtml(room.r_number)}
+                                        ห้อง ${escapeHtml(room.r_name)}
                                     </div>
 
                                     <div class="room-card-type">
@@ -1157,7 +1155,7 @@
 
                             <div class="room-price">
 
-                                ฿${formatPrice(room.r_price)}
+                                ฿${formatPrice(room.r_rent)}
 
                                 <span>
                                     /เดือน
@@ -1230,7 +1228,7 @@
                             <td>
 
                                 <span class="fw-semibold">
-                                    ห้อง ${escapeHtml(room.r_number)}
+                                    ห้อง ${escapeHtml(room.r_name)}
                                 </span>
 
                             </td>
@@ -1249,7 +1247,7 @@
                             <td>
 
                                 <span class="fw-semibold">
-                                    ฿${formatPrice(room.r_price)}
+                                    ฿${formatPrice(room.r_rent)}
                                 </span>
 
                             </td>

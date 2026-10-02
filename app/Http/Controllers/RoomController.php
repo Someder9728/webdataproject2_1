@@ -15,12 +15,12 @@ class RoomController extends Controller
         $rooms = Room::query()
             ->when($search !== '', function ($query) use ($search) {
                 $query->where(function ($query) use ($search) {
-                    $query->where('r_number', 'like', "%{$search}%")
+                    $query->where('r_name', 'like', "%{$search}%")
                         ->orWhere('r_type', 'like', "%{$search}%")
                         ->orWhere('r_status', 'like', "%{$search}%");
                 });
             })
-            ->orderBy('r_number')
+            ->orderBy('r_name')
             ->paginate(20)
             ->withQueryString();
 
@@ -37,11 +37,11 @@ class RoomController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'r_number' => [
+            'r_name' => [
                 'required',
                 'string',
                 'max:20',
-                'unique:rooms,r_number',
+                'unique:rooms,r_name',
             ],
 
             'r_floor' => [
@@ -56,7 +56,7 @@ class RoomController extends Controller
                 'max:100',
             ],
 
-            'r_price' => [
+            'r_rent' => [
                 'required',
                 'numeric',
                 'min:0',
@@ -67,16 +67,16 @@ class RoomController extends Controller
                 'in:ว่าง,มีผู้พัก,ปิดปรับปรุง',
             ],
         ], [
-            'r_number.required' => 'กรุณากรอกเลขห้อง',
-            'r_number.unique' => 'เลขห้องนี้มีอยู่แล้ว',
+            'r_name.required' => 'กรุณากรอกเลขห้อง',
+            'r_name.unique' => 'เลขห้องนี้มีอยู่แล้ว',
 
             'r_floor.required' => 'กรุณากรอกชั้น',
             'r_floor.integer' => 'ชั้นต้องเป็นตัวเลข',
 
             'r_type.required' => 'กรุณาเลือกประเภทห้อง',
 
-            'r_price.required' => 'กรุณากรอกราคาห้อง',
-            'r_price.numeric' => 'ราคาห้องต้องเป็นตัวเลข',
+            'r_rent.required' => 'กรุณากรอกราคาห้อง',
+            'r_rent.numeric' => 'ราคาห้องต้องเป็นตัวเลข',
 
             'r_status.required' => 'กรุณาเลือกสถานะห้อง',
         ]);
@@ -98,11 +98,11 @@ class RoomController extends Controller
     public function update(Request $request, Room $room)
     {
         $validated = $request->validate([
-            'r_number' => [
+            'r_name' => [
                 'required',
                 'string',
                 'max:20',
-                'unique:rooms,r_number,' . $room->r_id . ',r_id',
+                'unique:rooms,r_name,' . $room->r_id . ',r_id',
             ],
 
             'r_floor' => [
@@ -117,7 +117,7 @@ class RoomController extends Controller
                 'max:100',
             ],
 
-            'r_price' => [
+            'r_rent' => [
                 'required',
                 'numeric',
                 'min:0',
@@ -128,16 +128,16 @@ class RoomController extends Controller
                 'in:ว่าง,มีผู้พัก,ปิดปรับปรุง',
             ],
         ], [
-            'r_number.required' => 'กรุณากรอกเลขห้อง',
-            'r_number.unique' => 'เลขห้องนี้มีอยู่แล้ว',
+            'r_name.required' => 'กรุณากรอกเลขห้อง',
+            'r_name.unique' => 'เลขห้องนี้มีอยู่แล้ว',
 
             'r_floor.required' => 'กรุณากรอกชั้น',
             'r_floor.integer' => 'ชั้นต้องเป็นตัวเลข',
 
             'r_type.required' => 'กรุณาเลือกประเภทห้อง',
 
-            'r_price.required' => 'กรุณากรอกราคาห้อง',
-            'r_price.numeric' => 'ราคาห้องต้องเป็นตัวเลข',
+            'r_rent.required' => 'กรุณากรอกราคาห้อง',
+            'r_rent.numeric' => 'ราคาห้องต้องเป็นตัวเลข',
 
             'r_status.required' => 'กรุณาเลือกสถานะห้อง',
         ]);

@@ -10,36 +10,36 @@ class RoomApiController extends Controller
 {
     /* แสดงรายการห้องพักทั้งหมด */
     public function index(Request $request)
-{
-    $search = trim((string) $request->input('search'));
+    {
+        $search = trim((string) $request->input('search'));
 
-    $perPage = min(
-        max((int) $request->input('per_page', 20), 1),
-        100
-    );
+        $perPage = min(
+            max((int) $request->input('per_page', 20), 1),
+            100
+        );
 
-    $rooms = Room::query()
-        ->when($search !== '', function ($query) use ($search) {
-            $query->where(function ($query) use ($search) {
-                $query->where('r_number', 'like', "%{$search}%")
-                    ->orWhere('r_type', 'like', "%{$search}%")
-                    ->orWhere('r_status', 'like', "%{$search}%");
-            });
-        })
-        ->orderBy('r_number')
-        ->paginate($perPage);
+        $rooms = Room::query()
+            ->when($search !== '', function ($query) use ($search) {
+                $query->where(function ($query) use ($search) {
+                    $query->where('r_name', 'like', "%{$search}%")
+                        ->orWhere('r_type', 'like', "%{$search}%")
+                        ->orWhere('r_status', 'like', "%{$search}%");
+                });
+            })
+            ->orderBy('r_name')
+            ->paginate($perPage);
 
-    return response()->json([
+        return response()->json([
             'success' => true,
             'data' => $rooms->items(),
             'pagination' => [
-            'current_page' => $rooms->currentPage(),
-            'last_page' => $rooms->lastPage(),
-            'per_page' => $rooms->perPage(),
-            'total' => $rooms->total(),
-        ],
-    ]);
-}
+                'current_page' => $rooms->currentPage(),
+                'last_page' => $rooms->lastPage(),
+                'per_page' => $rooms->perPage(),
+                'total' => $rooms->total(),
+            ],
+        ]);
+    }
 
     /* แสดงข้อมูลห้องพัก 1 ห้อง */
     public function show(Room $room)
@@ -54,11 +54,31 @@ class RoomApiController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'r_number' => ['required', 'string', 'max:20', 'unique:rooms,r_number'],
-            'r_floor' => ['required', 'integer', 'min:1'],
-            'r_type' => ['required', 'string', 'max:100'],
-            'r_price' => ['required', 'numeric', 'min:0'],
-            'r_status' => ['required', 'in:ว่าง,มีผู้พัก,ปิดปรับปรุง'],
+            'r_name' => [
+                'required',
+                'string',
+                'max:20',
+                'unique:rooms,r_name',
+            ],
+            'r_floor' => [
+                'required',
+                'integer',
+                'min:1',
+            ],
+            'r_type' => [
+                'required',
+                'string',
+                'max:100',
+            ],
+            'r_rent' => [
+                'required',
+                'numeric',
+                'min:0',
+            ],
+            'r_status' => [
+                'required',
+                'in:ว่าง,มีผู้พัก,ปิดปรับปรุง',
+            ],
         ]);
 
         $room = Room::create($validated);
@@ -74,16 +94,31 @@ class RoomApiController extends Controller
     public function update(Request $request, Room $room)
     {
         $validated = $request->validate([
-            'r_number' => [
+            'r_name' => [
                 'required',
                 'string',
                 'max:20',
-                'unique:rooms,r_number,' . $room->r_id . ',r_id',
+                'unique:rooms,r_name,' . $room->r_id . ',r_id',
             ],
-            'r_floor' => ['required', 'integer', 'min:1'],
-            'r_type' => ['required', 'string', 'max:100'],
-            'r_price' => ['required', 'numeric', 'min:0'],
-            'r_status' => ['required', 'in:ว่าง,มีผู้พัก,ปิดปรับปรุง'],
+            'r_floor' => [
+                'required',
+                'integer',
+                'min:1',
+            ],
+            'r_type' => [
+                'required',
+                'string',
+                'max:100',
+            ],
+            'r_rent' => [
+                'required',
+                'numeric',
+                'min:0',
+            ],
+            'r_status' => [
+                'required',
+                'in:ว่าง,มีผู้พัก,ปิดปรับปรุง',
+            ],
         ]);
 
         $room->update($validated);

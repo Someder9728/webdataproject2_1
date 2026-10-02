@@ -507,7 +507,7 @@
                             <div>
 
                                 <div class="room-number">
-                                    ห้อง {{ $room->r_number }}
+                                    ห้อง {{ $room->r_name }}
                                 </div>
 
                                 <div class="room-status {{ $isAvailable ? 'available-text' : 'occupied-text' }}">
@@ -521,7 +521,7 @@
                                 @endif
 
                                 <div class="room-price">
-                                    ฿{{ number_format($room->r_price, 2) }}/เดือน
+                                    ฿{{ number_format($room->r_rent, 2) }}/เดือน
                                 </div>
 
                             </div>
