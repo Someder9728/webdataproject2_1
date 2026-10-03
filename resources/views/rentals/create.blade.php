@@ -1,110 +1,121 @@
 {{-- resources/views/rentals/create.blade.php --}}
-{{-- R2: สร้างการเช่า (Move-in + Contract ฟอร์มเดียว) --}}
+{{-- R2: บันทึกการเช่าใหม่ (Move-in + Contract ฟอร์มเดียว) — หน้าตาแบบ modal ตาม Figma แต่ยังเป็นหน้าแยก (route /rentals/create) --}}
 
-<x-layouts::app :title="__('สร้างการเช่า')">
-<div class="rental-form-page">
-    <div class="rental-form-page__header">
-        <h1>สร้างการเช่า</h1>
-        <a href="{{ route('rentals.index') }}" class="btn">← กลับไปรายการการเช่า</a>
+<x-layouts::app :title="__('บันทึกการเช่าใหม่')">
+@include('rentals._styles')
+
+<div class="rt rt-page">
+    <div class="rt-modal">
+        <div class="rt-modal-head">
+            <h1 class="rt-modal-title">บันทึกการเช่าใหม่</h1>
+            <a href="{{ route('rentals.index') }}" class="rt-close" aria-label="ปิดและกลับไปรายการการเช่า">✕</a>
+        </div>
+
+        <div id="page-state-loading" class="rt-state">กำลังโหลดข้อมูลผู้เช่า/ห้อง...</div>
+        <div id="page-state-error" class="rt-state rt-state--error" hidden>
+            <span id="page-error-message"></span>
+            <button type="button" id="btn-page-retry" class="rt-btn rt-btn--sm">ลองใหม่</button>
+        </div>
+
+        <form id="rental-create-form" hidden novalidate>
+            <div class="rt-notice rt-notice--info">
+                💡 เลือกผู้เช่าหรือห้อง ระบบจะ <strong>Auto Fill</strong> ข้อมูลที่เกี่ยวข้องให้อัตโนมัติ
+            </div>
+
+            <p id="meter-warning" class="rt-notice rt-notice--warn" hidden>
+                ห้องนี้ยังไม่มีเลขมิเตอร์ตั้งต้น ณ วันนี้ — ระบบจะปฏิเสธการสร้างรายการนี้จนกว่าจะบันทึกมิเตอร์ก่อน
+            </p>
+
+            <div class="rt-form-field">
+                <label for="f-tenant">ผู้เช่า <span class="rt-req">*</span></label>
+                <select id="f-tenant" name="tenant" class="rt-input" required>
+                    <option value="">-- เลือกผู้เช่า --</option>
+                </select>
+                <span class="rt-field-error" id="err-tenant"></span>
+            </div>
+
+            <div class="rt-form-field">
+                <label for="f-room">ห้องว่าง <span class="rt-req">*</span></label>
+                <select id="f-room" name="room" class="rt-input" required>
+                    <option value="">-- เลือกห้องว่าง --</option>
+                </select>
+                <span class="rt-hint" id="room-empty-hint" hidden>ตอนนี้ไม่มีห้องว่าง</span>
+                <span class="rt-field-error" id="err-room"></span>
+            </div>
+
+            <div class="rt-autofill" aria-live="polite">
+                <div>
+                    <div class="rt-autofill-label">✓ ผู้เช่า (Auto Fill)</div>
+                    <div class="rt-autofill-value" id="af-tenant">-</div>
+                    <div class="rt-autofill-sub" id="af-tenant-sub"></div>
+                </div>
+                <div>
+                    <div class="rt-autofill-label">✓ ห้อง (Auto Fill)</div>
+                    <div class="rt-autofill-value" id="af-room">-</div>
+                    <div class="rt-autofill-sub" id="af-room-sub"></div>
+                </div>
+            </div>
+
+            <div class="rt-form-row">
+                <div class="rt-form-field">
+                    <label for="f-movein">วันที่เข้า</label>
+                    <input type="date" id="f-movein" class="rt-input" value="{{ now('Asia/Bangkok')->format('Y-m-d') }}" disabled>
+                    <span class="rt-hint">ระบบกำหนดเป็นวันปัจจุบันเสมอ</span>
+                </div>
+                <div class="rt-form-field">
+                    <label for="f-end">วันที่ออก (ประมาณ)</label>
+                    <input type="date" id="f-end" name="c_end" class="rt-input">
+                    <span class="rt-hint">เว้นว่าง = ไม่กำหนด · นับรวมวันที่เลือกเป็นวันสุดท้ายของสัญญา</span>
+                    <span class="rt-field-error" id="err-end"></span>
+                </div>
+            </div>
+
+            <div class="rt-form-row">
+                <div class="rt-form-field">
+                    <label for="f-rent">ค่าเช่า (บาท/เดือน) <span class="rt-req">*</span></label>
+                    <input type="number" id="f-rent" name="c_rent" class="rt-input" step="0.01" min="0" required>
+                    <span class="rt-hint" id="rent-autofill-hint" hidden>เติมอัตโนมัติจากราคาห้อง — กรุณาตรวจสอบก่อนบันทึก</span>
+                    <span class="rt-field-error" id="err-rent"></span>
+                </div>
+                <div class="rt-form-field">
+                    <label for="f-deposit">เงินประกัน (บาท)</label>
+                    <input type="number" id="f-deposit" name="c_deposit" class="rt-input" step="0.01" min="0" placeholder="ไม่บังคับ">
+                    <span class="rt-field-error" id="err-deposit"></span>
+                </div>
+            </div>
+
+            <p id="form-error" class="rt-notice rt-notice--err" hidden></p>
+
+            <div class="rt-form-actions">
+                <a href="{{ route('rentals.index') }}" class="rt-btn">ยกเลิก</a>
+                <button type="submit" id="btn-submit" class="rt-btn rt-btn--primary" disabled>✓ บันทึกการเช่า</button>
+            </div>
+        </form>
     </div>
-
-    <div id="page-state-loading" class="state-box">กำลังโหลดข้อมูลผู้เช่า/ห้อง...</div>
-    <div id="page-state-error" class="state-box state-box--error" hidden>
-        <span id="page-error-message"></span>
-        <button type="button" id="btn-page-retry">ลองใหม่</button>
-    </div>
-
-    <form id="rental-create-form" hidden>
-        <p id="meter-warning" class="notice notice--warning" hidden>
-            ห้องนี้ยังไม่มีเลขมิเตอร์ตั้งต้น ณ วันนี้ — ระบบจะปฏิเสธการสร้างรายการนี้จนกว่าจะบันทึกมิเตอร์ก่อน
-        </p>
-
-        <div class="form-field">
-            <label for="f-tenant">ผู้เช่า</label>
-            <input type="text" id="f-tenant" name="tenant_display" list="tenant-options" placeholder="พิมพ์ชื่อผู้เช่า..." autocomplete="off" required>
-            <datalist id="tenant-options"></datalist>
-            <span class="field-error" id="err-tenant"></span>
-        </div>
-
-        <div class="form-field">
-            <label for="f-room">ห้อง</label>
-            <input type="text" id="f-room" name="room_display" list="room-options" placeholder="พิมพ์ชื่อห้อง..." autocomplete="off" required>
-            <datalist id="room-options"></datalist>
-            <span class="field-error" id="err-room"></span>
-        </div>
-
-        <div class="form-field">
-            <label>วันเข้า</label>
-            <input type="text" value="{{ now('Asia/Bangkok')->format('Y-m-d') }}" disabled>
-            <span class="field-hint">วันเข้าเป็นวันปัจจุบันเสมอ ระบบกำหนดให้อัตโนมัติ</span>
-        </div>
-
-        <div class="form-field">
-            <label for="f-rent">ค่าเช่า (บาท/เดือน)</label>
-            <input type="number" id="f-rent" name="c_rent" step="0.01" min="0" required>
-            <span class="field-hint" id="rent-autofill-hint" hidden>
-                เติมอัตโนมัติจากราคาห้อง — เป็นค่าอ้างอิง กรุณาตรวจสอบก่อนบันทึก
-            </span>
-            <span class="field-error" id="err-rent"></span>
-        </div>
-
-        <div class="form-field">
-            <label for="f-deposit">เงินประกัน (บาท) — ไม่บังคับ</label>
-            <input type="number" id="f-deposit" name="c_deposit" step="0.01" min="0">
-        </div>
-
-        <div class="form-field">
-            <label for="f-end">วันสิ้นสุดสัญญา — เว้นว่าง = ไม่กำหนด</label>
-            <input type="date" id="f-end" name="c_end">
-            <span class="field-hint">นับรวมวันที่เลือกเป็นวันสุดท้ายของสัญญา</span>
-            <span class="field-error" id="err-end"></span>
-        </div>
-
-        <p id="form-error" class="notice notice--error" hidden></p>
-
-        <div class="form-actions">
-            <button type="submit" id="btn-submit" class="btn btn--primary">สร้างการเช่า</button>
-        </div>
-    </form>
 </div>
-
-<style>
-    .rental-form-page { max-width: 560px; margin: 0 auto; padding: 24px 16px; }
-    .rental-form-page__header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
-    .state-box { padding: 24px; text-align: center; color: #999; border: 1px dashed #444; border-radius: 6px; }
-    .state-box--error { color: #f87171; border-color: #7f1d1d; background: rgba(127,29,29,0.15); }
-    .btn { display: inline-block; padding: 8px 16px; border-radius: 4px; text-decoration: none; border: 1px solid #444; color: inherit; background: transparent; cursor: pointer; }
-    .btn--primary { background: #2563eb; color: #fff; border-color: #2563eb; }
-    .notice { padding: 10px 14px; border-radius: 4px; margin-bottom: 16px; font-size: 0.9em; }
-    .notice--warning { background: rgba(250,204,21,0.12); color: #facc15; border: 1px solid rgba(250,204,21,0.3); }
-    .notice--error { background: rgba(248,113,113,0.12); color: #f87171; border: 1px solid rgba(248,113,113,0.3); }
-    .form-field { margin-bottom: 16px; }
-    .form-field label { display: block; margin-bottom: 4px; font-size: 0.9em; }
-    .form-field input, .form-field select { width: 100%; padding: 8px 12px; border: 1px solid #444; border-radius: 4px; background: transparent; color: inherit; }
-    .form-field input:disabled { opacity: 0.6; }
-    .field-hint { display: block; font-size: 0.8em; color: #888; margin-top: 4px; }
-    .field-error { display: block; font-size: 0.85em; color: #f87171; margin-top: 4px; }
-</style>
 
 <script>
 (function () {
     const API_RENTALS = '/api/v1/rentals';
-    const API_TENANTS = '/api/v1/tenants';
-    const API_ROOMS   = '/api/v1/rooms?r_status=VACANT&per_page=100'; // แก้ param ให้ตรงกับ RoomController จริงของเกลือ (r_status ไม่ใช่ status)
+    const API_TENANTS = '/api/v1/tenants?per_page=100';
+    const API_ROOMS   = '/api/v1/rooms?r_status=VACANT&per_page=100';
     const RENTALS_INDEX_URL = "{{ route('rentals.index') }}";
     const TODAY_STR = "{{ now('Asia/Bangkok')->format('Y-m-d') }}"; // ใช้เทียบวันที่มิเตอร์ล่าสุดกับวันนี้
+    const fetchOpts = { headers: { Accept: 'application/json' }, credentials: 'same-origin' };
+
+    const $ = (id) => document.getElementById(id);
+    const money = (n) => '฿' + Number(n).toLocaleString('th-TH', { maximumFractionDigits: 2 });
 
     const el = {};
     ['page-state-loading', 'page-state-error', 'page-error-message', 'btn-page-retry',
      'rental-create-form', 'f-tenant', 'f-room', 'f-rent', 'rent-autofill-hint', 'f-deposit',
-     'f-end', 'err-tenant', 'err-room', 'err-rent', 'err-end', 'form-error', 'btn-submit',
-     'meter-warning'
-    ].forEach((id) => { el[id] = document.getElementById(id); });
+     'f-end', 'err-tenant', 'err-room', 'err-rent', 'err-end', 'err-deposit', 'form-error', 'btn-submit',
+     'meter-warning', 'room-empty-hint', 'af-tenant', 'af-tenant-sub', 'af-room', 'af-room-sub'
+    ].forEach((id) => { el[id] = $(id); });
 
-    let rooms = [];
-    let tenantMap = new Map(); // label -> t_id
-    let roomMap = new Map();   // label -> { r_id, r_rent }
-    let submitting = false; // กันกดซ้ำ
+    let tenants = new Map(); // t_id -> tenant
+    let rooms = new Map();   // r_id -> room
+    let submitting = false;  // กันกดซ้ำ
 
     function csrfToken() {
         return document.querySelector('meta[name="csrf-token"]')?.content ?? '';
@@ -117,8 +128,8 @@
 
         try {
             const [tenantsRes, roomsRes] = await Promise.all([
-                fetch(API_TENANTS, { headers: { Accept: 'application/json' }, credentials: 'same-origin' }),
-                fetch(API_ROOMS, { headers: { Accept: 'application/json' }, credentials: 'same-origin' }),
+                fetch(API_TENANTS, fetchOpts),
+                fetch(API_ROOMS, fetchOpts),
             ]);
 
             if (tenantsRes.status === 401 || roomsRes.status === 401) {
@@ -133,6 +144,7 @@
 
             populateTenants(tenantsBody.data ?? []);
             populateRooms(roomsBody.data ?? []);
+            refreshAutofill();
 
             el['page-state-loading'].hidden = true;
             el['rental-create-form'].hidden = false;
@@ -144,102 +156,103 @@
     }
 
     function populateTenants(list) {
-        tenantMap.clear();
-        const datalist = document.getElementById('tenant-options');
-        datalist.innerHTML = '';
+        tenants = new Map(list.map((t) => [String(t.t_id), t]));
+        const select = el['f-tenant'];
+        select.innerHTML = '<option value="">-- เลือกผู้เช่า --</option>';
 
         list.forEach((t) => {
-            const label = `${t.t_Fname} ${t.t_Lname}`;
-            tenantMap.set(label, t.t_id);
-
             const opt = document.createElement('option');
-            opt.value = label;
-            datalist.appendChild(opt);
+            opt.value = String(t.t_id);
+            opt.textContent = `${t.t_Fname ?? ''} ${t.t_Lname ?? ''}`.trim();
+            select.appendChild(opt);
         });
     }
 
     function populateRooms(list) {
-        rooms = list;
-        roomMap.clear();
-        const datalist = document.getElementById('room-options');
-        datalist.innerHTML = '';
+        rooms = new Map(list.map((r) => [String(r.r_id), r]));
+        const select = el['f-room'];
+        select.innerHTML = '<option value="">-- เลือกห้องว่าง --</option>';
 
         list.forEach((r) => {
-            const label = `${r.r_name} (ชั้น ${r.r_floor})`;
-            roomMap.set(label, { r_id: r.r_id, r_rent: r.r_rent });
-
             const opt = document.createElement('option');
-            opt.value = label;
-            datalist.appendChild(opt);
+            opt.value = String(r.r_id);
+            opt.textContent = `ห้อง ${r.r_name} · ${r.r_type ?? '-'} · ${money(r.r_rent)}/เดือน`;
+            select.appendChild(opt);
         });
+
+        el['room-empty-hint'].hidden = list.length > 0;
     }
 
-    el['f-room'].addEventListener('input', () => {
-        const match = roomMap.get(el['f-room'].value);
+    // อัปเดตกล่อง Auto Fill + ปุ่มบันทึก (กดได้เมื่อเลือกครบทั้งผู้เช่าและห้อง)
+    function refreshAutofill() {
+        const tenant = tenants.get(el['f-tenant'].value);
+        const room = rooms.get(el['f-room'].value);
 
-        if (match) {
-            el['f-rent'].value = match.r_rent;
+        el['af-tenant'].textContent = tenant ? `${tenant.t_Fname ?? ''} ${tenant.t_Lname ?? ''}`.trim() : '-';
+        el['af-tenant-sub'].textContent = tenant ? (tenant.t_tel ?? '') : '';
+        el['af-room'].textContent = room ? `ห้อง ${room.r_name}` : '-';
+        el['af-room-sub'].textContent = room ? `${money(room.r_rent)}/เดือน` : '';
+
+        el['btn-submit'].disabled = submitting || !(tenant && room);
+    }
+
+    el['f-tenant'].addEventListener('change', refreshAutofill);
+
+    el['f-room'].addEventListener('change', () => {
+        const room = rooms.get(el['f-room'].value);
+
+        if (room) {
+            el['f-rent'].value = room.r_rent;
             el['rent-autofill-hint'].hidden = false;
         } else {
             el['rent-autofill-hint'].hidden = true;
         }
 
-        checkMeterBaseline(match?.r_id);
+        refreshAutofill();
+        checkMeterBaseline(room?.r_id);
     });
 
-    // เปลี่ยนมาใช้ GET /rooms/{room}/meters ของเกลือแทน (ไม่มี endpoint /meter-status แยกต่างหากจริง)
-    // เช็คจากรายการล่าสุด (per_page=1, เรียง m_date desc) ว่าเป็นของวันนี้หรือยัง
+    // เช็คจาก GET /rooms/{room}/meters (รายการล่าสุด) ว่ามีมิเตอร์ของวันนี้หรือยัง — เป็นแค่คำเตือนล่วงหน้า
     async function checkMeterBaseline(roomId) {
         el['meter-warning'].hidden = true;
         if (!roomId) return;
 
         try {
-            const res = await fetch(`/api/v1/rooms/${roomId}/meters?per_page=1`, {
-                headers: { Accept: 'application/json' },
-                credentials: 'same-origin',
-            });
-            if (!res.ok) return; // เช็คไม่ได้ก็ปล่อยผ่าน ไม่บล็อก UX ให้ backend เป็นคนฟันธงตอน submit
+            const res = await fetch(`/api/v1/rooms/${roomId}/meters?per_page=1`, fetchOpts);
+            if (!res.ok) return; // เช็คไม่ได้ก็ปล่อยผ่าน ให้ backend เป็นคนฟันธงตอน submit
 
             const body = await res.json();
             const hasBaseline = body.data?.[0]?.m_date === TODAY_STR;
             el['meter-warning'].hidden = hasBaseline;
         } catch (_) {
-            // เงียบไว้ — ไม่ใช่ validation หลัก แค่ช่วยเตือนล่วงหน้า
+            // เงียบไว้ — ไม่ใช่ validation หลัก
         }
     }
 
     function clearFieldErrors() {
-        ['tenant', 'room', 'rent', 'end'].forEach((k) => { el['err-' + k].textContent = ''; });
+        ['tenant', 'room', 'rent', 'end', 'deposit'].forEach((k) => { el['err-' + k].textContent = ''; });
         el['form-error'].hidden = true;
     }
 
     async function submitForm(e) {
         e.preventDefault();
         if (submitting) return;
+
+        const tenant = tenants.get(el['f-tenant'].value);
+        const room = rooms.get(el['f-room'].value);
+
+        clearFieldErrors();
+        if (!tenant) { el['err-tenant'].textContent = 'กรุณาเลือกผู้เช่า'; return; }
+        if (!room) { el['err-room'].textContent = 'กรุณาเลือกห้อง'; return; }
+        if (el['f-rent'].value === '') { el['err-rent'].textContent = 'กรุณากรอกค่าเช่า'; return; }
+
         submitting = true;
         el['btn-submit'].disabled = true;
-        clearFieldErrors();
 
-        const tenantId = tenantMap.get(el['f-tenant'].value);
-        const roomMatch = roomMap.get(el['f-room'].value);
-
-        if (!tenantId) {
-            el['err-tenant'].textContent = 'กรุณาเลือกผู้เช่าจากรายการที่ค้นหาเจอ';
-            submitting = false;
-            el['btn-submit'].disabled = false;
-            return;
-        }
-        if (!roomMatch) {
-            el['err-room'].textContent = 'กรุณาเลือกห้องจากรายการที่ค้นหาเจอ';
-            submitting = false;
-            el['btn-submit'].disabled = false;
-            return;
-        }
-
-        // body แบบ flat ให้ตรงกับ CreateRental Action ของเกลือ (ไม่ nest เป็น rental/contract อีกแล้ว)
+        // body แบบ flat ให้ตรงกับ CreateRental Action ของเกลือ
         const payload = {
-            tenants_t_id: tenantId,
-            rooms_r_id: roomMatch.r_id,
+            tenants_t_id: tenant.t_id,
+            rooms_r_id: room.r_id,
             c_rent: Number(el['f-rent'].value),
             c_deposit: el['f-deposit'].value ? Number(el['f-deposit'].value) : 0,
             c_end: el['f-end'].value || null,
@@ -260,19 +273,19 @@
             const body = await res.json();
 
             if (res.status === 422) {
-                // key ของ errors เปลี่ยนเป็น field ตรง ๆ (ไม่มี prefix rental./contract. แล้ว)
                 if (body.errors?.tenants_t_id) el['err-tenant'].textContent = body.errors.tenants_t_id[0];
                 if (body.errors?.rooms_r_id)   el['err-room'].textContent   = body.errors.rooms_r_id[0];
                 if (body.errors?.c_rent)       el['err-rent'].textContent   = body.errors.c_rent[0];
+                if (body.errors?.c_deposit)    el['err-deposit'].textContent = body.errors.c_deposit[0];
                 if (body.errors?.c_end)        el['err-end'].textContent    = body.errors.c_end[0];
                 return;
             }
 
             if (res.status === 409) {
-                // 409 ของจริงไม่มี message ติดมา (abort_unless เปล่า ๆ) ต้องใส่ข้อความ generic เอง
+                // 409 ของจริงไม่มี message ติดมา ต้องใส่ข้อความ generic เอง
                 el['form-error'].textContent = 'ห้องนี้ไม่ว่าง หรือผู้เช่า/ห้องนี้มีรายการ Active อยู่แล้ว — กำลังโหลดข้อมูลล่าสุด';
                 el['form-error'].hidden = false;
-                await loadFormData(); // ห้อง/ผู้เช่าอาจถูกใช้ไปแล้ว โหลด dropdown ใหม่
+                await loadFormData(); // ห้อง/ผู้เช่าอาจถูกใช้ไปแล้ว โหลดรายการใหม่
                 return;
             }
 
@@ -280,14 +293,14 @@
                 throw new Error(body.message || 'สร้างการเช่าไม่สำเร็จ');
             }
 
-            // สำเร็จ — พาไปหน้ารายละเอียด (R3) ตามที่แผนงานตั้งใจไว้
+            // สำเร็จ — พาไปหน้ารายละเอียด (R3)
             window.location.href = RENTALS_INDEX_URL + '/' + body.data.rt_id;
         } catch (err) {
             el['form-error'].textContent = err.message;
             el['form-error'].hidden = false;
         } finally {
             submitting = false;
-            el['btn-submit'].disabled = false;
+            refreshAutofill();
         }
     }
 

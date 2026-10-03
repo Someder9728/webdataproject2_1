@@ -1,114 +1,327 @@
 {{-- resources/views/rentals/show.blade.php --}}
-{{-- R3: รายละเอียดการเช่า + Contract panel + History --}}
+{{-- R3: รายละเอียดการเช่า — การ์ดผู้เช่า/ห้อง/การเช่า/สัญญา (R4 อยู่ในการ์ดสัญญา) + ไทม์ไลน์ประวัติการเช่า --}}
 
 <x-layouts::app :title="__('รายละเอียดการเช่า')">
-<div class="rental-detail-page" data-rental-id="{{ $rentalId }}">
-    <div class="rental-detail-page__header">
-        <a href="{{ route('rentals.index') }}" class="btn">← กลับไปรายการการเช่า</a>
-    </div>
+@include('rentals._styles')
 
-    <div id="detail-state-loading" class="state-box">กำลังโหลดข้อมูล...</div>
-    <div id="detail-state-error" class="state-box state-box--error" hidden>
+<div class="rt rt-page" id="rental-detail-page" data-rental-id="{{ $rentalId }}">
+    <div id="detail-state-loading" class="rt-card rt-state">กำลังโหลดข้อมูล...</div>
+    <div id="detail-state-error" class="rt-state rt-state--error" hidden>
         <span id="detail-error-message"></span>
-        <button type="button" id="detail-btn-retry">ลองใหม่</button>
+        <button type="button" id="detail-btn-retry" class="rt-btn rt-btn--sm">ลองใหม่</button>
+        <a href="{{ route('rentals.index') }}" class="rt-btn rt-btn--sm">← กลับ</a>
     </div>
 
     <div id="detail-view" hidden>
-        <h1 id="detail-title">การเช่า</h1>
-
-        <div class="rental-detail-page__grid">
-            <div><span class="label">ผู้เช่า</span><span id="d-tenant"></span></div>
-            <div><span class="label">ห้อง</span><span id="d-room"></span></div>
-            <div><span class="label">วันเข้า</span><span id="d-movein"></span></div>
-            <div><span class="label">วันออก</span><span id="d-moveout"></span></div>
-            <div><span class="label">สถานะ</span><span id="d-status" class="badge"></span></div>
+        <div class="rt-head">
+            <div>
+                <div class="rt-crumb"><a href="{{ route('rentals.index') }}">การเช่า</a> / <span id="d-crumb">-</span></div>
+                <h1 class="rt-title" id="detail-title">การเช่า</h1>
+            </div>
+            <div class="rt-head-actions">
+                {{-- ปุ่มย้ายออก: แสดงเฉพาะเมื่อ ACTIVE และเป็น admin — กดแล้วเปิด modal (_move-out-modal) --}}
+                @if (auth()->user()?->u_role === 'admin')
+                    <button type="button" id="btn-move-out" class="rt-btn rt-btn--danger" data-action="move-out"
+                            data-rental-id="{{ $rentalId }}" hidden>ย้ายออก</button>
+                @endif
+                <a href="{{ route('rentals.index') }}" class="rt-btn">‹ ย้อนกลับ</a>
+            </div>
         </div>
 
-        <button type="button" id="btn-move-out" class="btn" hidden>ย้ายออก</button>
-        {{-- ปุ่มนี้ยังไม่ผูก logic จริง (R5 ยังไม่ทำ) แสดงไว้เฉพาะเมื่อ ACTIVE ตามกฎที่ตกลงไว้ --}}
+        <div class="rt-grid">
+            {{-- คอลัมน์ซ้าย: ผู้เช่า + ห้อง --}}
+            <div class="rt-col">
+                <section class="rt-card" aria-labelledby="tenant-card-title">
+                    <div class="rt-card-head"><h2 class="rt-card-title" id="tenant-card-title">ข้อมูลผู้เช่า</h2></div>
+                    <div class="rt-person" style="margin-bottom:14px;">
+                        <span class="rt-avatar rt-avatar--lg" id="d-avatar">-</span>
+                        <div>
+                            <div class="rt-field-value" id="d-tenant">-</div>
+                            <div class="rt-tl-date" id="d-tenant-code">-</div>
+                        </div>
+                    </div>
+                    <dl class="rt-kv">
+                        <div><dt>โทรศัพท์</dt><dd id="d-tel">-</dd></div>
+                        <div><dt>อีเมล</dt><dd id="d-mail">-</dd></div>
+                    </dl>
+                </section>
 
-        @include('rentals.contract', ['rentalId' => $rentalId])
+                <section class="rt-card" aria-labelledby="room-card-title">
+                    <div class="rt-card-head"><h2 class="rt-card-title" id="room-card-title">ข้อมูลห้อง</h2></div>
+                    <p class="rt-big" id="d-room">-</p>
+                    <dl class="rt-kv">
+                        <div><dt>ชั้น</dt><dd id="d-floor">-</dd></div>
+                        <div><dt>ประเภท</dt><dd id="d-type">-</dd></div>
+                        <div><dt>ค่าเช่า</dt><dd id="d-room-rent" class="rt-money">-</dd></div>
+                        <div><dt>สถานะห้อง</dt><dd id="d-room-status">-</dd></div>
+                    </dl>
+                </section>
+            </div>
+
+            {{-- คอลัมน์ขวา: การเช่า + สัญญา + ไทม์ไลน์ --}}
+            <div class="rt-col">
+                <section class="rt-card" aria-labelledby="rental-card-title">
+                    <div class="rt-card-head">
+                        <h2 class="rt-card-title" id="rental-card-title">ข้อมูลการเช่า</h2>
+                        <span id="d-status" class="rt-badge"></span>
+                    </div>
+                    <div class="rt-fields rt-fields--3">
+                        <div><span class="rt-field-label">วันที่เข้าพัก</span><span class="rt-field-value" id="d-movein">-</span></div>
+                        <div><span class="rt-field-label">วันที่ย้ายออก</span><span class="rt-field-value" id="d-moveout">-</span></div>
+                        <div><span class="rt-field-label">สถานะ</span><span class="rt-field-value" id="d-status-text">-</span></div>
+                    </div>
+                </section>
+
+                {{-- R4: การ์ดสัญญา + ฟอร์มแก้ไข/ต่อสัญญา --}}
+                @include('rentals.contract', ['rentalId' => $rentalId])
+
+                <section class="rt-card rt-card--flush" aria-labelledby="timeline-title">
+                    <div class="rt-card-head"><h2 class="rt-card-title rt-card-title--lg" id="timeline-title">ประวัติการเช่า</h2></div>
+                    <div style="padding:16px 20px;">
+                        <ul class="rt-timeline" id="timeline-list"></ul>
+                    </div>
+                </section>
+            </div>
+        </div>
     </div>
-</div>
 
-<style>
-    .rental-detail-page { max-width: 720px; margin: 0 auto; padding: 24px 16px; }
-    .rental-detail-page__header { margin-bottom: 16px; }
-    .rental-detail-page__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin: 16px 0; }
-    .rental-detail-page__grid .label { display: block; font-size: 0.85em; color: #888; }
-    .state-box { padding: 24px; text-align: center; color: #999; border: 1px dashed #444; border-radius: 6px; }
-    .state-box--error { color: #f87171; border-color: #7f1d1d; background: rgba(127,29,29,0.15); }
-    .btn { display: inline-block; padding: 8px 16px; border-radius: 4px; text-decoration: none; border: 1px solid #444; color: inherit; background: transparent; cursor: pointer; margin-bottom: 12px; }
-    .badge { padding: 2px 8px; border-radius: 999px; font-size: 0.85em; }
-    .badge--active { background: #dcfce7; color: #166534; }
-    .badge--ended { background: #f3f4f6; color: #4b5563; }
-</style>
+    {{-- Modal ย้ายออก (Move-out) — เฉพาะ admin --}}
+    @if (auth()->user()?->u_role === 'admin')
+        @include('rentals._move-out-modal')
+    @endif
+</div>
 
 <script>
 (function () {
-    const rentalId = document.querySelector('.rental-detail-page').dataset.rentalId;
+    const page = document.getElementById('rental-detail-page');
+    const rentalId = page.dataset.rentalId;
     const API_URL = `/api/v1/rentals/${rentalId}`;
+    const fetchOpts = { headers: { Accept: 'application/json' }, credentials: 'same-origin' };
 
-    // TODO(ยืนยันกับเกลือ): ค่า rt_status จริง — ตอนนี้สมมติ ACTIVE/ENDED
+    // ค่าสถานะยืนยันกับ backend แล้ว
     const STATUS_LABEL = {
-        ACTIVE: { text: 'กำลังเช่า', cls: 'badge--active' },
-        ENDED:  { text: 'สิ้นสุดแล้ว', cls: 'badge--ended' },
+        ACTIVE: { text: 'กำลังเช่า', long: 'กำลังเช่าอยู่', cls: 'rt-badge--ok' },
+        ENDED:  { text: 'สิ้นสุดแล้ว', long: 'สิ้นสุดแล้ว', cls: 'rt-badge--off' },
+    };
+    const ROOM_STATUS = {
+        OCCUPIED: { text: 'มีผู้เช่า', cls: 'rt-badge--ok' },
+        VACANT:   { text: 'ว่าง', cls: 'rt-badge--info' },
     };
 
-    const el = {};
-    ['detail-state-loading', 'detail-state-error', 'detail-error-message', 'detail-btn-retry',
-     'detail-view', 'detail-title', 'd-tenant', 'd-room', 'd-movein', 'd-moveout', 'd-status',
-     'btn-move-out'].forEach((id) => { el[id] = document.getElementById(id); });
+    const $ = (id) => document.getElementById(id);
+    const set = (id, v) => { $(id).textContent = (v === null || v === undefined || v === '') ? '-' : v; };
+    const money = (n) => '฿' + Number(n).toLocaleString('th-TH', { maximumFractionDigits: 2 });
+    const escapeHtml = (s) => { const d = document.createElement('div'); d.textContent = s ?? ''; return d.innerHTML; };
+
+    // ข้อมูลที่ใช้สร้างไทม์ไลน์ — ค่อย ๆ เติมเมื่อแต่ละส่วนโหลดเสร็จ
+    const tl = { rental: null, contract: null, rentalEvents: [], contractEvents: [] };
 
     async function loadDetail() {
-        el['detail-state-loading'].hidden = false;
-        el['detail-state-error'].hidden = true;
-        el['detail-view'].hidden = true;
+        $('detail-state-loading').hidden = false;
+        $('detail-state-error').hidden = true;
+        $('detail-view').hidden = true;
 
         try {
-            const res = await fetch(API_URL, { headers: { Accept: 'application/json' }, credentials: 'same-origin' });
+            const res = await fetch(API_URL, fetchOpts);
 
-            if (res.status === 401) {
-                window.location.href = '/login';
-                return;
-            }
-            if (res.status === 404) {
-                throw new Error('ไม่พบข้อมูลการเช่านี้ หรือคุณไม่มีสิทธิ์เข้าถึง');
-            }
-            if (!res.ok) {
-                throw new Error('โหลดข้อมูลไม่สำเร็จ (' + res.status + ')');
-            }
+            if (res.status === 401) { window.location.href = '/login'; return; }
+            if (res.status === 404) throw new Error('ไม่พบข้อมูลการเช่านี้ หรือคุณไม่มีสิทธิ์เข้าถึง');
+            if (!res.ok) throw new Error('โหลดข้อมูลไม่สำเร็จ (' + res.status + ')');
 
             const body = await res.json();
             render(body.data);
         } catch (err) {
-            el['detail-error-message'].textContent = err.message;
-            el['detail-state-loading'].hidden = true;
-            el['detail-state-error'].hidden = false;
+            $('detail-error-message').textContent = err.message;
+            $('detail-state-loading').hidden = true;
+            $('detail-state-error').hidden = false;
         }
     }
 
     function render(r) {
-        const tenantName = r.tenant ? `${r.tenant.t_Fname} ${r.tenant.t_Lname}` : '-';
-        const roomName = r.room ? `${r.room.r_name} (ชั้น ${r.room.r_floor})` : '-';
+        tl.rental = r;
 
-        el['detail-title'].textContent = `การเช่า: ${tenantName} — ${roomName}`;
-        el['d-tenant'].textContent = tenantName;
-        el['d-room'].textContent = roomName;
-        el['d-movein'].textContent = r.rt_movein ?? '-';
-        el['d-moveout'].textContent = r.rt_moveout ?? '-';
+        const tenantName = r.tenant ? `${r.tenant.t_Fname ?? ''} ${r.tenant.t_Lname ?? ''}`.trim() : '-';
+        const roomName = r.room ? r.room.r_name : '-';
 
-        const status = STATUS_LABEL[r.rt_status] || { text: r.rt_status, cls: '' };
-        el['d-status'].textContent = status.text;
-        el['d-status'].className = 'badge ' + status.cls;
+        $('detail-title').textContent = `การเช่า · ${tenantName}`;
+        set('d-crumb', tenantName);
 
-        el['btn-move-out'].hidden = r.rt_status !== 'ACTIVE';
+        // การ์ดผู้เช่า (ข้อมูลที่ API รายการเช่ามีให้ก่อน — อีเมลโหลดเพิ่มทีหลัง)
+        set('d-avatar', tenantName !== '-' ? tenantName.charAt(0) : '?');
+        set('d-tenant', tenantName);
+        set('d-tenant-code', r.tenant ? 'TN-' + String(r.tenant.t_id).padStart(3, '0') : '-');
+        set('d-tel', r.tenant?.t_tel);
+        set('d-mail', '-');
 
-        el['detail-state-loading'].hidden = true;
-        el['detail-view'].hidden = false;
+        // การ์ดห้อง
+        set('d-room', roomName);
+        set('d-floor', r.room?.r_floor != null ? `ชั้น ${r.room.r_floor}` : '-');
+        set('d-type', r.room?.r_type);
+        set('d-room-rent', '-');
+        const rs = ROOM_STATUS[r.room?.r_status];
+        $('d-room-status').innerHTML = rs
+            ? `<span class="rt-badge ${rs.cls}">${rs.text}</span>`
+            : escapeHtml(r.room?.r_status ?? '-');
+
+        // การ์ดการเช่า
+        const st = STATUS_LABEL[r.rt_status] || { text: r.rt_status, long: r.rt_status, cls: 'rt-badge--off' };
+        set('d-movein', r.rt_movein);
+        set('d-moveout', r.rt_moveout);
+        set('d-status-text', st.long);
+        $('d-status').textContent = st.text;
+        $('d-status').className = 'rt-badge ' + st.cls;
+
+        const moveOutBtn = $('btn-move-out'); // มีเฉพาะ admin
+        if (moveOutBtn) {
+            moveOutBtn.hidden = r.rt_status !== 'ACTIVE';
+            moveOutBtn.onclick = () => window.RentalMoveOut.open({
+                rentalId: r.rt_id,
+                tenantName,
+                roomName,
+                roomId: r.room?.r_id ?? null,
+                moveIn: r.rt_movein,
+                onDone: () => window.location.reload(), // ข้อมูลหลายส่วน (สัญญา/ไทม์ไลน์/ห้อง) เปลี่ยนพร้อมกัน จึงโหลดหน้าใหม่
+            });
+        }
+
+        $('detail-state-loading').hidden = true;
+        $('detail-view').hidden = false;
+
+        renderTimeline();
+
+        // โหลดส่วนเสริมแบบไม่บล็อกหน้า — พลาดก็แค่แสดง "-"
+        if (r.tenant?.t_id) loadTenantExtra(r.tenant.t_id);
+        if (r.room?.r_id) loadRoomExtra(r.room.r_id);
+        loadRentalEvents();
+
+        // สัญญาอาจโหลดเสร็จก่อนแล้ว
+        if (window.__rentalContract) onContract(window.__rentalContract);
     }
 
-    el['detail-btn-retry'].addEventListener('click', loadDetail);
+    async function loadTenantExtra(tenantId) {
+        try {
+            const res = await fetch(`/api/v1/tenants/${tenantId}`, fetchOpts);
+            if (!res.ok) return;
+            const body = await res.json();
+            set('d-mail', body.data?.t_mail);
+        } catch (_) { /* เงียบไว้ */ }
+    }
+
+    async function loadRoomExtra(roomId) {
+        try {
+            const res = await fetch(`/api/v1/rooms/${roomId}`, fetchOpts);
+            if (!res.ok) return;
+            const body = await res.json();
+            if (body.data?.r_rent != null) set('d-room-rent', money(body.data.r_rent) + '/เดือน');
+        } catch (_) { /* เงียบไว้ */ }
+    }
+
+    // ---------- ไทม์ไลน์ ----------
+    // audit_events ที่ backend บันทึก: rentals (rental_created / rental_moved_out),
+    // contract (CONTRACT_EXTENDED จากหน้าแก้สัญญา), contracts (contract_ended จากย้ายออก)
+    async function fetchEvents(type, id) {
+        try {
+            const res = await fetch(`/api/v1/audit-events?entity_type=${type}&entity_id=${id}`, fetchOpts);
+            if (!res.ok) return [];
+            const body = await res.json();
+            return body.data ?? [];
+        } catch (_) { return []; }
+    }
+
+    async function loadRentalEvents() {
+        tl.rentalEvents = await fetchEvents('rentals', rentalId);
+        renderTimeline();
+    }
+
+    async function loadContractEvents(contractId) {
+        const [a, b] = await Promise.all([
+            fetchEvents('contract', contractId),
+            fetchEvents('contracts', contractId),
+        ]);
+        tl.contractEvents = [...a, ...b];
+        renderTimeline();
+    }
+
+    function onContract(c) {
+        tl.contract = c;
+        renderTimeline();
+        loadContractEvents(c.c_id);
+    }
+    document.addEventListener('rental:contract-loaded', (e) => onContract(e.detail));
+    document.addEventListener('rental:contract-updated', (e) => onContract(e.detail));
+
+    function dateOnly(iso) {
+        // iso 8601 → YYYY-MM-DD ตามเวลาไทย
+        return new Date(iso).toLocaleDateString('sv-SE', { timeZone: 'Asia/Bangkok' });
+    }
+
+    function buildTimeline() {
+        const items = [];
+        const r = tl.rental;
+        if (!r) return items;
+
+        const roomName = r.room?.r_name ?? '-';
+        if (r.rt_movein) {
+            items.push({ date: r.rt_movein, order: 0, title: 'ย้ายเข้า', desc: `ห้อง ${roomName}`, kind: '' });
+        }
+        if (tl.contract?.c_start) {
+            const end = tl.contract.c_end ? `สิ้นสุด ${tl.contract.c_end}` : 'ไม่กำหนดวันสิ้นสุด';
+            items.push({ date: tl.contract.c_start, order: 1, title: 'สร้างสัญญาเช่า', desc: `${tl.contract.c_number} · ${end}`, kind: '' });
+        }
+
+        [...tl.contractEvents, ...tl.rentalEvents].forEach((e) => {
+            const date = dateOnly(e.created_at);
+            const who = e.actor?.u_username ? ` · โดย ${e.actor.u_username}` : '';
+            if (e.action === 'CONTRACT_EXTENDED') {
+                const newEnd = e.new_values?.c_end;
+                items.push({
+                    date, order: 2, kind: 'ok', title: 'แก้ไข/ต่อสัญญา',
+                    desc: (newEnd ? `วันสิ้นสุดใหม่ ${newEnd}` : 'ไม่กำหนดวันสิ้นสุด') + who,
+                    reason: e.reason,
+                });
+            } else if (e.action === 'rental_moved_out') {
+                items.push({
+                    date: e.new_values?.rt_moveout || date, order: 3, kind: 'end', title: 'ย้ายออก',
+                    desc: `ห้อง ${roomName}` + who, reason: e.reason,
+                });
+            } else if (e.action === 'contract_ended') {
+                items.push({
+                    date, order: 4, kind: 'end', title: 'สัญญาสิ้นสุด',
+                    desc: (e.new_values?.c_end ? `วันสิ้นสุด ${e.new_values.c_end}` : '') + who, reason: e.reason,
+                });
+            }
+            // rental_created / room_updated ซ้ำกับรายการที่สร้างจากข้อมูลหลักแล้ว จึงข้าม
+        });
+
+        // ย้ายออกที่ไม่มี audit event (ข้อมูลเก่า) — ใช้ rt_moveout ของการเช่าแทน
+        if (r.rt_moveout && !items.some((i) => i.title === 'ย้ายออก')) {
+            items.push({ date: r.rt_moveout, order: 3, kind: 'end', title: 'ย้ายออก', desc: `ห้อง ${roomName}` });
+        }
+
+        items.sort((a, b) => (a.date === b.date ? a.order - b.order : a.date < b.date ? -1 : 1));
+        return items;
+    }
+
+    function renderTimeline() {
+        const items = buildTimeline();
+        const list = $('timeline-list');
+        if (!items.length) {
+            list.innerHTML = '<li class="rt-muted" style="font-size:0.875rem;">ยังไม่มีประวัติ</li>';
+            return;
+        }
+        list.innerHTML = items.map((i) => `
+            <li>
+                <span class="rt-dot ${i.kind ? 'rt-dot--' + i.kind : ''}"></span>
+                <div>
+                    <div><span class="rt-tl-date">${escapeHtml(i.date)}</span><span class="rt-tl-title">${escapeHtml(i.title)}</span></div>
+                    ${i.desc ? `<div class="rt-tl-desc">${escapeHtml(i.desc)}</div>` : ''}
+                    ${i.reason ? `<div class="rt-tl-reason">เหตุผล: ${escapeHtml(i.reason)}</div>` : ''}
+                </div>
+            </li>
+        `).join('');
+    }
+
+    $('detail-btn-retry').addEventListener('click', loadDetail);
 
     loadDetail();
 })();

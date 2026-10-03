@@ -1,203 +1,197 @@
-{{-- resources/views/rentals/_contract-panel.blade.php --}}
-{{-- ใช้ @include('rentals._contract-panel', ['rentalId' => $rental->rt_id]) เพิ่อดึงหน้า รายละเอียด contract มาเบิ่ง--}}
+{{-- resources/views/rentals/contract.blade.php --}}
+{{-- การ์ดสัญญาเช่า (R3) + ฟอร์มแก้ไข/ต่อสัญญา (R4) --}}
+{{-- ใช้งาน: @include('rentals.contract', ['rentalId' => $rentalId]) ภายในหน้า R3 --}}
+{{-- ส่ง event ให้หน้า R3: 'rental:contract-loaded' / 'rental:contract-updated' (detail = ข้อมูลสัญญา) เพื่อให้ไทม์ไลน์อัปเดต --}}
 
-<div class="contract-panel" data-rental-id="{{ $rentalId }}">
-    <div id="contract-state-loading" class="state-box">กำลังโหลดสัญญา...</div>
-    <div id="contract-state-error" class="state-box state-box--error" hidden>
+@include('rentals._styles')
+
+@php($canEditContract = auth()->user()?->u_role === 'admin')
+
+<section class="rt-card contract-panel" data-rental-id="{{ $rentalId }}" aria-labelledby="contract-card-title">
+    <div id="contract-state-loading" class="rt-state">กำลังโหลดสัญญา...</div>
+    <div id="contract-state-error" class="rt-state rt-state--error" hidden>
         <span id="contract-error-message"></span>
-        <button type="button" id="contract-btn-retry">ลองใหม่</button>
+        <button type="button" id="contract-btn-retry" class="rt-btn rt-btn--sm">ลองใหม่</button>
     </div>
 
     <div id="contract-view" hidden>
-        <div class="contract-panel__grid">
-            <div><span class="label">เลขที่สัญญา</span><span id="c-number"></span></div>
-            <div><span class="label">วันเริ่ม</span><span id="c-start"></span></div>
-            <div><span class="label">วันสิ้นสุด</span><span id="c-end"></span></div>
-            <div><span class="label">ค่าเช่า</span><span id="c-rent"></span></div>
-            <div><span class="label">สถานะ</span><span id="c-status" class="badge"></span></div>
+        <div class="rt-card-head">
+            <h2 class="rt-card-title" id="contract-card-title">ข้อมูลสัญญาเช่า</h2>
+            <span id="c-status" class="rt-badge"></span>
         </div>
 
-        <p id="c-expired-note" class="notice notice--warning" hidden>
+        <div class="rt-field-value rt-mono" id="c-number" style="margin-bottom:12px;">-</div>
+
+        <div class="rt-fields">
+            <div><span class="rt-field-label">วันเริ่มสัญญา</span><span class="rt-field-value" id="c-start">-</span></div>
+            <div><span class="rt-field-label">วันสิ้นสุดสัญญา</span><span class="rt-field-value" id="c-end">-</span></div>
+            <div><span class="rt-field-label">ค่าเช่าตามสัญญา</span><span class="rt-field-value rt-money" id="c-rent">-</span></div>
+            <div><span class="rt-field-label">เงินประกัน</span><span class="rt-field-value" id="c-deposit">-</span></div>
+        </div>
+
+        <p id="c-expired-note" class="rt-notice rt-notice--warn" style="margin-top:14px;margin-bottom:0;" hidden>
             สัญญาหมดอายุแล้วแต่ยังพักอยู่ — ยังออกบิลต่อได้ตามปกติ ห้องจะไม่ถูกปรับเป็นว่างเอง
         </p>
 
-        <button type="button" id="contract-btn-edit" class="btn">แก้ไข / ต่อสัญญา</button>
+        <p id="contract-saved-note" class="rt-notice rt-notice--ok" style="margin-top:14px;margin-bottom:0;" hidden>
+            บันทึกการแก้ไขสัญญาเรียบร้อย
+        </p>
 
-        <div class="contract-history">
-            <h3>ประวัติการแก้สัญญา</h3>
-            <div id="history-loading" class="state-box state-box--small">กำลังโหลดประวัติ...</div>
-            <div id="history-empty" class="state-box state-box--small" hidden>ยังไม่มีประวัติการแก้ไข</div>
-            <ul id="history-list" class="history-list" hidden></ul>
-        </div>
+        @if ($canEditContract)
+            <div style="margin-top:16px;">
+                <button type="button" id="contract-btn-edit" class="rt-btn rt-btn--sm">แก้ไข / ต่อสัญญา</button>
+            </div>
+        @endif
     </div>
 
     {{-- R4: ฟอร์มแก้สัญญา — ซ่อนไว้ก่อน เปิดเมื่อกด "แก้ไข / ต่อสัญญา" --}}
-    <form id="contract-edit-form" hidden>
-        <div class="form-field">
-            <label for="f-c-end">วันสิ้นสุดสัญญาใหม่ (เว้นว่าง = ไม่กำหนด)</label>
-            <input type="date" id="f-c-end" name="c_end">
-            <span class="field-error" id="err-c-end"></span>
-        </div>
-        <div class="form-field">
-            <label for="f-reason">เหตุผล (จำเป็น)</label>
-            <textarea id="f-reason" name="reason" required maxlength="500"></textarea>
-            <span class="field-error" id="err-reason"></span>
-        </div>
-        <div class="form-actions">
-            <button type="submit" id="contract-btn-save" class="btn btn--primary">บันทึก</button>
-            <button type="button" id="contract-btn-cancel" class="btn">ยกเลิก</button>
-        </div>
-        <p id="contract-form-error" class="notice notice--error" hidden></p>
-    </form>
-</div>
+    @if ($canEditContract)
+        <form id="contract-edit-form" hidden style="margin-top:16px;padding-top:16px;border-top:1px solid var(--rt-border);">
+            <h3 class="rt-card-title rt-card-title--lg" style="margin-bottom:12px;">แก้ไข / ต่อสัญญา</h3>
 
-<style>
-    .contract-panel { border: 1px solid #eee; border-radius: 6px; padding: 16px; margin-top: 16px; }
-    .contract-panel__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 12px; }
-    .contract-panel__grid .label { display: block; font-size: 0.85em; color: #666; }
-    .notice { padding: 8px 12px; border-radius: 4px; margin: 8px 0; }
-    .notice--warning { background: #fef9c3; color: #854d0e; }
-    .notice--error { background: #fef2f2; color: #b91c1c; }
-    .badge { padding: 2px 8px; border-radius: 999px; font-size: 0.85em; }
-    .badge--active { background: #dcfce7; color: #166534; }
-    .badge--warning { background: #fef9c3; color: #854d0e; }
-    .badge--ended { background: #f3f4f6; color: #4b5563; }
-    .form-field { margin-bottom: 12px; }
-    .form-field label { display: block; margin-bottom: 4px; font-size: 0.9em; }
-    .form-field input, .form-field textarea { width: 100%; max-width: 400px; padding: 6px 10px; border: 1px solid #ccc; border-radius: 4px; }
-    .field-error { color: #b91c1c; font-size: 0.85em; display: block; }
-    .form-actions { display: flex; gap: 8px; }
-    .contract-history { margin-top: 20px; border-top: 1px solid #eee; padding-top: 12px; }
-    .contract-history h3 { font-size: 0.95em; margin-bottom: 8px; }
-    .state-box--small { padding: 8px 0; text-align: left; border: none; color: #888; font-size: 0.85em; }
-    .history-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px; }
-    .history-list li { font-size: 0.85em; padding: 8px 10px; background: #fafafa; border-radius: 4px; }
-    .history-list .history-reason {color: #333333; /* หรือสีเข้มที่ต้องการ เช่น #1f2937 */margin-top: 4px; }
-    .history-list .history-meta { color: #020202; display: block; margin-bottom: 2px; }
-</style>
+            <div class="rt-form-field">
+                <label for="f-c-end">วันสิ้นสุดสัญญาใหม่ <span class="rt-muted" style="font-weight:400;">(เว้นว่าง = ไม่กำหนด)</span></label>
+                <input type="date" id="f-c-end" name="c_end" class="rt-input">
+                <div class="rt-chips" id="extend-chips" hidden>
+                    <span class="rt-hint" style="margin:0 4px 0 0;align-self:center;">ต่อเพิ่ม:</span>
+                    <button type="button" class="rt-chip" data-months="1">+1 เดือน</button>
+                    <button type="button" class="rt-chip" data-months="3">+3 เดือน</button>
+                    <button type="button" class="rt-chip" data-months="6">+6 เดือน</button>
+                    <button type="button" class="rt-chip" data-months="12">+1 ปี</button>
+                </div>
+                <span class="rt-hint" id="extend-hint" hidden></span>
+                <span class="rt-field-error" id="err-c-end"></span>
+            </div>
+
+            <div class="rt-form-field">
+                <label for="f-reason">เหตุผล <span class="rt-req">*</span></label>
+                <textarea id="f-reason" name="reason" class="rt-input" required maxlength="500" placeholder="เช่น ผู้เช่าขอต่อสัญญาอีก 6 เดือน"></textarea>
+                <span class="rt-hint" id="reason-count">0 / 500</span>
+                <span class="rt-field-error" id="err-reason"></span>
+            </div>
+
+            <p id="contract-form-error" class="rt-notice rt-notice--err" hidden></p>
+
+            <div class="rt-form-actions" style="margin-top:8px;">
+                <button type="button" id="contract-btn-cancel" class="rt-btn">ยกเลิก</button>
+                <button type="submit" id="contract-btn-save" class="rt-btn rt-btn--primary">บันทึก</button>
+            </div>
+        </form>
+    @endif
+</section>
 
 <script>
 (function () {
-    const rentalId = document.querySelector('.contract-panel').dataset.rentalId;
+    const panel = document.querySelector('.contract-panel');
+    const rentalId = panel.dataset.rentalId;
     const API_URL = `/api/v1/rentals/${rentalId}/contract`;
+    const fetchOpts = { headers: { Accept: 'application/json' }, credentials: 'same-origin' };
 
-    // TODO(ยืนยันกับพรี่เกลือ): ค่า c_status จริง — ตอนนี้สมมติ ACTIVE/EXPIRED/ENDED
+    // ค่า c_status ยืนยันกับ backend แล้ว: ACTIVE / EXPIRED / ENDED
     const STATUS_LABEL = {
-        ACTIVE:  { text: 'มีผล', cls: 'badge--active' },
-        EXPIRED: { text: 'หมดอายุ (ยังพักอยู่)', cls: 'badge--warning' },
-        ENDED:   { text: 'สิ้นสุด', cls: 'badge--ended' },
+        ACTIVE:  { text: 'มีผล', cls: 'rt-badge--ok' },
+        EXPIRED: { text: 'หมดอายุ (ยังพักอยู่)', cls: 'rt-badge--warn' },
+        ENDED:   { text: 'สิ้นสุด', cls: 'rt-badge--off' },
     };
 
     const el = {};
     ['contract-state-loading', 'contract-state-error', 'contract-error-message', 'contract-btn-retry',
-     'contract-view', 'c-number', 'c-start', 'c-end', 'c-rent', 'c-status', 'c-expired-note',
-     'contract-btn-edit', 'contract-edit-form', 'f-c-end', 'f-reason', 'err-c-end', 'err-reason',
-     'contract-btn-save', 'contract-btn-cancel', 'contract-form-error',
-     'history-loading', 'history-empty', 'history-list'].forEach((id) => {
-        el[id] = document.getElementById(id);
-    });
+     'contract-view', 'c-number', 'c-start', 'c-end', 'c-rent', 'c-deposit', 'c-status', 'c-expired-note',
+     'contract-saved-note', 'contract-btn-edit', 'contract-edit-form', 'f-c-end', 'f-reason', 'err-c-end',
+     'err-reason', 'contract-btn-save', 'contract-btn-cancel', 'contract-form-error', 'extend-chips',
+     'extend-hint', 'reason-count'].forEach((id) => { el[id] = document.getElementById(id); }); // ปุ่ม/ฟอร์มแก้ไขมีเฉพาะ admin
 
     let currentContract = null;
     let saving = false; // กันกดบันทึกซ้ำ
+
+    const money = (n) => '฿' + Number(n).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
     function showState(name) {
         el['contract-state-loading'].hidden = name !== 'loading';
         el['contract-state-error'].hidden = name !== 'error';
         el['contract-view'].hidden = name !== 'view' && name !== 'edit';
-        el['contract-edit-form'].hidden = name !== 'edit';
+        if (el['contract-edit-form']) el['contract-edit-form'].hidden = name !== 'edit';
+        if (el['contract-btn-edit']) el['contract-btn-edit'].hidden = name === 'edit';
+    }
+
+    function announce(type, contract) {
+        window.__rentalContract = contract; // เผื่อหน้า R3 ยังไม่ทันฟัง event
+        document.dispatchEvent(new CustomEvent(type, { detail: contract }));
     }
 
     async function loadContract() {
         showState('loading');
         try {
-            const res = await fetch(API_URL, { headers: { Accept: 'application/json' }, credentials: 'same-origin' });
+            const res = await fetch(API_URL, fetchOpts);
             if (res.status === 404) throw new Error('ไม่พบสัญญาของการเช่านี้');
             if (!res.ok) throw new Error('โหลดสัญญาไม่สำเร็จ (' + res.status + ')');
 
             const body = await res.json();
             currentContract = body.data;
             renderView(currentContract);
-            loadHistory(currentContract.c_id);
+            announce('rental:contract-loaded', currentContract);
         } catch (err) {
             el['contract-error-message'].textContent = err.message;
             showState('error');
         }
     }
 
-    
-    async function loadHistory(contractId) {
-        el['history-loading'].hidden = false;
-        el['history-empty'].hidden = true;
-        el['history-list'].hidden = true;
-
-        try {
-            const res = await fetch(`/api/v1/audit-events?entity_type=contract&entity_id=${contractId}`, {
-                headers: { Accept: 'application/json' },
-                credentials: 'same-origin',
-            });
-            if (!res.ok) throw new Error('โหลดประวัติไม่สำเร็จ');
-
-            const body = await res.json();
-            renderHistory(body.data ?? []);
-        } catch (err) {
-            // ประวัติโหลดไม่ได้ ไม่ควรบล็อกการดูสัญญาหลัก แค่โชว์ว่าง
-            el['history-loading'].hidden = true;
-            el['history-empty'].hidden = false;
-            el['history-empty'].textContent = 'โหลดประวัติไม่สำเร็จ';
-        }
-    }
-
-    function renderHistory(events) {
-        el['history-loading'].hidden = true;
-
-        if (!events.length) {
-            el['history-empty'].hidden = false;
-            el['history-list'].hidden = true;
-            return;
-        }
-
-        el['history-list'].innerHTML = events.map((e) => {
-            const who = e.actor ? e.actor.u_username : 'ระบบ';
-            const when = new Date(e.created_at).toLocaleString('th-TH');
- const reasonLine = e.reason ? `<div class="history-reason">เหตุผล: ${escapeHtml(e.reason)}</div>` : '';
-            return `
-                <li>
-                    <span class="history-meta">${escapeHtml(who)} • ${when} • ${escapeHtml(e.action)}</span>
-                    ${reasonLine}
-                </li>
-            `;
-        }).join('');
-
-        el['history-empty'].hidden = true;
-        el['history-list'].hidden = false;
-    }
-
-    function escapeHtml(str) {
-        const div = document.createElement('div');
-        div.textContent = str ?? '';
-        return div.innerHTML;
-    }
-
     function renderView(c) {
-        el['c-number'].textContent = c.c_number;
-        el['c-start'].textContent = c.c_start;
+        el['c-number'].textContent = c.c_number ?? '-';
+        el['c-start'].textContent = c.c_start ?? '-';
         el['c-end'].textContent = c.c_end ?? 'ไม่กำหนดวันสิ้นสุด';
-        el['c-rent'].textContent = Number(c.c_rent).toLocaleString('th-TH', { minimumFractionDigits: 2 }) + ' บาท';
+        el['c-rent'].textContent = c.c_rent != null ? money(c.c_rent) + '/เดือน' : '-';
+        el['c-deposit'].textContent = c.c_deposit != null ? money(c.c_deposit) : '-';
 
-        const status = STATUS_LABEL[c.c_status] || { text: c.c_status, cls: '' };
+        const status = STATUS_LABEL[c.c_status] || { text: c.c_status, cls: 'rt-badge--off' };
         el['c-status'].textContent = status.text;
-        el['c-status'].className = 'badge ' + status.cls;
+        el['c-status'].className = 'rt-badge ' + status.cls;
 
         el['c-expired-note'].hidden = c.c_status !== 'EXPIRED';
 
+        // แก้/ต่อสัญญาได้เฉพาะสัญญาที่ยังไม่สิ้นสุด
+        if (el['contract-btn-edit']) el['contract-btn-edit'].hidden = c.c_status === 'ENDED';
+
         showState('view');
+    }
+
+    // ---------- R4: แก้ไข / ต่อสัญญา ----------
+    function todayStr() {
+        return new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Bangkok' });
+    }
+
+    // บวกเดือนกับวันที่ YYYY-MM-DD (ถ้าวันเกินเดือนปลายทาง เช่น 31 → ใช้วันสุดท้ายของเดือนนั้น)
+    function addMonths(dateStr, months) {
+        const [y, m, d] = dateStr.split('-').map(Number);
+        const target = new Date(Date.UTC(y, m - 1 + months, 1));
+        const lastDay = new Date(Date.UTC(target.getUTCFullYear(), target.getUTCMonth() + 1, 0)).getUTCDate();
+        target.setUTCDate(Math.min(d, lastDay));
+        return target.toISOString().slice(0, 10);
+    }
+
+    function extendBase() {
+        // ต่อจากวันสิ้นสุดเดิม ถ้าสัญญาหมดไปแล้วให้นับจากวันนี้
+        const end = currentContract.c_end;
+        const today = todayStr();
+        return end && end >= today ? end : today;
     }
 
     function openEditForm() {
         el['f-c-end'].value = currentContract.c_end ?? '';
         el['f-reason'].value = '';
+        el['reason-count'].textContent = '0 / 500';
+        el['contract-saved-note'].hidden = true;
         clearFieldErrors();
+
+        // ปุ่มต่อเพิ่มแสดงเฉพาะสัญญาที่มีวันสิ้นสุด
+        const hasEnd = !!currentContract.c_end;
+        el['extend-chips'].hidden = !hasEnd;
+        el['extend-hint'].hidden = !hasEnd;
+        if (hasEnd) {
+            el['extend-hint'].textContent = `ต่อเพิ่มจะนับจาก ${extendBase()} — ยังไม่บันทึกจนกว่าจะกด "บันทึก"`;
+        }
         showState('edit');
+        el['f-c-end'].focus();
     }
 
     function clearFieldErrors() {
@@ -247,7 +241,8 @@
 
             currentContract = body.data;
             renderView(currentContract);
-            loadHistory(currentContract.c_id);
+            el['contract-saved-note'].hidden = false;
+            announce('rental:contract-updated', currentContract);
         } catch (err) {
             el['contract-form-error'].textContent = err.message;
             el['contract-form-error'].hidden = false;
@@ -258,9 +253,20 @@
     }
 
     el['contract-btn-retry'].addEventListener('click', loadContract);
-    el['contract-btn-edit'].addEventListener('click', openEditForm);
-    el['contract-btn-cancel'].addEventListener('click', () => showState('view'));
-    el['contract-edit-form'].addEventListener('submit', submitEdit);
+
+    if (el['contract-edit-form']) {
+        el['contract-btn-edit'].addEventListener('click', openEditForm);
+        el['contract-btn-cancel'].addEventListener('click', () => showState('view'));
+        el['contract-edit-form'].addEventListener('submit', submitEdit);
+        el['f-reason'].addEventListener('input', () => {
+            el['reason-count'].textContent = `${el['f-reason'].value.length} / 500`;
+        });
+        el['extend-chips'].addEventListener('click', (ev) => {
+            const btn = ev.target.closest('[data-months]');
+            if (!btn) return;
+            el['f-c-end'].value = addMonths(extendBase(), Number(btn.dataset.months));
+        });
+    }
 
     loadContract();
 })();
