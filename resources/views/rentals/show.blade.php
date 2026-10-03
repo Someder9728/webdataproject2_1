@@ -19,11 +19,10 @@
                 <h1 class="rt-title" id="detail-title">การเช่า</h1>
             </div>
             <div class="rt-head-actions">
-                {{-- ปุ่มนี้ยังไม่ผูก logic จริง (หน้า Move-out เป็นงานถัดไป) แสดงเฉพาะเมื่อ ACTIVE และเป็น admin --}}
+                {{-- ปุ่มย้ายออก: แสดงเฉพาะเมื่อ ACTIVE และเป็น admin — กดแล้วเปิด modal (_move-out-modal) --}}
                 @if (auth()->user()?->u_role === 'admin')
                     <button type="button" id="btn-move-out" class="rt-btn rt-btn--danger" data-action="move-out"
-                            data-rental-id="{{ $rentalId }}" hidden disabled
-                            title="ฟังก์ชันย้ายออกจะเปิดใช้งานเร็ว ๆ นี้">ย้ายออก</button>
+                            data-rental-id="{{ $rentalId }}" hidden>ย้ายออก</button>
                 @endif
                 <a href="{{ route('rentals.index') }}" class="rt-btn">‹ ย้อนกลับ</a>
             </div>
@@ -85,6 +84,11 @@
             </div>
         </div>
     </div>
+
+    {{-- Modal ย้ายออก (Move-out) — เฉพาะ admin --}}
+    @if (auth()->user()?->u_role === 'admin')
+        @include('rentals._move-out-modal')
+    @endif
 </div>
 
 <script>
@@ -168,7 +172,17 @@
         $('d-status').className = 'rt-badge ' + st.cls;
 
         const moveOutBtn = $('btn-move-out'); // มีเฉพาะ admin
-        if (moveOutBtn) moveOutBtn.hidden = r.rt_status !== 'ACTIVE';
+        if (moveOutBtn) {
+            moveOutBtn.hidden = r.rt_status !== 'ACTIVE';
+            moveOutBtn.onclick = () => window.RentalMoveOut.open({
+                rentalId: r.rt_id,
+                tenantName,
+                roomName,
+                roomId: r.room?.r_id ?? null,
+                moveIn: r.rt_movein,
+                onDone: () => window.location.reload(), // ข้อมูลหลายส่วน (สัญญา/ไทม์ไลน์/ห้อง) เปลี่ยนพร้อมกัน จึงโหลดหน้าใหม่
+            });
+        }
 
         $('detail-state-loading').hidden = true;
         $('detail-view').hidden = false;

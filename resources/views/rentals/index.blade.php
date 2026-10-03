@@ -88,6 +88,9 @@
         <span id="pagination-info"></span>
         <button type="button" id="btn-next-page" class="rt-btn rt-btn--sm">ถัดไป</button>
     </div>
+
+    {{-- Modal ย้ายออก (Move-out) --}}
+    @include('rentals._move-out-modal')
 </div>
 
 <script>
@@ -122,6 +125,7 @@
     };
 
     let state = { page: 1, search: '' };
+    let rowsById = new Map(); // rt_id -> ข้อมูลแถว (ใช้ส่งให้ modal ย้ายออก)
     let searchDebounce = null;
     let inFlight = false; // กันยิงซ้ำระหว่างรอ response
 
@@ -182,6 +186,7 @@
             return;
         }
 
+        rowsById = new Map(rows.map((r) => [String(r.rt_id), r]));
         const active = rows.filter((r) => r.rt_status === 'ACTIVE');
         const ended = rows.filter((r) => r.rt_status !== 'ACTIVE');
 
@@ -224,7 +229,7 @@
         const initial = name !== '-' ? name.charAt(0) : '?';
         const room = r.room ? r.room.r_name : '-';
 
-        // ปุ่ม "ย้ายออก" ยังไม่เปิดใช้งาน — รอทำหน้า Move-out (งานถัดไป) ผูกด้วย data-action="move-out" + data-rental-id
+        // ปุ่ม "ย้ายออก" เปิด modal (ดู _move-out-modal.blade.php) ผ่าน event delegation ด้านล่าง
         return `
             <tr>
                 <td><div class="rt-person"><span class="rt-avatar">${escapeHtml(initial)}</span>${escapeHtml(name)}</div></td>
@@ -234,8 +239,7 @@
                 <td>${statusBadge(r)}</td>
                 <td class="rt-actions">
                     <a href="/rentals/${r.rt_id}" class="rt-btn rt-btn--sm rt-btn--soft">ดูรายละเอียด</a>
-                    <button type="button" class="rt-btn rt-btn--sm" data-action="move-out" data-rental-id="${r.rt_id}"
-                            disabled title="ฟังก์ชันย้ายออกจะเปิดใช้งานเร็ว ๆ นี้">ย้ายออก</button>
+                    <button type="button" class="rt-btn rt-btn--sm" data-action="move-out" data-rental-id="${r.rt_id}">ย้ายออก</button>
                 </td>
             </tr>
         `;
@@ -272,6 +276,22 @@
             state.page = 1;
             loadRentals();
         }, 300);
+    });
+
+    // กด "ย้ายออก" → เปิด modal แล้วรีเฟรชรายการเมื่อย้ายออกสำเร็จ
+    el.activeBody.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-action="move-out"]');
+        if (!btn) return;
+        const r = rowsById.get(btn.dataset.rentalId);
+        if (!r) return;
+        window.RentalMoveOut.open({
+            rentalId: r.rt_id,
+            tenantName: tenantName(r),
+            roomName: r.room ? r.room.r_name : '-',
+            roomId: r.room ? r.room.r_id : null,
+            moveIn: r.rt_movein,
+            onDone: loadRentals,
+        });
     });
 
     el.retry.addEventListener('click', loadRentals);
