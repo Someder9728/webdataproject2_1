@@ -63,7 +63,7 @@ class CreateInitialAdmin extends Command
             return self::FAILURE;
         }
 
-        $user = new User();
+        $user = new User;
         $user->u_username = $username;
         $user->u_password = $password;
         $user->u_role = 'admin';

@@ -22,7 +22,7 @@ class SuspendAccount
 
         DB::transaction(function () use ($actor, $target, $validated) {
             // อ่านสถานะล่าสุดภายใน Transaction
-            $actor = User::find($actor->getKey());
+            $actor = User::whereKey($actor->getKey())->first();
 
             abort_unless(
                 $actor &&
@@ -32,7 +32,7 @@ class SuspendAccount
                 403
             );
 
-            $target = User::findOrFail($target->getKey());
+            $target = User::whereKey($target->getKey())->firstOrFail();
 
             if (! $target->is_active) {
                 abort(409, 'บัญชีนี้ถูกระงับแล้ว');

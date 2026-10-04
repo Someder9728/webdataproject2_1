@@ -62,8 +62,7 @@ class AccountController extends Controller
                 'u_role' => $account->u_role,
                 'tenants_t_id' => $account->tenants_t_id,
                 'is_active' => (bool) $account->is_active,
-                'must_change_password' =>
-                    (bool) $account->must_change_password,
+                'must_change_password' => (bool) $account->must_change_password,
             ],
             'message' => $message,
         ]);

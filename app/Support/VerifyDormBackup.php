@@ -7,6 +7,9 @@ use RuntimeException;
 
 class VerifyDormBackup
 {
+    /**
+     * @return array<string, mixed>
+     */
     public function check(string $directory, string $backupId): array
     {
         $root = realpath($directory);
@@ -21,8 +24,14 @@ class VerifyDormBackup
             throw new RuntimeException('Backup manifest not found or invalid.');
         }
 
+        $contents = file_get_contents($manifestPath);
+
+        if ($contents === false) {
+            throw new RuntimeException('Cannot read backup manifest.');
+        }
+
         $manifest = json_decode(
-            file_get_contents($manifestPath),
+            $contents,
             true,
             512,
             JSON_THROW_ON_ERROR
@@ -85,17 +94,17 @@ class VerifyDormBackup
         $database->exec('PRAGMA query_only = ON');
 
         if (
-            $database->query('PRAGMA integrity_check')
+            SqliteQuery::run($database, 'PRAGMA integrity_check')
                 ->fetchAll(PDO::FETCH_COLUMN) !== ['ok']
         ) {
             throw new RuntimeException('SQLite integrity check failed.');
         }
 
-        if ($database->query('PRAGMA foreign_key_check')->fetchAll() !== []) {
+        if (SqliteQuery::run($database, 'PRAGMA foreign_key_check')->fetchAll() !== []) {
             throw new RuntimeException('SQLite foreign key check failed.');
         }
 
-        $references = $database->query("
+        $references = SqliteQuery::run($database, "
             SELECT p_proof AS path
             FROM payments
             WHERE p_proof IS NOT NULL AND p_proof <> ''

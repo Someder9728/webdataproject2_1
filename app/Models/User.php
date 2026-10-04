@@ -2,11 +2,11 @@
 
 namespace App\Models;
 
-use App\Models\Tenant;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -31,14 +31,15 @@ class User extends Authenticatable implements PasskeyUser
     use HasFactory,
         Notifiable,
         PasskeyAuthenticatable,
-        TwoFactorAuthenticatable,
-        SoftDeletes;
+        SoftDeletes,
+        TwoFactorAuthenticatable;
 
     protected $primaryKey = 'u_id';
 
     protected $table = 'users';
 
-    public function tenant()
+    /** @return BelongsTo<Tenant, $this> */
+    public function tenant(): BelongsTo
     {
         return $this->belongsTo(Tenant::class, 'tenants_t_id', 't_id');
     }
@@ -58,9 +59,9 @@ class User extends Authenticatable implements PasskeyUser
     }
 
     public function initials(): string
-{
-    return mb_strtoupper(
-        mb_substr((string) $this->u_username, 0, 2)
-    );
-}
+    {
+        return mb_strtoupper(
+            mb_substr((string) $this->u_username, 0, 2)
+        );
+    }
 }

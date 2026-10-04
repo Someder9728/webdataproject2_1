@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\Auth;
 beforeEach(function () {
     config(['session.driver' => 'database']);
 
-    $this->account = new User();
+    $this->account = new User;
     $this->account->u_username = 'livewire_test_admin';
     $this->account->u_password = 'Test-Password-1234';
     $this->account->u_role = 'admin';

@@ -20,13 +20,16 @@ class SubmitPaymentProof
         private SqliteTransaction $transactions
     ) {}
 
+    /**
+     * @param  array<string, mixed>  $input
+     */
     public function handle(
         User $actor,
         Invoice $invoice,
         array $input
     ): Payment {
-        $actor = User::findOrFail($actor->getKey());
-        $invoice = Invoice::findOrFail($invoice->getKey());
+        $actor = User::whereKey($actor->getKey())->firstOrFail();
+        $invoice = Invoice::whereKey($invoice->getKey())->firstOrFail();
 
         Gate::forUser($actor)->authorize('submitPayment', $invoice);
 
@@ -79,8 +82,8 @@ class SubmitPaymentProof
                 $path
             ) {
                 // ทุก retry ต้องอ่านสถานะและสิทธิ์ใหม่
-                $currentActor = User::findOrFail($actor->getKey());
-                $currentInvoice = Invoice::findOrFail($invoice->getKey());
+                $currentActor = User::whereKey($actor->getKey())->firstOrFail();
+                $currentInvoice = Invoice::whereKey($invoice->getKey())->firstOrFail();
 
                 Gate::forUser($currentActor)->authorize(
                     'submitPayment',
@@ -154,6 +157,9 @@ class SubmitPaymentProof
         }
     }
 
+    /**
+     * @param  array<string, mixed>  $validated
+     */
     private function validatePayment(
         Invoice $invoice,
         array $validated

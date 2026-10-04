@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('repairs', function (Blueprint $table) {
-             $table->id('rp_id');
+            $table->id('rp_id');
             $table->string('rp_name');
             $table->string('rp_description')->nullable();
             $table->string('rp_status');
@@ -23,7 +23,6 @@ return new class extends Migration
                 ->nullable()
                 ->constrained('rooms', 'r_id')
                 ->nullOnDelete();
-
 
             $table->timestamps();
             $table->softDeletes();

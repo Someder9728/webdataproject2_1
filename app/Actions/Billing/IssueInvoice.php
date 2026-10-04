@@ -6,8 +6,8 @@ use App\Models\AuditEvent;
 use App\Models\Invoice;
 use App\Models\Rental;
 use App\Models\User;
-use Illuminate\Support\Facades\Validator;
 use App\Support\SqliteTransaction;
+use Illuminate\Support\Facades\Validator;
 
 class IssueInvoice
 {
@@ -16,13 +16,17 @@ class IssueInvoice
         private SqliteTransaction $transactions
     ) {}
 
+    /**
+     * @param  array<string, mixed>  $input
+     * @return array<string, mixed>
+     */
     public function handle(
         User $actor,
         array $input,
         bool $persist = false
     ): array {
         return $this->transactions->run(function () use ($actor, $input, $persist) {
-            $actor = User::find($actor->getKey());
+            $actor = User::whereKey($actor->getKey())->first();
 
             abort_unless(
                 $actor &&
@@ -42,7 +46,7 @@ class IssueInvoice
                 ],
             ])->validate();
 
-            $rental = Rental::findOrFail($validated['rentals_rt_id']);
+            $rental = Rental::whereKey($validated['rentals_rt_id'])->firstOrFail();
 
             $snapshot = $this->calculator->handle($rental, $validated);
 

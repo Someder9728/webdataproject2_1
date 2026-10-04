@@ -1,14 +1,15 @@
 <?php
 
-
 use App\Http\Middleware\EnsureAccountIsActive;
 use App\Http\Middleware\EnsurePasswordIsChanged;
+use App\Http\Middleware\EnsureRole;
+use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
-use App\Http\Middleware\EnsureRole;
-use Illuminate\Auth\AuthenticationException;
+use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\Response;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -17,20 +18,18 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-    $middleware->web(append: [
-        EnsureAccountIsActive::class,
-    ]);
+        $middleware->web(append: [
+            EnsureAccountIsActive::class,
+        ]);
 
-    $middleware->alias([
-        'password.changed' => EnsurePasswordIsChanged::class,
-        'role' => EnsureRole::class,
+        $middleware->alias([
+            'password.changed' => EnsurePasswordIsChanged::class,
+            'role' => EnsureRole::class,
         ]);
     })
-     
-        ->withExceptions(function (Exceptions $exceptions): void {
+    ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
-            fn (Request $request) =>
-                $request->is('api/*') || $request->expectsJson(),
+            fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );
 
         $exceptions->render(function (
@@ -49,8 +48,8 @@ return Application::configure(basePath: dirname(__DIR__))
         });
 
         $exceptions->respond(function (
-            \Symfony\Component\HttpFoundation\Response $response,
-            \Throwable $exception,
+            Response $response,
+            Throwable $exception,
             Request $request
         ) {
             $status = $response->getStatusCode();
@@ -104,7 +103,7 @@ return Application::configure(basePath: dirname(__DIR__))
                 'code' => $code,
             ];
 
-            if ($response instanceof \Symfony\Component\HttpFoundation\JsonResponse) {
+            if ($response instanceof JsonResponse) {
                 $response->setData($payload);
             } else {
                 $response->setContent(json_encode(

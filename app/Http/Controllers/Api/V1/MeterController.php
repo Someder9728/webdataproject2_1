@@ -19,8 +19,8 @@ class MeterController extends Controller
             'start_meter_id' => ['required', 'integer'],
             'end_meter_id' => ['required', 'integer'],
         ]);
-        $start = $room->meters()->findOrFail($data['start_meter_id']);
-        $end = $room->meters()->findOrFail($data['end_meter_id']);
+        $start = $room->meters()->whereKey($data['start_meter_id'])->firstOrFail();
+        $end = $room->meters()->whereKey($data['end_meter_id'])->firstOrFail();
 
         return response()->json(['data' => [
             'start_meter_id' => $start->getKey(), 'end_meter_id' => $end->getKey(),
@@ -89,7 +89,9 @@ class MeterController extends Controller
         );
     }
 
-    /** @return array<string, mixed> */
+    /**
+     * @return array<string, mixed>
+     */
     private function present(Meter $meter): array
     {
         return [

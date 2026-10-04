@@ -6,6 +6,7 @@ use App\Models\Meter;
 use App\Models\Room;
 use App\Models\Tenant;
 use App\Models\User;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 beforeEach(function () {
     $this->admin = User::factory()->create([
@@ -180,9 +181,9 @@ test('guest cannot read or record meters', function () {
 test('restricted accounts cannot read or record meters', function (array $changes) {
     $this->admin->forceFill($changes)->save();
 
-        foreach ($changes as $field => $value) {
-            expect($this->admin->fresh()->getAttribute($field))->toBe($value);
-        }
+    foreach ($changes as $field => $value) {
+        expect($this->admin->fresh()->getAttribute($field))->toBe($value);
+    }
 
     $this->actingAs($this->admin->fresh())
         ->getJson($this->url)
@@ -211,7 +212,7 @@ test('action rechecks actor even when caller holds stale model', function () {
         );
 
         $this->fail('Inactive actor was allowed');
-    } catch (\Symfony\Component\HttpKernel\Exception\HttpException $exception) {
+    } catch (HttpException $exception) {
         expect($exception->getStatusCode())->toBe(403);
     }
 

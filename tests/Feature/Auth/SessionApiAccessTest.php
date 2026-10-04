@@ -24,7 +24,6 @@ test('active account can read its own account through session auth', function ()
         ->assertJsonPath('data.is_active', true)
         ->assertJsonPath('data.must_change_password', false);
 
-    
     $keys = array_keys($response->json('data'));
     sort($keys);
 

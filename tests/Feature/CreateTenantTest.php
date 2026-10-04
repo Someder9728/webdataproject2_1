@@ -2,8 +2,8 @@
 
 use App\Actions\Tenants\CreateTenant;
 use App\Models\AuditEvent;
-use App\Models\Tenant;
 use App\Models\User;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
@@ -106,7 +106,7 @@ test('action rechecks current account restrictions', function (array $changes) {
         app(CreateTenant::class)->handle($this->admin, $this->input);
 
         $this->fail('Expected authorization failure.');
-    } catch (\Illuminate\Auth\Access\AuthorizationException $exception) {
+    } catch (AuthorizationException $exception) {
         expect($exception->status() ?? 403)->toBe(403);
     } catch (HttpExceptionInterface $exception) {
         expect($exception->getStatusCode())->toBe(403);

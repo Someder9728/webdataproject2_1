@@ -19,7 +19,6 @@ return new class extends Migration
             $table->string('t_mail')->nullable();
             $table->text('t_address')->nullable();
 
-
             $table->timestamps();
             $table->softDeletes();
         });

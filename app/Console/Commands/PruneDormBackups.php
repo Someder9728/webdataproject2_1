@@ -46,6 +46,10 @@ class PruneDormBackups extends Command
             $backups = [];
 
             foreach (new FilesystemIterator($root) as $entry) {
+                if (! $entry instanceof \SplFileInfo) {
+                    throw new RuntimeException('Invalid backup directory entry.');
+                }
+
                 $name = $entry->getFilename();
 
                 if (! preg_match('/\A\d{8}T\d{6}Z-[a-f0-9]{8}\z/', $name)) {
@@ -131,6 +135,7 @@ class PruneDormBackups extends Command
             foreach ($expired as $name => $backup) {
                 if ($this->option('dry-run')) {
                     $this->line('Would remove: '.$name);
+
                     continue;
                 }
 

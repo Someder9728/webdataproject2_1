@@ -2,10 +2,30 @@
 
 declare(strict_types=1);
 
+use App\Actions\Billing\UpdateInvoice;
+use App\Actions\Payments\RecordWalkInPayment;
+use App\Actions\Payments\ReviewPaymentProof;
+use App\Actions\Payments\SubmitPaymentProof;
+use App\Models\AuditEvent;
+use App\Models\Invoice;
+use App\Models\Meter;
+use App\Models\Payment;
+use App\Models\PaymentEvent;
+use App\Models\Rental;
+use App\Models\Room;
+use App\Models\Tenant;
+use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Console\Kernel;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
+use Symfony\Component\Process\Process;
 
 $root = dirname(__DIR__, 2);
 
@@ -56,7 +76,7 @@ function bootSettlementRace(string $root, string $directory): void
         'Asia/Bangkok'
     );
 
-    \Illuminate\Support\Carbon::setTestNow($now);
+    Carbon::setTestNow($now);
     CarbonImmutable::setTestNow($now);
 }
 
@@ -138,8 +158,8 @@ if (($argv[1] ?? '') === 'worker') {
             }
         );
 
-        \Illuminate\Support\Facades\Event::listen(
-            'eloquent.creating: '.\App\Models\AuditEvent::class,
+        Event::listen(
+            'eloquent.creating: '.AuditEvent::class,
             function () use ($directory, $label, $firstWriter): void {
                 if ($label === $firstWriter) {
                     // Invoice/Payment ถูกเขียนแล้วใน transaction นี้
@@ -152,8 +172,8 @@ if (($argv[1] ?? '') === 'worker') {
             }
         );
 
-        $actor = \App\Models\User::findOrFail((int) $actorId);
-        $invoice = \App\Models\Invoice::findOrFail((int) $invoiceId);
+        $actor = User::findOrFail((int) $actorId);
+        $invoice = Invoice::findOrFail((int) $invoiceId);
         $expectedEventId = $eventId === 'null' ? null : (int) $eventId;
 
         $started = microtime(true);
@@ -161,7 +181,7 @@ if (($argv[1] ?? '') === 'worker') {
 
         try {
             if ($operation === 'edit') {
-                app(\App\Actions\Billing\UpdateInvoice::class)->handle(
+                app(UpdateInvoice::class)->handle(
                     $actor,
                     $invoice,
                     [
@@ -171,7 +191,7 @@ if (($argv[1] ?? '') === 'worker') {
                     ]
                 );
             } elseif ($operation === 'submit') {
-                $upload = new \Illuminate\Http\UploadedFile(
+                $upload = new UploadedFile(
                     $directory.'/input.png',
                     'receipt.png',
                     'image/png',
@@ -179,14 +199,14 @@ if (($argv[1] ?? '') === 'worker') {
                     true
                 );
 
-                app(\App\Actions\Payments\SubmitPaymentProof::class)
+                app(SubmitPaymentProof::class)
                     ->handle($actor, $invoice, [
                         'amount' => '3494.00',
                         'payment_date' => '2026-10-02',
                         'proof' => $upload,
                     ]);
             } elseif ($operation === 'walk-in') {
-                app(\App\Actions\Payments\RecordWalkInPayment::class)
+                app(RecordWalkInPayment::class)
                     ->handle($actor, $invoice, [
                         'amount' => '3494.00',
                         'payment_date' => '2026-10-02',
@@ -195,7 +215,7 @@ if (($argv[1] ?? '') === 'worker') {
                         'expected_event_id' => $expectedEventId,
                     ]);
             } else {
-                app(\App\Actions\Payments\ReviewPaymentProof::class)
+                app(ReviewPaymentProof::class)
                     ->handle($actor, $invoice, [
                         'decision' => $operation,
                         'expected_event_id' => $expectedEventId,
@@ -204,10 +224,10 @@ if (($argv[1] ?? '') === 'worker') {
                             : null,
                     ]);
             }
-        } catch (\Illuminate\Validation\ValidationException $exception) {
+        } catch (ValidationException $exception) {
             $status = 422;
         } catch (
-            \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface $exception
+            HttpExceptionInterface $exception
         ) {
             $status = $exception->getStatusCode();
         }
@@ -268,40 +288,40 @@ foreach ($cases as [
     try {
         bootSettlementRace($root, $directory);
 
-        $migrationStatus = \Illuminate\Support\Facades\Artisan::call(
+        $migrationStatus = Artisan::call(
             'migrate',
             ['--database' => 'sqlite', '--force' => true]
         );
 
         settlementRaceCheck(
             $migrationStatus === 0,
-            \Illuminate\Support\Facades\Artisan::output()
+            Artisan::output()
         );
 
         $admins = [];
 
         foreach (['a', 'b'] as $label) {
-            $admins[$label] = \App\Models\User::factory()->create([
+            $admins[$label] = User::factory()->create([
                 'u_role' => 'admin',
                 'is_active' => true,
                 'must_change_password' => false,
             ]);
         }
 
-        $tenant = \App\Models\Tenant::create([
+        $tenant = Tenant::create([
             't_Fname' => 'Settlement',
             't_Lname' => 'Race',
             't_tel' => '0812345678',
         ]);
 
-        $owner = \App\Models\User::factory()->create([
+        $owner = User::factory()->create([
             'u_role' => 'tenant',
             'tenants_t_id' => $tenant->getKey(),
             'is_active' => true,
             'must_change_password' => false,
         ]);
 
-        $room = \App\Models\Room::create([
+        $room = Room::create([
             'r_name' => 'RACE-101',
             'r_floor' => 1,
             'r_type' => 'Test',
@@ -309,7 +329,7 @@ foreach ($cases as [
             'r_status' => 'VACANT',
         ]);
 
-        $rental = \App\Models\Rental::create([
+        $rental = Rental::create([
             'tenants_t_id' => $tenant->getKey(),
             'rooms_r_id' => $room->getKey(),
             'rt_movein' => '2026-09-01',
@@ -317,23 +337,21 @@ foreach ($cases as [
             'rt_status' => 'ENDED',
         ]);
 
+        $rental->contract()->create([
+            'c_number' => 'EDIT-RACE-CONTRACT',
+            'c_start' => '2026-09-01',
+            'c_end' => '2026-10-01',
+            'c_rent' => '3000.00',
+            'c_deposit' => '6000.00',
+            'c_status' => 'ENDED',
+        ]);
 
-
-$rental->contract()->create([
-    'c_number' => 'EDIT-RACE-CONTRACT',
-    'c_start' => '2026-09-01',
-    'c_end' => '2026-10-01',
-    'c_rent' => '3000.00',
-    'c_deposit' => '6000.00',
-    'c_status' => 'ENDED',
-]);
-
-\App\Models\Meter::create([
-    'rooms_r_id' => $room->getKey(),
-    'm_date' => '2026-09-16',
-    'm_water' => '102.00',
-    'm_elec' => '1010.00',
-]);
+        Meter::create([
+            'rooms_r_id' => $room->getKey(),
+            'm_date' => '2026-09-16',
+            'm_water' => '102.00',
+            'm_elec' => '1010.00',
+        ]);
 
         $meters = [];
 
@@ -341,7 +359,7 @@ $rental->contract()->create([
             ['2026-09-01', '100.00', '1000.00'],
             ['2026-10-01', '108.00', '1050.00'],
         ] as [$date, $water, $elec]) {
-            $meters[] = \App\Models\Meter::create([
+            $meters[] = Meter::create([
                 'rooms_r_id' => $room->getKey(),
                 'm_date' => $date,
                 'm_water' => $water,
@@ -349,7 +367,7 @@ $rental->contract()->create([
             ]);
         }
 
-        $invoice = \App\Models\Invoice::create([
+        $invoice = Invoice::create([
             'rentals_rt_id' => $rental->getKey(),
             'period_start' => '2026-09-01',
             'period_end' => '2026-10-01',
@@ -426,8 +444,8 @@ $rental->contract()->create([
                 $event->getKey() => $event->getAttributes(),
             ])->all();
 
-        $baselineEvents = \App\Models\PaymentEvent::count();
-        $baselineAudits = \App\Models\AuditEvent::count();
+        $baselineEvents = PaymentEvent::count();
+        $baselineAudits = AuditEvent::count();
 
         $uploadBytes = base64_decode(
             'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aRZkAAAAASUVORK5CYII='
@@ -441,7 +459,7 @@ $rental->contract()->create([
         DB::disconnect('sqlite');
 
         foreach (['a' => $operationA, 'b' => $operationB] as $label => $operation) {
-            $process = new \Symfony\Component\Process\Process([
+            $process = new Process([
                 PHP_BINARY,
                 __FILE__,
                 'worker',
@@ -528,7 +546,6 @@ $rental->contract()->create([
 
         $editWon = $editResult['status'] === 200;
 
-
         settlementRaceCheck(
             $editWon === ($firstWriter === 'a'),
             'Unexpected winner for '.$caseName.': '.json_encode($byOperation)
@@ -557,8 +574,8 @@ $rental->contract()->create([
             : ($operationB === 'submit' ? 'PENDING' : 'PAID');
 
         settlementRaceCheck(
-            \App\Models\Invoice::count() === 1
-                && \App\Models\Payment::count() === 1,
+            Invoice::count() === 1
+                && Payment::count() === 1,
             'Unexpected invoice or payment count.'
         );
 
@@ -587,13 +604,13 @@ $rental->contract()->create([
         );
 
         settlementRaceCheck(
-            \App\Models\AuditEvent::count() === $baselineAudits + 1
-                && \App\Models\PaymentEvent::count()
+            AuditEvent::count() === $baselineAudits + 1
+                && PaymentEvent::count()
                     === $baselineEvents + ($editWon ? 0 : 1),
             'Unexpected audit or payment event count.'
         );
 
-        $audit = \App\Models\AuditEvent::sole();
+        $audit = AuditEvent::sole();
         $expectedFiles = [];
 
         if ($editWon) {
@@ -713,7 +730,7 @@ $rental->contract()->create([
         DB::disconnect('sqlite');
         Storage::forgetDisk('payment_proofs');
 
-        \Illuminate\Support\Carbon::setTestNow();
+        Carbon::setTestNow();
         CarbonImmutable::setTestNow();
 
         $safeRoot = realpath($directory);

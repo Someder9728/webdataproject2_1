@@ -12,6 +12,9 @@ use Illuminate\Validation\ValidationException;
 
 class CreateTenantAccount
 {
+    /**
+     * @param  array<string, mixed>  $input
+     */
     public function handle(
         User $actor,
         Tenant $tenant,
@@ -58,7 +61,7 @@ class CreateTenantAccount
         }
 
         return DB::transaction(function () use ($actor, $tenant, $validated) {
-            $tenant = Tenant::findOrFail($tenant->getKey());
+            $tenant = Tenant::whereKey($tenant->getKey())->firstOrFail();
 
             if (User::withTrashed()
                 ->where('tenants_t_id', $tenant->getKey())
@@ -68,7 +71,7 @@ class CreateTenantAccount
                 ]);
             }
 
-            $user = new User();
+            $user = new User;
             $user->u_username = $validated['u_username'];
             $user->u_password = $validated['password'];
             $user->u_role = 'tenant';

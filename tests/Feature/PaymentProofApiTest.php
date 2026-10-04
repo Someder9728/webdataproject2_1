@@ -8,6 +8,7 @@ use App\Models\Room;
 use App\Models\Tenant;
 use App\Models\User;
 use Carbon\CarbonImmutable;
+use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Storage;
@@ -529,8 +530,8 @@ test('proof exactly five MiB is accepted', function () {
 });
 
 test('storage failure creates no payment changes or history', function () {
-    $disk = \Mockery::mock(
-        \Illuminate\Filesystem\FilesystemAdapter::class
+    $disk = Mockery::mock(
+        FilesystemAdapter::class
     );
 
     $disk->shouldReceive('putFile')

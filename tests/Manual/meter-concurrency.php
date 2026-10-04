@@ -7,6 +7,7 @@ use App\Models\AuditEvent;
 use App\Models\Meter;
 use App\Models\Room;
 use App\Models\User;
+use Brick\Math\BigDecimal;
 use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
@@ -331,7 +332,7 @@ foreach ($cases as $name => $case) {
 
             foreach (['m_water', 'm_elec'] as $field) {
                 meterCheck(
-                    \Brick\Math\BigDecimal::of($reading->{$field})
+                    BigDecimal::of($reading->{$field})
                         ->isGreaterThanOrEqualTo(
                             $readings[$index - 1]->{$field}
                         ),

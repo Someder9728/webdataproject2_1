@@ -14,8 +14,10 @@ use App\Models\Rental;
 use App\Models\Room;
 use App\Models\Tenant;
 use App\Models\User;
+use Brick\Math\BigDecimal;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Console\Kernel;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
@@ -89,7 +91,7 @@ function bootMoveRace(string $root, string $directory): void
         'Asia/Bangkok'
     );
 
-    \Illuminate\Support\Carbon::setTestNow($now);
+    Carbon::setTestNow($now);
     CarbonImmutable::setTestNow($now);
 }
 
@@ -467,7 +469,7 @@ foreach ($cases as [$caseName, $otherOperation, $firstWriter]) {
 
         $bills = Invoice::with('payment')->orderBy('period_start')->get();
         $cursor = '2026-09-01';
-        $total = \Brick\Math\BigDecimal::of('0.00');
+        $total = BigDecimal::of('0.00');
 
         foreach ($bills as $bill) {
             moveRaceCheck(
@@ -544,7 +546,7 @@ foreach ($cases as [$caseName, $otherOperation, $firstWriter]) {
         }
 
         DB::disconnect('sqlite');
-        \Illuminate\Support\Carbon::setTestNow();
+        Carbon::setTestNow();
         CarbonImmutable::setTestNow();
 
         $safeRoot = realpath($directory);

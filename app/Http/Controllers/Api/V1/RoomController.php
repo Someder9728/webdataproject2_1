@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Actions\DeleteUnusedRecord;
 use App\Actions\Rooms\SaveRoom;
 use App\Http\Controllers\Controller;
 use App\Models\Room;
@@ -116,7 +117,7 @@ class RoomController extends Controller
     public function destroy(
         Request $request,
         Room $room,
-        \App\Actions\DeleteUnusedRecord $action
+        DeleteUnusedRecord $action
     ): JsonResponse {
         $action->handle($request->user(), $room);
 

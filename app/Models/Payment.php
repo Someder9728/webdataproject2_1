@@ -2,33 +2,40 @@
 
 namespace App\Models;
 
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Model;
-use App\Models\Invoice;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
+/**
+ * @property string $p_amount
+ * @property CarbonInterface|null $p_date
+ */
 class Payment extends Model
 {
-
     use SoftDeletes;
 
     protected $fillable = [
-    'p_date',
-    'p_amount',
-    'p_type',
-    'p_status',
-    'p_proof',
-    'p_reject_reason',
-    'invoices_i_id',
-];
+        'p_date',
+        'p_amount',
+        'p_type',
+        'p_status',
+        'p_proof',
+        'p_reject_reason',
+        'invoices_i_id',
+    ];
 
     protected $primaryKey = 'p_id';
 
-    public function invoice() {
+    /** @return BelongsTo<Invoice, $this> */
+    public function invoice(): BelongsTo
+    {
         return $this->belongsTo(Invoice::class, 'invoices_i_id', 'i_id');
     }
 
-
-    public function events(): \Illuminate\Database\Eloquent\Relations\HasMany
+    /** @return HasMany<PaymentEvent, $this> */
+    public function events(): HasMany
     {
         return $this->hasMany(
             PaymentEvent::class,
@@ -46,4 +53,4 @@ class Payment extends Model
             'p_date' => 'date',
         ];
     }
-    }
+}

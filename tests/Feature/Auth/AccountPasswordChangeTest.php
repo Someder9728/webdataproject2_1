@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\Hash;
 use Livewire\Livewire;
 
 beforeEach(function () {
-    $this->account = new User();
+    $this->account = new User;
     $this->account->u_username = 'password_test_admin';
     $this->account->u_password = 'Temporary-Password-1234';
     $this->account->u_role = 'admin';

@@ -8,6 +8,12 @@ use PDOException;
 
 class SqliteTransaction
 {
+    /**
+     * @template TResult
+     *
+     * @param  Closure(): TResult  $callback
+     * @return TResult
+     */
     public function run(Closure $callback): mixed
     {
         $connection = DB::connection();
@@ -36,7 +42,7 @@ class SqliteTransaction
                             $currentException->errorInfo[1] ?? 0
                         );
 
-                        $primaryCode = $nativeCode & 0xff;
+                        $primaryCode = $nativeCode & 0xFF;
 
                         if (in_array($primaryCode, [5, 6], true)) {
                             $isLockError = true;

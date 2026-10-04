@@ -10,6 +10,9 @@ use App\Models\Room;
 use App\Models\Tenant;
 use App\Models\User;
 use Carbon\CarbonImmutable;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Contracts\Encryption\Encrypter;
+use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 beforeEach(function () {
@@ -353,7 +356,7 @@ test('action rechecks actor when given stale model', function () {
         );
 
         $this->fail('Inactive actor was allowed');
-    } catch (\Illuminate\Auth\Access\AuthorizationException $exception) {
+    } catch (AuthorizationException $exception) {
         expect($exception->status() ?? 403)->toBe(403);
     } catch (HttpExceptionInterface $exception) {
         expect($exception->getStatusCode())->toBe(403);
@@ -430,12 +433,10 @@ test('deleted invoice cannot be edited', function () {
 function enableInvoiceEditCsrf($app): void
 {
     $app->bind(
-        \Illuminate\Foundation\Http\Middleware\PreventRequestForgery::class,
+        PreventRequestForgery::class,
         function ($app) {
-            return new class(
-                $app,
-                $app->make(\Illuminate\Contracts\Encryption\Encrypter::class)
-            ) extends \Illuminate\Foundation\Http\Middleware\PreventRequestForgery {
+            return new class($app, $app->make(Encrypter::class)) extends PreventRequestForgery
+            {
                 protected function runningUnitTests()
                 {
                     return false;

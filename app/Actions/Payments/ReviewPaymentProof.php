@@ -10,15 +10,19 @@ use App\Support\SqliteTransaction;
 use Brick\Math\BigDecimal;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\ValidationException;
 
 class ReviewPaymentProof
 {
     public function __construct(private SqliteTransaction $transactions) {}
 
+    /**
+     * @param  array<string, mixed>  $input
+     */
     public function handle(User $actor, Invoice $invoice, array $input): Payment
     {
         return $this->transactions->run(function () use ($actor, $invoice, $input) {
-            $currentActor = User::findOrFail($actor->getKey());
+            $currentActor = User::whereKey($actor->getKey())->firstOrFail();
             abort_unless(
                 $currentActor->is_active && ! $currentActor->must_change_password
                 && $currentActor->u_role === 'admin',
@@ -32,12 +36,12 @@ class ReviewPaymentProof
             ])->validate();
 
             if ($validated['decision'] === 'reject' && trim($validated['reason'] ?? '') === '') {
-                throw \Illuminate\Validation\ValidationException::withMessages([
+                throw ValidationException::withMessages([
                     'reason' => 'กรุณาระบุเหตุผลที่ปฏิเสธหลักฐาน',
                 ]);
             }
 
-            $currentInvoice = Invoice::findOrFail($invoice->getKey());
+            $currentInvoice = Invoice::whereKey($invoice->getKey())->firstOrFail();
             $payment = $currentInvoice->payment()->firstOrFail();
             $event = $payment->events()->reorder()->orderByDesc('pe_id')->first();
 

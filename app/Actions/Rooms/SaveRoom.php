@@ -12,13 +12,16 @@ use Illuminate\Validation\Rule;
 
 class SaveRoom
 {
+    /**
+     * @param  array<string, mixed>  $input
+     */
     public function handle(
         User $actor,
         array $input,
         ?Room $room = null
     ): Room {
         return DB::transaction(function () use ($actor, $input, $room) {
-            $actor = User::find($actor->getKey());
+            $actor = User::whereKey($actor->getKey())->first();
 
             abort_unless(
                 $actor && ! $actor->must_change_password,
@@ -29,10 +32,10 @@ class SaveRoom
 
             if ($creating) {
                 Gate::forUser($actor)->authorize('create', Room::class);
-                $current = new Room();
+                $current = new Room;
             } else {
                 Gate::forUser($actor)->authorize('update', $room);
-                $current = Room::findOrFail($room->getKey());
+                $current = Room::whereKey($room->getKey())->firstOrFail();
             }
 
             $data = [];

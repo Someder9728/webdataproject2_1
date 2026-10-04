@@ -2,16 +2,17 @@
 
 namespace App\Http\Controllers\Api\V1;
 
-use App\Http\Controllers\Controller;
-use App\Models\Rental;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Gate;
 use App\Actions\Rentals\CreateRental;
 use App\Actions\Rentals\MoveOutRental;
+use App\Http\Controllers\Controller;
+use App\Models\Rental;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 
 class RentalController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request): JsonResponse
     {
         Gate::authorize('viewAny', Rental::class);
 
@@ -67,8 +68,7 @@ class RentalController extends Controller
         ]);
     }
 
-
-    public function show(Rental $rental)
+    public function show(Rental $rental): JsonResponse
     {
         Gate::authorize('view', $rental);
 
@@ -80,7 +80,7 @@ class RentalController extends Controller
         ]);
     }
 
-    public function showContract(Rental $rental)
+    public function showContract(Rental $rental): JsonResponse
     {
         Gate::authorize('view', $rental);
 
@@ -91,7 +91,7 @@ class RentalController extends Controller
                 'c_id' => $contract->getKey(),
                 'rentals_rt_id' => $rental->getKey(),
                 'c_number' => $contract->c_number,
-                'c_start' => $contract->c_start?->format('Y-m-d'),
+                'c_start' => $contract->c_start->format('Y-m-d'),
                 'c_end' => $contract->c_end?->format('Y-m-d'),
                 'c_rent' => $contract->c_rent,
                 'c_deposit' => $contract->c_deposit,
@@ -105,7 +105,7 @@ class RentalController extends Controller
         Request $request,
         Rental $rental,
         MoveOutRental $action
-    ) {
+    ): JsonResponse {
         $result = $action->handle(
             $request->user(),
             $rental,
@@ -124,25 +124,27 @@ class RentalController extends Controller
     /**
      * แปลงเป็นรูปแบบตรงกับ mock/GET_rentals.json ที่ทีม Frontend (Big) อ้างอิงอยู่
      * ปรับตรงนี้จุดเดียวถ้าตกลงชื่อ field ต่างจากนี้กับ Big
+     *
+     * @return array<string, mixed>
      */
     private function transform(Rental $r): array
     {
         return [
-            'rt_id'       => $r->rt_id,
-            'rt_status'   => $r->rt_status,
-            'rt_movein'   => optional($r->rt_movein)->format('Y-m-d'),
-            'rt_moveout'  => optional($r->rt_moveout)->format('Y-m-d'),
+            'rt_id' => $r->rt_id,
+            'rt_status' => $r->rt_status,
+            'rt_movein' => optional($r->rt_movein)->format('Y-m-d'),
+            'rt_moveout' => optional($r->rt_moveout)->format('Y-m-d'),
             'tenant' => $r->tenant ? [
-                't_id'    => $r->tenant->t_id,
+                't_id' => $r->tenant->t_id,
                 't_Fname' => $r->tenant->t_Fname,
                 't_Lname' => $r->tenant->t_Lname,
-                't_tel'   => $r->tenant->t_tel,
+                't_tel' => $r->tenant->t_tel,
             ] : null,
             'room' => $r->room ? [
-                'r_id'     => $r->room->r_id,
-                'r_name'   => $r->room->r_name,
-                'r_floor'  => $r->room->r_floor,
-                'r_type'   => $r->room->r_type,
+                'r_id' => $r->room->r_id,
+                'r_name' => $r->room->r_name,
+                'r_floor' => $r->room->r_floor,
+                'r_type' => $r->room->r_type,
                 'r_status' => $r->room->r_status,
             ] : null,
             'contract' => $r->contract ? [
@@ -153,7 +155,7 @@ class RentalController extends Controller
         ];
     }
 
-    public function store(Request $request, CreateRental $action)
+    public function store(Request $request, CreateRental $action): JsonResponse
     {
         $rental = $action->handle(
             $request->user(),

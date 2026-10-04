@@ -1,24 +1,28 @@
 <?php
 
+use App\Http\Controllers\Api\V1\AccountController;
+use App\Http\Controllers\Api\V1\InvoiceController;
+use App\Http\Controllers\Api\V1\MeterController;
+use App\Http\Controllers\Api\V1\PaymentHistoryController;
+use App\Http\Controllers\Api\V1\PaymentProofController;
+use App\Http\Controllers\Api\V1\PaymentReviewController;
+use App\Http\Controllers\Api\V1\RentalController;
+use App\Http\Controllers\Api\V1\RepairController;
+use App\Http\Controllers\Api\V1\RoomController;
+use App\Http\Controllers\Api\V1\TenantAccountController;
+use App\Http\Controllers\Api\V1\TenantController;
+use App\Http\Controllers\Api\V1\WalkInPaymentController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Api\V1\TenantController;
-use App\Http\Controllers\Api\V1\TenantAccountController;
-use App\Http\Controllers\Api\V1\AccountController;
-use App\Http\Controllers\Api\V1\RoomController;
-use App\Http\Controllers\Api\V1\RentalController;
-use App\Http\Controllers\Api\V1\InvoiceController;
-use App\Http\Controllers\Api\V1\PaymentProofController;
-use App\Http\Controllers\Api\V1\MeterController;
 
 Route::prefix('api/v1')
     ->name('api.v1.')
     ->middleware(['auth', 'password.changed'])
     ->group(function () {
-        Route::get('/repairs', [\App\Http\Controllers\Api\V1\RepairController::class, 'index'])->name('repairs.index');
-        Route::post('/repairs', [\App\Http\Controllers\Api\V1\RepairController::class, 'store'])->name('repairs.store');
-        Route::get('/repairs/{repair}', [\App\Http\Controllers\Api\V1\RepairController::class, 'show'])->whereNumber('repair')->name('repairs.show');
-        Route::patch('/repairs/{repair}/status', [\App\Http\Controllers\Api\V1\RepairController::class, 'update'])->whereNumber('repair')->middleware('role:admin')->name('repairs.status');
+        Route::get('/repairs', [RepairController::class, 'index'])->name('repairs.index');
+        Route::post('/repairs', [RepairController::class, 'store'])->name('repairs.store');
+        Route::get('/repairs/{repair}', [RepairController::class, 'show'])->whereNumber('repair')->name('repairs.show');
+        Route::patch('/repairs/{repair}/status', [RepairController::class, 'update'])->whereNumber('repair')->middleware('role:admin')->name('repairs.status');
         Route::get('/rooms/{room}/meter-usage', [MeterController::class, 'usage'])->whereNumber('room')->middleware('role:admin')->name('rooms.meter-usage');
 
         Route::get('/me', function (Request $request) {
@@ -31,8 +35,7 @@ Route::prefix('api/v1')
                     'u_role' => $user->u_role,
                     'tenants_t_id' => $user->tenants_t_id,
                     'is_active' => (bool) $user->is_active,
-                    'must_change_password' =>
-                        (bool) $user->must_change_password,
+                    'must_change_password' => (bool) $user->must_change_password,
                 ],
                 'message' => 'อ่านข้อมูลบัญชีสำเร็จ',
             ]);
@@ -51,8 +54,6 @@ Route::prefix('api/v1')
         Route::patch('/tenants/{tenant}', [TenantController::class, 'update'])
             ->whereNumber('tenant')
             ->name('tenants.update');
-
-
 
         Route::post(
             '/tenants/{tenant}/account',
@@ -78,7 +79,6 @@ Route::prefix('api/v1')
             ->middleware('role:admin')
             ->name('accounts.suspend');
 
-
         Route::get('/rooms/{room}/meters', [MeterController::class, 'index'])
             ->whereNumber('room')
             ->middleware('role:admin')
@@ -88,7 +88,6 @@ Route::prefix('api/v1')
             ->whereNumber('room')
             ->middleware('role:admin')
             ->name('rooms.meters.store');
-
 
         Route::get('/rooms', [RoomController::class, 'index'])
             ->name('rooms.index');
@@ -119,9 +118,8 @@ Route::prefix('api/v1')
         Route::delete('/rooms/{room}', [RoomController::class, 'destroy'])
             ->whereNumber('room')
             ->middleware('role:admin')
-            ->name('rooms.destroy');     
-            
-            
+            ->name('rooms.destroy');
+
         Route::post('/rentals/{rental}/move-out', [
             RentalController::class,
             'moveOut',
@@ -131,7 +129,6 @@ Route::prefix('api/v1')
             ->name('rentals.move-out');
 
         Route::get('/rentals', [RentalController::class, 'index'])->name('rentals.index');
-
 
         Route::get('/rentals/{rental}', [RentalController::class, 'show'])
             ->whereNumber('rental')
@@ -155,7 +152,6 @@ Route::prefix('api/v1')
         Route::post('/invoices', [InvoiceController::class, 'store'])
             ->middleware('role:admin')
             ->name('invoices.store');
-
 
         Route::get('/invoices', [InvoiceController::class, 'index'])
             ->name('invoices.index');
@@ -185,7 +181,7 @@ Route::prefix('api/v1')
             ->name('invoices.payment.submit');
 
         Route::post('/invoices/{invoice}/payment/review', [
-            \App\Http\Controllers\Api\V1\PaymentReviewController::class,
+            PaymentReviewController::class,
             'store',
         ])
             ->whereNumber('invoice')
@@ -193,7 +189,7 @@ Route::prefix('api/v1')
             ->name('invoices.payment.review');
 
         Route::post('/invoices/{invoice}/payment/walk-in', [
-            \App\Http\Controllers\Api\V1\WalkInPaymentController::class,
+            WalkInPaymentController::class,
             'store',
         ])
             ->whereNumber('invoice')
@@ -201,14 +197,14 @@ Route::prefix('api/v1')
             ->name('invoices.payment.walk-in');
 
         Route::get('/invoices/{invoice}/payment/events', [
-            \App\Http\Controllers\Api\V1\PaymentHistoryController::class,
+            PaymentHistoryController::class,
             'index',
         ])
             ->whereNumber('invoice')
             ->name('invoices.payment.events');
 
         Route::get('/payment-events/{paymentEvent}/proof', [
-            \App\Http\Controllers\Api\V1\PaymentHistoryController::class,
+            PaymentHistoryController::class,
             'proof',
         ])
             ->whereNumber('paymentEvent')
@@ -220,7 +216,5 @@ Route::prefix('api/v1')
         ])
             ->whereNumber('invoice')
             ->name('invoices.payment.proof');
-        
 
     });
-

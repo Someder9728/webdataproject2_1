@@ -22,6 +22,10 @@ class MoveOutRental
         private SqliteTransaction $transactions
     ) {}
 
+    /**
+     * @param  array<string, mixed>  $input
+     * @return array<string, mixed>
+     */
     public function handle(
         User $actor,
         Rental $rental,
@@ -32,11 +36,11 @@ class MoveOutRental
             $rental,
             $input
         ) {
-            $actor = User::find($actor->getKey());
+            $actor = User::whereKey($actor->getKey())->first();
 
-            abort_unless($actor, 403);
+            abort_unless($actor !== null, 403);
 
-            $rental = Rental::findOrFail($rental->getKey());
+            $rental = Rental::whereKey($rental->getKey())->firstOrFail();
 
             Gate::forUser($actor)->authorize('moveOut', $rental);
 
@@ -70,7 +74,7 @@ class MoveOutRental
             $moveIn = $rental->rt_movein->toDateString();
             $moveOut = $validated['rt_moveout'];
 
-            $room = Room::findOrFail($rental->rooms_r_id);
+            $room = Room::whereKey($rental->rooms_r_id)->firstOrFail();
             $contract = $rental->contract()->firstOrFail();
 
             abort_unless(

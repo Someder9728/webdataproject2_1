@@ -99,7 +99,7 @@ class PaymentHistoryController extends Controller
 
         abort_unless($disk->exists($path), 404);
 
-                $mime = (new \finfo(FILEINFO_MIME_TYPE))
+        $mime = (new \finfo(FILEINFO_MIME_TYPE))
             ->file($disk->path($path));
 
         $extension = match ($mime) {

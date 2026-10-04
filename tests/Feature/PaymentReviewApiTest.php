@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\Payments\ReviewPaymentProof;
 use App\Models\AuditEvent;
 use App\Models\Invoice;
 use App\Models\Meter;
@@ -11,6 +12,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Storage;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 beforeEach(function () {
     $this->travelTo(
@@ -135,7 +137,6 @@ afterEach(function () {
     $this->travelBack();
 });
 
-
 test('admin reviews proof and preserves payment snapshot', function (string $decision, string $status) {
     $path = $this->payment->p_proof;
     $this->actingAs($this->admin)->postJson($this->reviewUrl, [
@@ -186,11 +187,11 @@ test('action independently rejects restricted actors', function (string $restric
         expect($actor->fresh()->getAttribute($field))->toBe($value);
     }
     try {
-        app(\App\Actions\Payments\ReviewPaymentProof::class)->handle($actor, $this->invoice, [
+        app(ReviewPaymentProof::class)->handle($actor, $this->invoice, [
             'decision' => 'approve', 'expected_event_id' => $this->submittedEvent->getKey(),
         ]);
         $this->fail('Restricted actor was allowed');
-    } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
+    } catch (HttpException $e) {
         expect($e->getStatusCode())->toBe(403);
     }
     expect($this->payment->fresh()->p_status)->toBe('PENDING');
@@ -259,14 +260,14 @@ test('approval refuses missing proof or mismatched amount', function (string $pr
 
 test('audit failure rolls back decision and review event without removing proof', function () {
     Event::listen('eloquent.creating: '.AuditEvent::class, function () {
-        throw new \RuntimeException('review audit failure');
+        throw new RuntimeException('review audit failure');
     });
     try {
-        app(\App\Actions\Payments\ReviewPaymentProof::class)->handle($this->admin, $this->invoice, [
+        app(ReviewPaymentProof::class)->handle($this->admin, $this->invoice, [
             'decision' => 'approve', 'expected_event_id' => $this->submittedEvent->getKey(),
         ]);
         $this->fail('Expected audit failure');
-    } catch (\RuntimeException $e) {
+    } catch (RuntimeException $e) {
         expect($e->getMessage())->toBe('review audit failure');
     } finally {
         Event::forget('eloquent.creating: '.AuditEvent::class);

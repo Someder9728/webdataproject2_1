@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Actions\Accounts\CreateTenantAccount;
 use App\Http\Controllers\Controller;
 use App\Models\Tenant;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -35,8 +36,7 @@ class TenantAccountController extends Controller
                 'u_role' => $user->u_role,
                 'tenants_t_id' => $user->tenants_t_id,
                 'is_active' => (bool) $user->is_active,
-                'must_change_password' =>
-                    (bool) $user->must_change_password,
+                'must_change_password' => (bool) $user->must_change_password,
             ],
             'message' => 'สร้างบัญชีผู้เช่าสำเร็จ',
         ], 201);
@@ -44,7 +44,7 @@ class TenantAccountController extends Controller
 
     public function show(Tenant $tenant): JsonResponse
     {
-        $account = \App\Models\User::withTrashed()
+        $account = User::withTrashed()
             ->where('tenants_t_id', $tenant->getKey())
             ->first();
 
@@ -56,8 +56,7 @@ class TenantAccountController extends Controller
                     'u_username' => $account->u_username,
                     'u_role' => $account->u_role,
                     'is_active' => (bool) $account->is_active,
-                    'must_change_password' =>
-                        (bool) $account->must_change_password,
+                    'must_change_password' => (bool) $account->must_change_password,
                     'is_deleted' => $account->trashed(),
                 ] : null,
             ],

@@ -11,6 +11,8 @@ use App\Models\Room;
 use App\Models\Tenant;
 use App\Models\User;
 use Carbon\CarbonImmutable;
+use Illuminate\Contracts\Encryption\Encrypter;
+use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 
 beforeEach(function () {
     $this->travelTo(
@@ -397,12 +399,10 @@ test('final audit failure rolls back bills and all status changes', function () 
 function enableMoveOutCsrf($app): void
 {
     $app->bind(
-        \Illuminate\Foundation\Http\Middleware\PreventRequestForgery::class,
+        PreventRequestForgery::class,
         function ($app) {
-            return new class(
-                $app,
-                $app->make(\Illuminate\Contracts\Encryption\Encrypter::class)
-            ) extends \Illuminate\Foundation\Http\Middleware\PreventRequestForgery {
+            return new class($app, $app->make(Encrypter::class)) extends PreventRequestForgery
+            {
                 protected function runningUnitTests()
                 {
                     return false;

@@ -14,10 +14,8 @@ beforeEach(function () {
     $this->app->bind(
         PreventRequestForgery::class,
         function ($app) {
-            return new class(
-                $app,
-                $app->make(Encrypter::class)
-            ) extends PreventRequestForgery {
+            return new class($app, $app->make(Encrypter::class)) extends PreventRequestForgery
+            {
                 protected function runningUnitTests()
                 {
                     return false;
@@ -29,7 +27,7 @@ beforeEach(function () {
     // ใช้ routes จริง แต่แทนข้อมูล Invoice และ Action
     // เพื่อทดสอบเฉพาะว่า CSRF gate อนุญาตให้เข้าถึง Action หรือไม่
     Route::bind('invoice', function ($value) {
-        $invoice = new Invoice();
+        $invoice = new Invoice;
         $invoice->setAttribute('i_id', (int) $value);
 
         return $invoice;
@@ -90,7 +88,7 @@ test('payment endpoints reach action with matching session csrf token', function
         'must_change_password' => false,
     ]);
 
-    $payment = new Payment();
+    $payment = new Payment;
 
     $payment->forceFill([
         'p_id' => 456,

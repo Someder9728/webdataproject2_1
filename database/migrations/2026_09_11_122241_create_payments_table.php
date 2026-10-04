@@ -23,7 +23,6 @@ return new class extends Migration
                 ->unique()
                 ->constrained('invoices', 'i_id');
 
-            
             $table->timestamps();
             $table->softDeletes();
         });

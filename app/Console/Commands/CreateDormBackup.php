@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Support\SqliteQuery;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -73,20 +74,20 @@ class CreateDormBackup extends Command
             $snapshot->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             $snapshot->exec('PRAGMA query_only = ON');
 
-            $integrity = $snapshot->query('PRAGMA integrity_check')
+            $integrity = SqliteQuery::run($snapshot, 'PRAGMA integrity_check')
                 ->fetchAll(PDO::FETCH_COLUMN);
 
             if ($integrity !== ['ok']) {
                 throw new RuntimeException('Snapshot integrity check failed.');
             }
 
-            if ($snapshot->query('PRAGMA foreign_key_check')->fetchAll() !== []) {
+            if (SqliteQuery::run($snapshot, 'PRAGMA foreign_key_check')->fetchAll() !== []) {
                 throw new RuntimeException('Snapshot foreign key check failed.');
             }
 
             // Read references from the snapshot, not the changing live database.
             // Include soft-deleted rows and historical events.
-            $paths = $snapshot->query("
+            $paths = SqliteQuery::run($snapshot, "
                 SELECT p_proof AS path
                 FROM payments
                 WHERE p_proof IS NOT NULL AND p_proof <> ''

@@ -2,9 +2,14 @@
 
 namespace App\Models;
 
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property CarbonInterface|null $created_at
+ * @property CarbonInterface|null $payment_date
+ */
 class PaymentEvent extends Model
 {
     protected $primaryKey = 'pe_id';
@@ -34,15 +39,15 @@ class PaymentEvent extends Model
         ];
     }
 
+    /** @return BelongsTo<Payment, $this> */
     public function payment(): BelongsTo
     {
         return $this->belongsTo(Payment::class, 'payments_p_id', 'p_id');
     }
 
+    /** @return BelongsTo<User, $this> */
     public function actor(): BelongsTo
     {
         return $this->belongsTo(User::class, 'actor_user_id', 'u_id');
     }
-
-
 }

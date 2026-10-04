@@ -1,12 +1,14 @@
 <?php
 
 use App\Support\VerifyDormBackup;
+use Carbon\CarbonImmutable;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Tests\TestCase;
 
-pest()->extend(Tests\TestCase::class);
+pest()->extend(TestCase::class);
 
 function completedDormTestBackups(string $root): array
 {
@@ -145,7 +147,7 @@ afterEach(function () {
         && dirname($root) === realpath(sys_get_temp_dir())
         && str_starts_with(basename($root), 'dorm-backup-test-')
     ) {
-        (new Filesystem())->deleteDirectory($root);
+        (new Filesystem)->deleteDirectory($root);
     }
 });
 
@@ -202,7 +204,7 @@ test('dry run preserves backups and pruning keeps latest seven', function () {
 
     for ($day = 1; $day <= 8; $day++) {
         $this->travelTo(
-            \Carbon\CarbonImmutable::create(
+            CarbonImmutable::create(
                 2026, 10, $day, 2, 0, 0, 'Asia/Bangkok'
             )
         );
@@ -240,7 +242,7 @@ test('corrupted proof prevents restore and pruning', function () {
 
     for ($day = 1; $day <= 8; $day++) {
         $this->travelTo(
-            \Carbon\CarbonImmutable::create(
+            CarbonImmutable::create(
                 2026, 10, $day, 2, 0, 0, 'Asia/Bangkok'
             )
         );

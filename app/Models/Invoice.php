@@ -2,11 +2,19 @@
 
 namespace App\Models;
 
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
+/**
+ * @property string $i_total
+ * @property CarbonInterface $i_date
+ * @property CarbonInterface $i_due
+ * @property CarbonInterface|null $period_start
+ * @property CarbonInterface|null $period_end
+ */
 class Invoice extends Model
 {
     use SoftDeletes;
@@ -51,21 +59,25 @@ class Invoice extends Model
         ];
     }
 
+    /** @return BelongsTo<Rental, $this> */
     public function rental(): BelongsTo
     {
         return $this->belongsTo(Rental::class, 'rentals_rt_id', 'rt_id');
     }
 
+    /** @return HasOne<Payment, $this> */
     public function payment(): HasOne
     {
         return $this->hasOne(Payment::class, 'invoices_i_id', 'i_id');
     }
 
+    /** @return BelongsTo<Meter, $this> */
     public function startMeter(): BelongsTo
     {
         return $this->belongsTo(Meter::class, 'start_meter_id', 'm_id');
     }
 
+    /** @return BelongsTo<Meter, $this> */
     public function endMeter(): BelongsTo
     {
         return $this->belongsTo(Meter::class, 'end_meter_id', 'm_id');

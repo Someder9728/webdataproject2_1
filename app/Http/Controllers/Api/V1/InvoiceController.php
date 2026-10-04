@@ -3,15 +3,15 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Actions\Billing\IssueInvoice;
+use App\Actions\Billing\UpdateInvoice;
 use App\Http\Controllers\Controller;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use App\Models\Invoice;
 use App\Models\Payment;
 use Carbon\CarbonImmutable;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
-use App\Actions\Billing\UpdateInvoice;
 
 class InvoiceController extends Controller
 {
@@ -46,7 +46,6 @@ class InvoiceController extends Controller
         ], 201);
     }
 
-
     public function update(
         Request $request,
         Invoice $invoice,
@@ -71,6 +70,9 @@ class InvoiceController extends Controller
         ]);
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     private function input(Request $request): array
     {
         return $request->only([
@@ -202,6 +204,9 @@ class InvoiceController extends Controller
         ]);
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     private function invoiceData(Invoice $invoice): array
     {
         $data = [
@@ -250,6 +255,9 @@ class InvoiceController extends Controller
         return $data;
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     private function paymentData(Payment $payment): array
     {
         return [

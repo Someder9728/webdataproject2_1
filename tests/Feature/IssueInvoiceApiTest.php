@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\Meters\CalculateMeterUsage;
 use App\Models\AuditEvent;
 use App\Models\Invoice;
 use App\Models\Meter;
@@ -81,7 +82,7 @@ afterEach(function () {
 });
 
 test('preview calculates partial rent using contract and writes nothing', function () {
-    $usage = app(\App\Actions\Meters\CalculateMeterUsage::class)->handle($this->startMeter, $this->endMeter);
+    $usage = app(CalculateMeterUsage::class)->handle($this->startMeter, $this->endMeter);
     $this->actingAs($this->admin)
         ->postJson('/api/v1/invoices/preview', $this->payload)
         ->assertOk()

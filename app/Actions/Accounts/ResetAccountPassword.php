@@ -12,6 +12,9 @@ use Illuminate\Validation\ValidationException;
 
 class ResetAccountPassword
 {
+    /**
+     * @param  array<string, mixed>  $input
+     */
     public function handle(User $actor, User $target, array $input): void
     {
         $actor = $actor->fresh();
@@ -36,7 +39,7 @@ class ResetAccountPassword
         }
 
         DB::transaction(function () use ($actor, $target, $validated) {
-            $target = User::findOrFail($target->getKey());
+            $target = User::whereKey($target->getKey())->firstOrFail();
 
             if (Hash::check($validated['password'], $target->u_password)) {
                 throw ValidationException::withMessages([

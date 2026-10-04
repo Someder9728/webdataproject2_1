@@ -2,6 +2,7 @@
 
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Schedule;
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
@@ -17,7 +18,7 @@ Artisan::command('dorm:backup-daily', function () {
     return $this->call('dorm:backup-prune');
 })->purpose('Create a backup and retain the latest verified sets');
 
-\Illuminate\Support\Facades\Schedule::command('dorm:backup-daily')
+Schedule::command('dorm:backup-daily')
     ->dailyAt('02:00')
     ->timezone('Asia/Bangkok')
     ->withoutOverlapping(120)

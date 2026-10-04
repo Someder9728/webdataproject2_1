@@ -15,10 +15,13 @@ class RecordWalkInPayment
 {
     public function __construct(private SqliteTransaction $transactions) {}
 
+    /**
+     * @param  array<string, mixed>  $input
+     */
     public function handle(User $actor, Invoice $invoice, array $input): Payment
     {
         return $this->transactions->run(function () use ($actor, $invoice, $input) {
-            $currentActor = User::findOrFail($actor->getKey());
+            $currentActor = User::whereKey($actor->getKey())->firstOrFail();
             abort_unless(
                 $currentActor->is_active && ! $currentActor->must_change_password
                 && $currentActor->u_role === 'admin',
@@ -40,7 +43,7 @@ class RecordWalkInPayment
                 throw ValidationException::withMessages(['note' => 'กรุณาระบุหมายเหตุการรับชำระ']);
             }
 
-            $currentInvoice = Invoice::findOrFail($invoice->getKey());
+            $currentInvoice = Invoice::whereKey($invoice->getKey())->firstOrFail();
             $payment = $currentInvoice->payment()->firstOrFail();
             $oldStatus = $payment->p_status;
             $latestId = $payment->events()->reorder()->orderByDesc('pe_id')->value('pe_id');

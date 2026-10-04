@@ -26,8 +26,6 @@ return new class extends Migration
                 ->unique()
                 ->constrained('rentals', 'rt_id');
 
-
-
             $table->timestamps();
             $table->softDeletes();
         });

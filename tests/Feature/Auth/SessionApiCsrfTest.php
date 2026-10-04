@@ -6,14 +6,12 @@ use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Support\Facades\Route;
 
 beforeEach(function () {
-    
+
     $this->app->bind(
         PreventRequestForgery::class,
         function ($app) {
-            return new class(
-                $app,
-                $app->make(Encrypter::class)
-            ) extends PreventRequestForgery {
+            return new class($app, $app->make(Encrypter::class)) extends PreventRequestForgery
+            {
                 protected function runningUnitTests()
                 {
                     return false;
@@ -55,7 +53,7 @@ test('post with incorrect csrf token is rejected', function () {
     $this->postJson('/api/v1/_test/csrf', [], [
         'X-CSRF-TOKEN' => str_repeat('b', 40),
     ])->assertStatus(419)
-    ->assertJsonPath('code', 'CSRF_TOKEN_MISMATCH');
+        ->assertJsonPath('code', 'CSRF_TOKEN_MISMATCH');
 });
 
 test('post with matching session csrf token is accepted', function () {
@@ -70,7 +68,7 @@ test('cross-site post without csrf token is rejected', function () {
     $this->postJson('/api/v1/_test/csrf', [], [
         'Sec-Fetch-Site' => 'cross-site',
     ])->assertStatus(419)
-    ->assertJsonPath('code', 'CSRF_TOKEN_MISMATCH');
+        ->assertJsonPath('code', 'CSRF_TOKEN_MISMATCH');
 });
 
 test('same-origin post is accepted by framework origin verification', function () {

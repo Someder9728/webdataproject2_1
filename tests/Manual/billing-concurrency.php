@@ -12,6 +12,7 @@ use App\Models\Rental;
 use App\Models\Room;
 use App\Models\Tenant;
 use App\Models\User;
+use Brick\Math\BigDecimal;
 use Carbon\Carbon;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Console\Kernel;
@@ -176,7 +177,7 @@ foreach (['same period' => '2026-09-16', 'overlapping periods' => '2026-09-20'] 
         $invoice = Invoice::firstOrFail();
         $payment = $invoice->payment;
         if (! $payment || $payment->p_status !== 'UNPAID' ||
-            (string) \Brick\Math\BigDecimal::of((string) $payment->p_amount)->toScale(2) !== $invoice->i_total) {
+            (string) BigDecimal::of((string) $payment->p_amount)->toScale(2) !== $invoice->i_total) {
             throw new RuntimeException('Payment does not match the committed invoice.');
         }
         echo "PASS: {$case} — overlapping workers, outcomes 201/409, one Invoice/Payment/Audit\n";

@@ -2,13 +2,14 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Actions\DeleteUnusedRecord;
+use App\Actions\Tenants\CreateTenant;
+use App\Actions\Tenants\UpdateTenant;
 use App\Http\Controllers\Controller;
 use App\Models\Tenant;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
-use App\Actions\Tenants\CreateTenant;
-use App\Actions\Tenants\UpdateTenant;
 
 class TenantController extends Controller
 {
@@ -37,7 +38,7 @@ class TenantController extends Controller
 
         if ($search !== '') {
             $query->where(function ($query) use ($search) {
-                
+
                 $query->whereRaw(
                     "instr(
                         coalesce(t_Fname, '') || ' ' || coalesce(t_Lname, ''),
@@ -65,8 +66,7 @@ class TenantController extends Controller
 
         return response()->json([
             'data' => $tenants->getCollection()
-                ->map(fn (Tenant $tenant) =>
-                    $tenant->only(self::COLUMNS)
+                ->map(fn (Tenant $tenant) => $tenant->only(self::COLUMNS)
                 )
                 ->values()
                 ->all(),
@@ -91,53 +91,53 @@ class TenantController extends Controller
     }
 
     public function store(
-            Request $request,
-            CreateTenant $action
-        ): JsonResponse {
-            $tenant = $action->handle(
-                $request->user(),
-                $request->only([
-                    't_Fname',
-                    't_Lname',
-                    't_tel',
-                    't_mail',
-                    't_address',
-                ])
-            );
+        Request $request,
+        CreateTenant $action
+    ): JsonResponse {
+        $tenant = $action->handle(
+            $request->user(),
+            $request->only([
+                't_Fname',
+                't_Lname',
+                't_tel',
+                't_mail',
+                't_address',
+            ])
+        );
 
-            return response()->json([
-                'data' => $tenant->only(self::COLUMNS),
-                'message' => 'สร้างข้อมูลผู้เช่าสำเร็จ',
-            ], 201);
-        }
+        return response()->json([
+            'data' => $tenant->only(self::COLUMNS),
+            'message' => 'สร้างข้อมูลผู้เช่าสำเร็จ',
+        ], 201);
+    }
 
     public function update(
         Request $request,
         Tenant $tenant,
         UpdateTenant $action
-        ): JsonResponse {
-            $updatedTenant = $action->handle(
-                $request->user(),
-                $tenant,
-                $request->only([
-                    't_Fname',
-                    't_Lname',
-                    't_tel',
-                    't_mail',
-                    't_address',
-                ])
-            );
+    ): JsonResponse {
+        $updatedTenant = $action->handle(
+            $request->user(),
+            $tenant,
+            $request->only([
+                't_Fname',
+                't_Lname',
+                't_tel',
+                't_mail',
+                't_address',
+            ])
+        );
 
-            return response()->json([
-                'data' => $updatedTenant->only(self::COLUMNS),
-                'message' => 'แก้ไขข้อมูลผู้เช่าสำเร็จ',
-            ]);
-        }
+        return response()->json([
+            'data' => $updatedTenant->only(self::COLUMNS),
+            'message' => 'แก้ไขข้อมูลผู้เช่าสำเร็จ',
+        ]);
+    }
 
-        public function destroy(
+    public function destroy(
         Request $request,
         Tenant $tenant,
-        \App\Actions\DeleteUnusedRecord $action
+        DeleteUnusedRecord $action
     ): JsonResponse {
         $action->handle($request->user(), $tenant);
 

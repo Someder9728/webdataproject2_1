@@ -3,21 +3,21 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use App\Models\Room;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Carbon;
 
-/** @property \Illuminate\Support\Carbon $m_date */
+/** @property Carbon $m_date */
 class Meter extends Model
 {
-
     use SoftDeletes;
 
     protected $fillable = [
-    'm_date',
-    'm_water',
-    'm_elec',
-    'rooms_r_id',
-];
+        'm_date',
+        'm_water',
+        'm_elec',
+        'rooms_r_id',
+    ];
 
     protected $primaryKey = 'm_id';
 
@@ -30,7 +30,9 @@ class Meter extends Model
         ];
     }
 
-    public function room() {
+    /** @return BelongsTo<Room, $this> */
+    public function room(): BelongsTo
+    {
         return $this->belongsTo(Room::class, 'rooms_r_id', 'r_id');
     }
 }

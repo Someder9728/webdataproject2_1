@@ -11,11 +11,14 @@ use Illuminate\Support\Facades\Validator;
 
 class CreateTenant
 {
+    /**
+     * @param  array<string, mixed>  $input
+     */
     public function handle(User $actor, array $input): Tenant
     {
         return DB::transaction(function () use ($actor, $input) {
             // อ่านสิทธิ์ล่าสุดภายใน transaction
-            $currentActor = User::find($actor->getKey());
+            $currentActor = User::whereKey($actor->getKey())->first();
 
             abort_unless(
                 $currentActor &&

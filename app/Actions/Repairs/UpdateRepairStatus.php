@@ -15,7 +15,9 @@ class UpdateRepairStatus
 {
     public function __construct(private SqliteTransaction $transactions) {}
 
-    /** @param array<string, mixed> $input */
+    /**
+     * @param  array<string, mixed>  $input
+     */
     public function handle(User $actor, Repair $repair, array $input): Repair
     {
         return $this->transactions->run(function () use ($actor, $repair, $input) {

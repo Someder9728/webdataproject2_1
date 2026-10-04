@@ -83,7 +83,7 @@ test('admin can search tenants', function (string $search) {
 ]);
 
 test('admin can search by exact tenant id', function () {
-    
+
     $this->tenantOne->update(['t_tel' => '0888888888']);
     $this->tenantTwo->update(['t_tel' => '0999999999']);
 

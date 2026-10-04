@@ -14,7 +14,7 @@ class DeleteUnusedRecord
     public function handle(User $actor, Tenant|Room $record): void
     {
         DB::transaction(function () use ($actor, $record) {
-            $actor = User::find($actor->getKey());
+            $actor = User::whereKey($actor->getKey())->first();
 
             abort_unless(
                 $actor && ! $actor->must_change_password,
@@ -26,8 +26,8 @@ class DeleteUnusedRecord
             $isTenant = $record instanceof Tenant;
 
             $current = $isTenant
-                ? Tenant::findOrFail($record->getKey())
-                : Room::findOrFail($record->getKey());
+                ? Tenant::whereKey($record->getKey())->firstOrFail()
+                : Room::whereKey($record->getKey())->firstOrFail();
 
             $references = $isTenant
                 ? [
@@ -52,7 +52,7 @@ class DeleteUnusedRecord
                 );
             }
 
-            if (! $isTenant) {
+            if ($current instanceof Room) {
                 abort_unless($current->r_status === 'VACANT', 409);
             }
 

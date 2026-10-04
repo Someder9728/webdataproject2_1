@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\Payments\RecordWalkInPayment;
 use App\Models\AuditEvent;
 use App\Models\Invoice;
 use App\Models\Meter;
@@ -11,6 +12,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Storage;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 beforeEach(function () {
     $this->travelTo(
@@ -166,9 +168,9 @@ test('walk in action independently rejects restricted actor', function (string $
     $this->admin->forceFill([$field => $value])->save();
     expect($this->admin->fresh()->getAttribute($field))->toBe($value);
     try {
-        app(\App\Actions\Payments\RecordWalkInPayment::class)->handle($this->admin, $this->invoice, $this->walkInPayload);
+        app(RecordWalkInPayment::class)->handle($this->admin, $this->invoice, $this->walkInPayload);
         $this->fail('Restricted actor was allowed');
-    } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
+    } catch (HttpException $e) {
         expect($e->getStatusCode())->toBe(403);
     }
     expect($this->payment->fresh()->p_status)->toBe('UNPAID');
@@ -243,12 +245,12 @@ test('paid walk in cannot be paid again submitted or reviewed', function () {
 
 test('walk in audit failure rolls back payment and event', function () {
     Event::listen('eloquent.creating: '.AuditEvent::class, function () {
-        throw new \RuntimeException('walk in audit failure');
+        throw new RuntimeException('walk in audit failure');
     });
     try {
-        app(\App\Actions\Payments\RecordWalkInPayment::class)->handle($this->admin, $this->invoice, $this->walkInPayload);
+        app(RecordWalkInPayment::class)->handle($this->admin, $this->invoice, $this->walkInPayload);
         $this->fail('Expected audit failure');
-    } catch (\RuntimeException $e) {
+    } catch (RuntimeException $e) {
         expect($e->getMessage())->toBe('walk in audit failure');
     } finally {
         Event::forget('eloquent.creating: '.AuditEvent::class);

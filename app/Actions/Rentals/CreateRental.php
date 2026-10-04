@@ -14,18 +14,18 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 
 class CreateRental
-
-
 {
-
     public function __construct(
         private SqliteTransaction $transactions
     ) {}
 
+    /**
+     * @param  array<string, mixed>  $input
+     */
     public function handle(User $actor, array $input): Rental
     {
         return $this->transactions->run(function () use ($actor, $input) {
-            $actor = User::find($actor->getKey());
+            $actor = User::whereKey($actor->getKey())->first();
 
             abort_unless(
                 $actor && ! $actor->must_change_password,
@@ -76,8 +76,8 @@ class CreateRental
                 'c_deposit' => $moneyRules,
             ])->validate();
 
-            $tenant = Tenant::find($validated['tenants_t_id']);
-            $room = Room::find($validated['rooms_r_id']);
+            $tenant = Tenant::whereKey($validated['tenants_t_id'])->first();
+            $room = Room::whereKey($validated['rooms_r_id'])->first();
 
             if (! $tenant) {
                 throw ValidationException::withMessages([
@@ -110,8 +110,7 @@ class CreateRental
 
             if (! $hasOpeningMeter) {
                 throw ValidationException::withMessages([
-                    'rooms_r_id' =>
-                        'ต้องบันทึกมิเตอร์ของห้อง ณ วันเข้าพักก่อน',
+                    'rooms_r_id' => 'ต้องบันทึกมิเตอร์ของห้อง ณ วันเข้าพักก่อน',
                 ]);
             }
 

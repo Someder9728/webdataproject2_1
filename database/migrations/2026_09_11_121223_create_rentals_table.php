@@ -23,7 +23,6 @@ return new class extends Migration
             $table->foreignId('tenants_t_id')
                 ->constrained('tenants', 't_id');
 
-
             $table->timestamps();
             $table->softDeletes();
         });

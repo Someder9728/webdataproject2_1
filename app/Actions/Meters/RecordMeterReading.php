@@ -16,10 +16,13 @@ class RecordMeterReading
         private SqliteTransaction $transactions
     ) {}
 
+    /**
+     * @param  array<string, mixed>  $input
+     */
     public function handle(User $actor, Room $room, array $input): Meter
     {
         return $this->transactions->run(function () use ($actor, $room, $input) {
-            $actor = User::find($actor->getKey());
+            $actor = User::whereKey($actor->getKey())->first();
 
             abort_unless(
                 $actor &&
@@ -29,7 +32,7 @@ class RecordMeterReading
                 403
             );
 
-            $room = Room::findOrFail($room->getKey());
+            $room = Room::whereKey($room->getKey())->firstOrFail();
 
             $readingRules = [
                 'required',

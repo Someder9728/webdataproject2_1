@@ -16,13 +16,15 @@ class CalculateInvoice
     /**
      * ใช้ภายใน Action ที่ตรวจสิทธิ์และเปิด transaction แล้ว
      * คืน snapshot สำหรับ Preview หรือสร้าง Invoice
+     *
+     * @param  array<string, mixed>  $input
+     * @return array<string, mixed>
      */
     public function handle(
         Rental $rental,
         array $input,
         ?Invoice $editingInvoice = null
-    ): array
-    {
+    ): array {
         $validated = Validator::make($input, [
             'period_start' => ['required', 'date_format:Y-m-d'],
             'period_end' => [
@@ -32,10 +34,10 @@ class CalculateInvoice
             ],
         ])->validate();
 
-        $rental = Rental::findOrFail($rental->getKey());
+        $rental = Rental::whereKey($rental->getKey())->firstOrFail();
 
         if ($editingInvoice !== null) {
-            $editingInvoice = Invoice::findOrFail($editingInvoice->getKey());
+            $editingInvoice = Invoice::whereKey($editingInvoice->getKey())->firstOrFail();
 
             abort_unless(
                 (int) $editingInvoice->rentals_rt_id === (int) $rental->getKey(),
@@ -157,8 +159,6 @@ class CalculateInvoice
                 : $contract->c_rent,
             'rent_rate'
         );
-
-        
 
         $startWater = $this->decimal($startMeter->m_water, 'start_water');
         $endWater = $this->decimal($endMeter->m_water, 'end_water');

@@ -3,7 +3,7 @@
 use App\Models\User;
 
 beforeEach(function () {
-    $this->account = new User();
+    $this->account = new User;
     $this->account->u_username = 'auth_test_admin';
     $this->account->u_password = 'Test-Password-1234';
     $this->account->u_role = 'admin';

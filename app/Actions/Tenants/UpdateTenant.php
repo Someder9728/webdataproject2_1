@@ -11,13 +11,16 @@ use Illuminate\Support\Facades\Validator;
 
 class UpdateTenant
 {
+    /**
+     * @param  array<string, mixed>  $input
+     */
     public function handle(
         User $actor,
         Tenant $tenant,
         array $input
     ): Tenant {
         return DB::transaction(function () use ($actor, $tenant, $input) {
-            $currentActor = User::find($actor->getKey());
+            $currentActor = User::whereKey($actor->getKey())->first();
 
             abort_unless(
                 $currentActor &&
@@ -28,7 +31,7 @@ class UpdateTenant
             // ตรวจสิทธิ์ก่อนอ่านข้อมูลเป้าหมายจากฐานข้อมูล
             Gate::forUser($currentActor)->authorize('update', $tenant);
 
-            $currentTenant = Tenant::findOrFail($tenant->getKey());
+            $currentTenant = Tenant::whereKey($tenant->getKey())->firstOrFail();
 
             $data = [];
 

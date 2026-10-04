@@ -37,6 +37,9 @@ class UpdateInvoice
         private SqliteTransaction $transactions
     ) {}
 
+    /**
+     * @param  array<string, mixed>  $input
+     */
     public function handle(
         User $actor,
         Invoice $invoice,
@@ -48,11 +51,11 @@ class UpdateInvoice
             $input
         ) {
             // อ่านใหม่ทุก retry รวมทั้งการเรียก Action โดยตรง
-            $actor = User::find($actor->getKey());
+            $actor = User::whereKey($actor->getKey())->first();
 
-            abort_unless($actor, 403);
+            abort_unless($actor !== null, 403);
 
-            $invoice = Invoice::findOrFail($invoice->getKey());
+            $invoice = Invoice::whereKey($invoice->getKey())->firstOrFail();
 
             Gate::forUser($actor)->authorize('update', $invoice);
 
@@ -110,10 +113,8 @@ class UpdateInvoice
             }
 
             if (! array_key_exists('i_due', $data)) {
-                $data['i_due'] = $invoice->i_due?->toDateString();
+                $data['i_due'] = $invoice->i_due->toDateString();
             }
-
-            abort_unless($invoice->i_date !== null, 409);
 
             $validated = Validator::make($data, [
                 'period_start' => ['required', 'date_format:Y-m-d'],
@@ -137,7 +138,7 @@ class UpdateInvoice
                     !== $invoice->period_end?->toDateString();
 
             $dueChanged =
-                $validated['i_due'] !== $invoice->i_due?->toDateString();
+                $validated['i_due'] !== $invoice->i_due->toDateString();
 
             if (! $periodChanged && ! $dueChanged) {
                 throw ValidationException::withMessages([
@@ -155,7 +156,7 @@ class UpdateInvoice
 
             // แก้เฉพาะวันครบกำหนด ไม่คำนวณยอดหรืออ่านมิเตอร์ใหม่
             if ($periodChanged) {
-                $rental = Rental::findOrFail($invoice->rentals_rt_id);
+                $rental = Rental::whereKey($invoice->rentals_rt_id)->firstOrFail();
 
                 $calculated = $this->calculator->handle(
                     $rental,
@@ -196,6 +197,9 @@ class UpdateInvoice
         });
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     private function snapshot(Invoice $invoice): array
     {
         $data = $invoice->only(self::SNAPSHOT_FIELDS);
