@@ -15,6 +15,12 @@ Route::prefix('api/v1')
     ->name('api.v1.')
     ->middleware(['auth', 'password.changed'])
     ->group(function () {
+        Route::get('/repairs', [\App\Http\Controllers\Api\V1\RepairController::class, 'index'])->name('repairs.index');
+        Route::post('/repairs', [\App\Http\Controllers\Api\V1\RepairController::class, 'store'])->name('repairs.store');
+        Route::get('/repairs/{repair}', [\App\Http\Controllers\Api\V1\RepairController::class, 'show'])->whereNumber('repair')->name('repairs.show');
+        Route::patch('/repairs/{repair}/status', [\App\Http\Controllers\Api\V1\RepairController::class, 'update'])->whereNumber('repair')->middleware('role:admin')->name('repairs.status');
+        Route::get('/rooms/{room}/meter-usage', [MeterController::class, 'usage'])->whereNumber('room')->middleware('role:admin')->name('rooms.meter-usage');
+
         Route::get('/me', function (Request $request) {
             $user = $request->user();
 

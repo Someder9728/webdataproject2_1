@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use App\Models\Room;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
+/** @property \Illuminate\Support\Carbon $m_date */
 class Meter extends Model
 {
 

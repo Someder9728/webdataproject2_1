@@ -24,7 +24,8 @@ class Room extends Model {
 
     protected $primaryKey = 'r_id';
 
-    public function rentals() {
+    /** @return \Illuminate\Database\Eloquent\Relations\HasMany<Rental, $this> */
+    public function rentals(): \Illuminate\Database\Eloquent\Relations\HasMany {
         return $this->hasMany(Rental::class, 'rooms_r_id', 'r_id');
     }
 

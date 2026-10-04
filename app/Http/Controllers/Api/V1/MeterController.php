@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Actions\Meters\CalculateMeterUsage;
 use App\Actions\Meters\RecordMeterReading;
 use App\Http\Controllers\Controller;
 use App\Models\Meter;
@@ -11,6 +12,22 @@ use Illuminate\Http\Request;
 
 class MeterController extends Controller
 {
+    public function usage(Request $request, Room $room, CalculateMeterUsage $action): JsonResponse
+    {
+        $this->authorizeAdmin($request);
+        $data = $request->validate([
+            'start_meter_id' => ['required', 'integer'],
+            'end_meter_id' => ['required', 'integer'],
+        ]);
+        $start = $room->meters()->findOrFail($data['start_meter_id']);
+        $end = $room->meters()->findOrFail($data['end_meter_id']);
+
+        return response()->json(['data' => [
+            'start_meter_id' => $start->getKey(), 'end_meter_id' => $end->getKey(),
+            ...$action->handle($start, $end),
+        ]]);
+    }
+
     public function index(Request $request, Room $room): JsonResponse
     {
         $this->authorizeAdmin($request);
@@ -72,6 +89,7 @@ class MeterController extends Controller
         );
     }
 
+    /** @return array<string, mixed> */
     private function present(Meter $meter): array
     {
         return [

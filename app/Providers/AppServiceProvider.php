@@ -48,6 +48,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Rental::class, RentalPolicy::class);
         Gate::policy(Room::class, RoomPolicy::class);
         Gate::policy(Invoice::class, InvoicePolicy::class);
+        Gate::policy(\App\Models\Repair::class, \App\Policies\RepairPolicy::class);
     }
 
     /**

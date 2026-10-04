@@ -13,6 +13,8 @@ Route::middleware(['auth', 'password.changed', 'role:admin'])
 
 
 Route::middleware(['auth', 'password.changed'])->group(function () {
+    Route::get('/meters', [\App\Http\Controllers\MaintenancePageController::class, 'meters'])->middleware('role:admin')->name('meters.index');
+    Route::get('/repairs', [\App\Http\Controllers\MaintenancePageController::class, 'repairs'])->name('repairs.index');
     Route::view('dashboard', 'dashboard')->name('dashboard');
 });
 

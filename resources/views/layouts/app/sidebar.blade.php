@@ -11,6 +11,10 @@
             </flux:sidebar.header>
 
             <flux:sidebar.nav>
+                @if(auth()->user()->u_role === 'admin')
+                    <flux:sidebar.item :href="route('meters.index')" :current="request()->routeIs('meters.index')">มิเตอร์และการใช้งาน</flux:sidebar.item>
+                @endif
+                <flux:sidebar.item :href="route('repairs.index')" :current="request()->routeIs('repairs.index')">แจ้งซ่อม</flux:sidebar.item>
                 <flux:sidebar.group :heading="__('Platform')" class="grid">
                     <flux:sidebar.item icon="home" :href="route('dashboard')" :current="request()->routeIs('dashboard')" wire:navigate>
                         {{ __('Dashboard') }}
