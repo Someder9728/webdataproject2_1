@@ -28,4 +28,14 @@ class Contract extends Model
     {
         return $this->belongsTo(Rental::class, 'rentals_rt_id', 'rt_id');
     }
+
+    protected function casts(): array
+    {
+        return [
+            'c_start' => 'date',
+            'c_end' => 'date',
+            'c_rent' => 'decimal:2',
+            'c_deposit' => 'decimal:2',
+        ];
+    }
 }

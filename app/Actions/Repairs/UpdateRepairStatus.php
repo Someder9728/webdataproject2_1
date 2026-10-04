@@ -4,73 +4,45 @@ namespace App\Actions\Repairs;
 
 use App\Models\AuditEvent;
 use App\Models\Repair;
-use App\Models\RepairHistory;
 use App\Models\User;
-use Illuminate\Support\Facades\DB;
+use App\Support\SqliteTransaction;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class UpdateRepairStatus
 {
-    /**
-     * ลำดับที่ไปต่อได้ของแต่ละสถานะ ห้ามข้ามขั้นและห้ามย้อนกลับ
-     */
-    private const NEXT_STATUS = [
-        'REPORTED' => 'IN_PROGRESS',
-        'IN_PROGRESS' => 'COMPLETED',
-    ];
+    public function __construct(private SqliteTransaction $transactions) {}
 
-    public function handle(User $actor, Repair $repair, string $newStatus): Repair
+    /** @param array<string, mixed> $input */
+    public function handle(User $actor, Repair $repair, array $input): Repair
     {
-        $actor = $actor->fresh();
-
-        // เฉพาะ Admin เท่านั้นที่เปลี่ยนสถานะงานซ่อมได้ ผู้แจ้ง (Tenant)
-        // ดูได้อย่างเดียว
-        abort_unless(
-            $actor &&
-            $actor->is_active &&
-            ! $actor->must_change_password &&
-            $actor->u_role === 'admin',
-            403
-        );
-
-        return DB::transaction(function () use ($actor, $repair, $newStatus) {
-            $repair = Repair::lockForUpdate()->findOrFail($repair->getKey());
-
-            $expectedNext = self::NEXT_STATUS[$repair->rp_status] ?? null;
-
-            if ($expectedNext === null) {
-                throw ValidationException::withMessages([
-                    'rp_status' => "งานซ่อมสถานะ {$repair->rp_status} เปลี่ยนสถานะต่อไม่ได้แล้ว",
-                ]);
+        return $this->transactions->run(function () use ($actor, $repair, $input) {
+            $actor = User::whereKey($actor->getKey())->firstOrFail();
+            $repair = Repair::whereKey($repair->getKey())->lockForUpdate()->firstOrFail();
+            Gate::forUser($actor)->authorize('update', $repair);
+            $data = Validator::make($input, [
+                'expected_status' => ['required', Rule::in(['REPORTED', 'IN_PROGRESS', 'COMPLETED'])],
+                'rp_status' => ['required', Rule::in(['IN_PROGRESS', 'COMPLETED'])],
+            ])->validate();
+            abort_unless($data['expected_status'] === $repair->rp_status, 409);
+            $next = ['REPORTED' => 'IN_PROGRESS', 'IN_PROGRESS' => 'COMPLETED'];
+            if (($next[$repair->rp_status] ?? null) !== $data['rp_status']) {
+                throw ValidationException::withMessages(['rp_status' => 'ต้องเปลี่ยนจากแจ้งซ่อม เป็นกำลังซ่อม แล้วจึงเสร็จสิ้นตามลำดับ']);
             }
-
-            if ($newStatus !== $expectedNext) {
-                throw ValidationException::withMessages([
-                    'rp_status' => "เปลี่ยนสถานะได้แค่ {$repair->rp_status} → {$expectedNext} เท่านั้น "
-                        . '(ห้ามข้ามขั้นหรือย้อนกลับ)',
-                ]);
-            }
-
-            $oldStatus = $repair->rp_status;
-
-            $repair->rp_status = $newStatus;
-            $repair->save();
-
-            RepairHistory::create([
-                'rph_status' => $newStatus,
-                'rph_name' => $repair->rp_name,
-                'rph_description' => $repair->rp_description,
-                'repairs_rp_id' => $repair->getKey(),
+            $old = $repair->rp_status;
+            $repair->update(['rp_status' => $data['rp_status']]);
+            $repair->histories()->create([
+                'rph_name' => $repair->rp_name, 'rph_description' => $repair->rp_description,
+                'rph_type' => $repair->rp_type, 'rph_status' => $repair->rp_status,
                 'changed_by_user_id' => $actor->getKey(),
             ]);
-
             AuditEvent::create([
-                'actor_user_id' => $actor->getKey(),
-                'entity_type' => 'repairs',
-                'entity_id' => $repair->getKey(),
-                'action' => 'repair_status_changed',
-                'old_values' => ['rp_status' => $oldStatus],
-                'new_values' => ['rp_status' => $newStatus],
+                'actor_user_id' => $actor->getKey(), 'entity_type' => 'repairs',
+                'entity_id' => $repair->getKey(), 'action' => 'repair_status_changed',
+                'old_values' => ['rp_status' => $old],
+                'new_values' => ['rp_status' => $repair->rp_status],
             ]);
 
             return $repair;

@@ -33,9 +33,6 @@ return new class extends Migration
     public function down(): void
     {
         Schema::dropIfExists('meters');
-        
-        Schema::table('meters', function (Blueprint $table){
-            $table->dropColumn('m_type');
-        });
+
     }
 };

@@ -28,7 +28,8 @@ class Rental extends Model
         return $this->belongsTo(Tenant::class, 'tenants_t_id', 't_id');
     }
 
-    public function room() {
+    /** @return \Illuminate\Database\Eloquent\Relations\BelongsTo<Room, $this> */
+    public function room(): \Illuminate\Database\Eloquent\Relations\BelongsTo {
         return $this->belongsTo(Room::class, 'rooms_r_id', 'r_id');
     }
 
@@ -38,5 +39,29 @@ class Rental extends Model
 
     public function invoices() {
         return $this->hasMany(Invoice::class, 'rentals_rt_id', 'rt_id');
+    }
+    public function scopeSearch($query, ?string $term)
+    {
+        if (blank($term)) {
+            return $query;
+        }
+
+        return $query->where(function ($q) use ($term) {
+            $q->whereHas('tenant', function ($tq) use ($term) {
+                $tq->where('t_Fname', 'like', "%{$term}%")
+                   ->orWhere('t_Lname', 'like', "%{$term}%")
+                   ->orWhere('t_tel', 'like', "%{$term}%");
+            })->orWhereHas('room', function ($rq) use ($term) {
+                $rq->where('r_name', 'like', "%{$term}%");
+            });
+        });
+    }
+
+    protected function casts(): array
+    {
+        return [
+            'rt_movein' => 'date',
+            'rt_moveout' => 'date',
+        ];
     }
 }
