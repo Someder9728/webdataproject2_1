@@ -28,7 +28,8 @@ class Rental extends Model
         return $this->belongsTo(Tenant::class, 'tenants_t_id', 't_id');
     }
 
-    public function room() {
+    /** @return \Illuminate\Database\Eloquent\Relations\BelongsTo<Room, $this> */
+    public function room(): \Illuminate\Database\Eloquent\Relations\BelongsTo {
         return $this->belongsTo(Room::class, 'rooms_r_id', 'r_id');
     }
 

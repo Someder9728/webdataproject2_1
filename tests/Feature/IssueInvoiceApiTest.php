@@ -81,6 +81,7 @@ afterEach(function () {
 });
 
 test('preview calculates partial rent using contract and writes nothing', function () {
+    $usage = app(\App\Actions\Meters\CalculateMeterUsage::class)->handle($this->startMeter, $this->endMeter);
     $this->actingAs($this->admin)
         ->postJson('/api/v1/invoices/preview', $this->payload)
         ->assertOk()
@@ -92,6 +93,11 @@ test('preview calculates partial rent using contract and writes nothing', functi
         ->assertJsonPath('data.i_due', '2026-10-08')
         ->assertJsonPath('data.rent_rate', '3000.00')
         ->assertJsonPath('data.start_meter_id', $this->startMeter->getKey());
+
+    $this->getJson('/api/v1/rooms/'.$this->room->getKey().'/meter-usage?start_meter_id='.$this->startMeter->getKey().'&end_meter_id='.$this->endMeter->getKey())
+        ->assertOk()->assertJsonPath('data.water_usage', $usage['water_usage'])->assertJsonPath('data.elec_usage', $usage['elec_usage']);
+    $this->postJson('/api/v1/invoices/preview', $this->payload)
+        ->assertOk()->assertJsonPath('data.water_usage', $usage['water_usage'])->assertJsonPath('data.elec_usage', $usage['elec_usage']);
 
     $this->assertDatabaseCount('invoices', 0);
     $this->assertDatabaseCount('payments', 0);
