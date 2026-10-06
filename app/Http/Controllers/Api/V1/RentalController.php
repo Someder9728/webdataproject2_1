@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Actions\Rentals\CreateRental;
 use App\Actions\Rentals\MoveOutRental;
+use App\Actions\Rentals\UpdateContract;
 use App\Http\Controllers\Controller;
 use App\Models\Rental;
 use Illuminate\Http\JsonResponse;
@@ -96,9 +97,17 @@ class RentalController extends Controller
                 'c_rent' => $contract->c_rent,
                 'c_deposit' => $contract->c_deposit,
                 'c_status' => $contract->c_status,
+                'price_locked' => $rental->invoices()->withTrashed()->exists(),
             ],
             'message' => 'อ่านสัญญาการเช่าสำเร็จ',
         ]);
+    }
+
+    public function updateContract(Request $request, Rental $rental, UpdateContract $action): JsonResponse
+    {
+        $action->handle($request->user(), $rental, $request->all());
+
+        return $this->showContract($rental);
     }
 
     public function moveOut(

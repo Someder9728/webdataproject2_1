@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\V1\AccountController;
+use App\Http\Controllers\Api\V1\DashboardController;
 use App\Http\Controllers\Api\V1\InvoiceController;
 use App\Http\Controllers\Api\V1\MeterController;
 use App\Http\Controllers\Api\V1\PaymentHistoryController;
@@ -19,6 +20,8 @@ Route::prefix('api/v1')
     ->name('api.v1.')
     ->middleware(['auth', 'password.changed'])
     ->group(function () {
+        Route::get('/dashboard', [DashboardController::class, 'show'])->middleware('role:admin')->name('dashboard');
+        Route::patch('/rentals/{rental}/contract', [RentalController::class, 'updateContract'])->whereNumber('rental')->middleware('role:admin')->name('rentals.contract.update');
         Route::get('/repairs', [RepairController::class, 'index'])->name('repairs.index');
         Route::post('/repairs', [RepairController::class, 'store'])->name('repairs.store');
         Route::get('/repairs/{repair}', [RepairController::class, 'show'])->whereNumber('repair')->name('repairs.show');

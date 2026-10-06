@@ -2,6 +2,7 @@
 
 use App\Actions\Billing\IssueInvoice;
 use App\Actions\Billing\UpdateInvoice;
+use App\Actions\Rentals\UpdateContract;
 use App\Models\AuditEvent;
 use App\Models\Invoice;
 use App\Models\Meter;
@@ -112,6 +113,146 @@ beforeEach(function () {
 
 afterEach(function () {
     $this->travelBack();
+});
+
+test('ended rental still allows period correction within move out and due only edit', function () {
+    $this->rental->update(['rt_status' => 'ENDED', 'rt_moveout' => '2026-10-01']);
+    $this->contract->update(['c_status' => 'ENDED']);
+
+    $this->actingAs($this->admin)->patchJson($this->url, $this->payload)
+        ->assertOk()->assertJsonPath('data.i_total', '1488.00');
+    $this->actingAs($this->admin)->patchJson($this->url, [
+        'i_due' => '2026-10-15', 'reason' => 'Correct due date after move out',
+    ])->assertOk()->assertJsonPath('data.i_total', '1488.00');
+});
+
+test('ended rental rejects period beyond move out without changing money or audit', function () {
+    $this->rental->update(['rt_status' => 'ENDED', 'rt_moveout' => '2026-09-20']);
+    $invoiceBefore = $this->invoice->fresh()->getAttributes();
+    $paymentBefore = $this->payment->fresh()->getAttributes();
+    $auditCount = AuditEvent::count();
+    $this->actingAs($this->admin)->patchJson($this->url, $this->payload)
+        ->assertUnprocessable()->assertJsonValidationErrors('period_end');
+    ($this->assertUnchanged)($invoiceBefore, $paymentBefore, $auditCount);
+});
+
+test('manual issue resolves earliest gap and advances to standard monthly boundary', function () {
+    $this->actingAs($this->admin)->postJson('/api/v1/invoices/preview', [
+        'rentals_rt_id' => $this->rental->getKey(),
+    ])->assertOk()->assertJsonPath('data.period_start', '2026-09-01')
+        ->assertJsonPath('data.period_end', '2026-09-16')->assertJsonPath('data.i_rent', '1500.00');
+    $this->assertDatabaseCount('invoices', 1);
+    $this->actingAs($this->admin)->postJson('/api/v1/invoices', [
+        'rentals_rt_id' => $this->rental->getKey(),
+    ])->assertCreated();
+    $this->actingAs($this->admin)->postJson('/api/v1/invoices/preview', [
+        'rentals_rt_id' => $this->rental->getKey(),
+    ])->assertUnprocessable()->assertJsonValidationErrors('period_end');
+});
+
+test('ended rental manual issue fills edit gap and stops when fully billed', function () {
+    $this->rental->update(['rt_status' => 'ENDED', 'rt_moveout' => '2026-10-01']);
+    $this->actingAs($this->admin)->patchJson($this->url, $this->payload)->assertOk();
+    $this->actingAs($this->admin)->postJson('/api/v1/invoices', [
+        'rentals_rt_id' => $this->rental->getKey(),
+    ])->assertCreated()->assertJsonPath('data.period_start', '2026-09-01')
+        ->assertJsonPath('data.period_end', '2026-09-20');
+    $this->actingAs($this->admin)->postJson('/api/v1/invoices/preview', [
+        'rentals_rt_id' => $this->rental->getKey(),
+    ])->assertConflict();
+});
+
+test('contract extension audits changes and leaves rent and occupancy unchanged', function () {
+    $url = '/api/v1/rentals/'.$this->rental->getKey().'/contract';
+    $this->actingAs($this->admin)->patchJson($url, [
+        'c_end' => '2027-01-01', 'reason' => 'Extend contract',
+    ])->assertOk()->assertJsonPath('data.c_end', '2027-01-01')
+        ->assertJsonPath('data.c_rent', '3000.00')->assertJsonPath('data.price_locked', true);
+    expect($this->room->fresh()->r_status)->toBe('OCCUPIED');
+    expect(AuditEvent::where('action', 'contract_updated')->sole()->reason)->toBe('Extend contract');
+    $this->actingAs($this->admin)->patchJson($url, [
+        'c_end' => '2027-02-01', 'c_rent' => '1.00', 'reason' => 'Forbidden price change',
+    ])->assertUnprocessable()->assertJsonValidationErrors('c_rent');
+    $this->rental->update(['rt_status' => 'ENDED', 'rt_moveout' => '2026-10-01']);
+    $this->actingAs($this->admin)->patchJson($url, [
+        'c_end' => null, 'reason' => 'Cannot reopen ended rental',
+    ])->assertConflict();
+});
+
+test('contract validation and tenant permissions protect write and read', function () {
+    $url = '/api/v1/rentals/'.$this->rental->getKey().'/contract';
+    $this->actingAs($this->admin)->patchJson($url, [
+        'c_end' => '2026-09-01', 'reason' => ' ',
+    ])->assertUnprocessable()->assertJsonValidationErrors(['c_end', 'reason']);
+    $tenant = User::factory()->create(['u_role' => 'tenant', 'tenants_t_id' => null, 'must_change_password' => false]);
+    $this->actingAs($tenant)->getJson($url)->assertNotFound();
+    $this->actingAs($tenant)->patchJson($url, [
+        'c_end' => null, 'reason' => 'Attempt',
+    ])->assertForbidden();
+});
+
+test('contract action rechecks ended rental and rolls back when audit fails', function () {
+    $input = ['c_end' => '2027-01-01', 'reason' => 'Extend'];
+    $before = $this->contract->fresh()->getAttributes();
+    $dispatcher = AuditEvent::getEventDispatcher();
+    $eventName = 'eloquent.creating: '.AuditEvent::class;
+    $listeners = $dispatcher->getRawListeners()[$eventName] ?? [];
+    $dispatcher->listen($eventName, function (AuditEvent $audit) {
+        if ($audit->action === 'contract_updated') {
+            throw new RuntimeException('Contract audit failed');
+        }
+    });
+    try {
+        app(UpdateContract::class)->handle($this->admin, $this->rental, $input);
+        $this->fail('Expected audit failure');
+    } catch (RuntimeException $exception) {
+        expect($exception->getMessage())->toBe('Contract audit failed');
+    } finally {
+        $dispatcher->forget($eventName);
+        foreach ($listeners as $listener) {
+            $dispatcher->listen($eventName, $listener);
+        }
+    }
+    expect($this->contract->fresh()->getAttributes())->toBe($before);
+    Rental::whereKey($this->rental->getKey())->update(['rt_status' => 'ENDED', 'rt_moveout' => '2026-10-01']);
+    try {
+        app(UpdateContract::class)->handle($this->admin, $this->rental, $input);
+        $this->fail('Stale rental allowed contract update');
+    } catch (HttpExceptionInterface $exception) {
+        expect($exception->getStatusCode())->toBe(409);
+    }
+});
+
+test('contract update requires csrf and accepts matching evidence', function () {
+    enableInvoiceEditCsrf($this->app);
+    $url = '/api/v1/rentals/'.$this->rental->getKey().'/contract';
+    $input = ['c_end' => '2027-01-01', 'reason' => 'Extend'];
+    $token = str_repeat('a', 40);
+    $this->actingAs($this->admin)->withSession(['_token' => $token])
+        ->patchJson($url, $input)->assertStatus(419);
+    expect($this->contract->fresh()->c_end)->toBeNull();
+    $this->actingAs($this->admin)->withSession(['_token' => $token])
+        ->patchJson($url, $input, ['X-CSRF-TOKEN' => $token])->assertOk();
+});
+
+test('dashboard separates billing month from received cash and overdue totals', function () {
+    $this->actingAs($this->admin)->getJson('/api/v1/dashboard?month=2026-09')
+        ->assertOk()->assertJsonPath('data.invoices.amount', '1994.00')
+        ->assertJsonPath('data.payments.received_amount', '0.00')
+        ->assertJsonPath('data.payments.outstanding_amount', '1994.00')
+        ->assertJsonPath('data.rooms.occupied', 1);
+    $this->actingAs($this->admin)->postJson($this->url.'/payment/walk-in', [
+        'amount' => '1994.00', 'payment_date' => '2026-10-02', 'method' => 'CASH',
+        'note' => 'Paid at office', 'expected_event_id' => null,
+    ])->assertSuccessful();
+    $this->actingAs($this->admin)->getJson('/api/v1/dashboard?month=2026-10')
+        ->assertOk()->assertJsonPath('data.invoices.amount', '0.00')
+        ->assertJsonPath('data.payments.received_amount', '1994.00')
+        ->assertJsonPath('data.payments.outstanding_amount', '0.00');
+    $this->actingAs($this->admin)->getJson('/api/v1/dashboard?month=invalid')
+        ->assertUnprocessable();
+    $this->admin->update(['u_role' => 'tenant']);
+    $this->actingAs($this->admin->fresh())->getJson('/api/v1/dashboard')->assertForbidden();
 });
 
 test('edit preserves rates and dates while updating amounts and audit', function () {

@@ -13,7 +13,8 @@ class IssueInvoice
 {
     public function __construct(
         private CalculateInvoice $calculator,
-        private SqliteTransaction $transactions
+        private SqliteTransaction $transactions,
+        private NextBillingPeriod $nextPeriod
     ) {}
 
     /**
@@ -36,6 +37,14 @@ class IssueInvoice
                 403
             );
 
+            $id = Validator::make($input, [
+                'rentals_rt_id' => ['required', 'integer', 'min:1'],
+            ])->validate();
+            $rental = Rental::whereKey($id['rentals_rt_id'])->firstOrFail();
+            // Omitting both boundaries asks the backend for the earliest unbilled period.
+            if (! array_key_exists('period_start', $input) && ! array_key_exists('period_end', $input)) {
+                $input = [...$input, ...$this->nextPeriod->handle($rental)];
+            }
             $validated = Validator::make($input, [
                 'rentals_rt_id' => ['required', 'integer', 'min:1'],
                 'period_start' => ['required', 'date_format:Y-m-d'],
