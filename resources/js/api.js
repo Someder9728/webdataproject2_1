@@ -99,4 +99,20 @@ export const tenantApi = {
             method: "DELETE",
         });
     },
+
+};
+
+/* Dashboard API */
+export const dashboardApi = {
+    async get(month = "") {
+        const params = new URLSearchParams();
+
+        if (month) {
+            params.set("month", month);
+        }
+
+        const query = params.toString();
+
+        return request(`/api/v1/dashboard${query ? `?${query}` : ""}`);
+    },
 };

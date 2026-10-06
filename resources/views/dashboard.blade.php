@@ -419,12 +419,11 @@
                                 ยอดค้างชำระ
                             </div>
 
-                            {{-- ยังไม่ทำ Item 9 --}}
-                            <div class="summary-value">
+                            <div class="summary-value" id="dashboard-outstanding-amount">
                                 ฿0
                             </div>
 
-                            <div class="summary-unit">
+                            <div class="summary-unit" id="dashboard-outstanding-count">
                                 0 รายการ
                             </div>
                         </div>
@@ -450,8 +449,7 @@
                                 แจ้งซ่อมค้าง
                             </div>
 
-                            {{-- ยังไม่มี Repair module --}}
-                            <div class="summary-value">
+                            <div class="summary-value" id="dashboard-repair-count">
                                 0
                             </div>
 
@@ -674,5 +672,55 @@
         </div>
 
     </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+        if (!window.dashboardApi) {
+            return;
+        }
+
+        try {
+            const response = await window.dashboardApi.get();
+            const data = response.data;
+
+            const outstandingAmount = document.getElementById(
+                'dashboard-outstanding-amount'
+            );
+
+            const outstandingCount = document.getElementById(
+                'dashboard-outstanding-count'
+            );
+
+            const repairCount = document.getElementById(
+                'dashboard-repair-count'
+            );
+
+            if (outstandingAmount) {
+                outstandingAmount.textContent =
+                    `฿${Number(data.payments.outstanding_amount).toLocaleString('th-TH', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2
+                    })}`;
+            }
+
+            if (outstandingCount) {
+                outstandingCount.textContent =
+                    `${data.payments.outstanding_count} รายการ`;
+            }
+
+            if (repairCount) {
+                const repairs = Object.values(data.repairs ?? {});
+                const totalRepairs = repairs.reduce(
+                    (total, count) => total + Number(count),
+                    0
+                );
+
+                repairCount.textContent = totalRepairs;
+            }
+        } catch (error) {
+            console.error('Dashboard API error:', error);
+        }
+    });
+    </script>
 
 </x-layouts::app.sidebar>
