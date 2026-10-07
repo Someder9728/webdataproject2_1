@@ -14,4 +14,20 @@ class RentalPageController extends Controller
     {
         return view('rentals.index');
     }
+
+    /**
+     * R2 — หน้าสร้างการเช่า (Move-in + Contract ฟอร์มเดียว)
+     */
+    public function create(): View
+    {
+        return view('rentals.create');
+    }
+
+    /**
+     * R3 — หน้ารายละเอียดการเช่า (สิทธิ์ข้อมูลจริงตรวจที่ API)
+     */
+    public function show(int $rental): View
+    {
+        return view('rentals.show', ['rentalId' => $rental]);
+    }
 }
