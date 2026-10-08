@@ -24,10 +24,26 @@ class RentalPageController extends Controller
     }
 
     /**
-     * R3 — หน้ารายละเอียดการเช่า (สิทธิ์ข้อมูลจริงตรวจที่ API)
+     * R3 — หน้ารายละเอียดการเช่า (Admin + Tenant ใช้ view เดียวกัน สิทธิ์ข้อมูลจริงตรวจที่ API)
      */
     public function show(int $rental): View
     {
         return view('rentals.show', ['rentalId' => $rental]);
+    }
+
+    /**
+     * ผู้เช่า — การเช่าของฉัน (การเช่าปัจจุบัน + ประวัติ)
+     */
+    public function mine(): View
+    {
+        return view('rentals.mine');
+    }
+
+    /**
+     * ผู้เช่า — สัญญาของฉัน
+     */
+    public function myContracts(): View
+    {
+        return view('rentals.my-contracts');
     }
 }

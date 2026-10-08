@@ -4,6 +4,7 @@
        - auto   : ส่งแค่ rentals_rt_id ให้ backend หารอบที่ยังไม่ออกบิล (เติมช่องว่างแรก) แล้วคืนช่วงมาให้ดู
        - manual : เลือก period_start / period_end เอง (แบบเดิม)
      ตอนยืนยัน ส่ง period_start / period_end "ที่ได้จากผลพรีวิว" เสมอ เพื่อให้ออกบิลตรงช่วงที่ผู้ใช้เห็น
+     รายการการเช่ามีทั้งที่กำลังเช่า และที่ย้ายออกแล้ว (ไว้ออกบิลช่วงที่ยังขาด เช่น หลังแก้ช่วงบิลเก่า — backend คิดได้ไม่เกินวันย้ายออก)
      เรียก: window.InvoiceIssue.open(onDone) --}}
 @include('invoices._base')
 
@@ -126,21 +127,48 @@
             IV.showBanner($('is-banner'), 'err', res.message);
             return;
         }
-        const active = res.rows
-            .filter((r) => r.rt_status === 'ACTIVE')
-            .sort((a, b) => String(a.room?.r_name ?? '').localeCompare(String(b.room?.r_name ?? ''), 'th', { numeric: true }));
-        if (!active.length) {
-            sel.replaceChildren(el('option', { value: '', text: 'ไม่มีการเช่าที่ใช้งานอยู่' }));
+        const byRoom = (a, b) => String(a.room?.r_name ?? '').localeCompare(String(b.room?.r_name ?? ''), 'th', { numeric: true });
+        const active = res.rows.filter((r) => r.rt_status === 'ACTIVE').sort(byRoom);
+        // ย้ายออกแล้ว: ล่าสุดขึ้นก่อน
+        const ended = res.rows
+            .filter((r) => r.rt_status === 'ENDED' && r.rt_moveout)
+            .sort((a, b) => (a.rt_moveout < b.rt_moveout ? 1 : a.rt_moveout > b.rt_moveout ? -1 : 0));
+        if (!active.length && !ended.length) {
+            sel.replaceChildren(el('option', { value: '', text: 'ยังไม่มีการเช่า' }));
             return;
         }
+        // เก็บวันเข้า/ย้ายออกไว้ที่ option เพื่อจำกัดช่วงวันที่ในโหมดกำหนดเอง
+        const option = (r, label) => el('option', {
+            value: String(r.rt_id),
+            text: label,
+            dataset: { movein: r.rt_movein || '', moveout: r.rt_moveout || '' },
+        });
         sel.replaceChildren(
             el('option', { value: '', text: 'เลือกการเช่า' }),
-            ...active.map((r) => el('option', {
-                value: String(r.rt_id),
-                text: `ห้อง ${r.room?.r_name ?? '-'} — ${IV.tenantName(r)}`,
-            }))
+            active.length ? el('optgroup', { label: 'กำลังเช่า' },
+                active.map((r) => option(r, `ห้อง ${r.room?.r_name ?? '-'} — ${IV.tenantName(r)}`))) : null,
+            ended.length ? el('optgroup', { label: 'ย้ายออกแล้ว (ออกบิลช่วงที่ยังขาด)' },
+                ended.map((r) => option(r, `ห้อง ${r.room?.r_name ?? '-'} — ${IV.tenantName(r)} (ย้ายออก ${r.rt_moveout})`))) : null
         );
         sel.disabled = false;
+        applyRentalRange();
+    }
+
+    // วันเข้า/ย้ายออกของการเช่าที่เลือก (ไม่ได้เลือก → null)
+    function selectedRange() {
+        const opt = $('is-rental').selectedOptions[0];
+        if (!opt || !opt.value) return null;
+        return { movein: opt.dataset.movein || '', moveout: opt.dataset.moveout || '' };
+    }
+    // จำกัดช่องวันที่ในโหมดกำหนดเอง: ไม่ก่อนวันเข้า ไม่เกินวันนี้หรือวันย้ายออก
+    function applyRentalRange() {
+        const r = selectedRange();
+        const today = IV.today();
+        const max = r && r.moveout && r.moveout < today ? r.moveout : today;
+        ['is-start', 'is-end'].forEach((id) => {
+            $(id).min = r && r.movein ? r.movein : '';
+            $(id).max = max;
+        });
     }
 
     function open(onDone) {
@@ -174,6 +202,7 @@
     });
     $('is-chip-prev').addEventListener('click', () => { $('is-start').value = firstOfMonth(-1); $('is-end').value = firstOfMonth(0); });
     $('is-chip-this').addEventListener('click', () => { $('is-start').value = firstOfMonth(0); $('is-end').value = IV.today(); });
+    $('is-rental').addEventListener('change', applyRentalRange);
     $('is-mode-auto').addEventListener('change', applyMode);
     $('is-mode-manual').addEventListener('change', applyMode);
     $('is-back').addEventListener('click', () => { if (!busy) { clear(); showStep(1); } });
@@ -213,14 +242,17 @@
         return 'รอบถัดไปที่ระบบหาให้: ' + msgs.join(' / ')
             + ' — ถ้าต้องการคิดบางช่วง ให้เลือก "กำหนดวันเอง"';
     }
-    const hasThai = (t) => typeof t === 'string' && /[\u0E00-\u0E7F]/.test(t);
+    // backend ตอบ 409 ด้วยข้อความกลางเสมอ ("ข้อมูลมีการเปลี่ยนแปลงหรือขัดแย้ง...") จึงอธิบายเองตามโหมดและการเช่าที่เลือก
     function conflictMessage(r) {
         if (r.status !== 409) return IV.errMsg(r, 'ทำรายการไม่สำเร็จ (' + r.status + ')');
-        const msg = r.body?.message;
-        if (hasThai(msg)) return msg; // เช่น "ออกบิลครบถึงวันย้ายออกแล้ว", "พบใบแจ้งหนี้ที่ถูกลบ ..."
-        return isAuto()
-            ? 'หารอบบิลถัดไปไม่ได้: ประวัติใบแจ้งหนี้ของการเช่านี้มีช่วงที่ทับกันหรือผิดรูปแบบ กรุณาตรวจสอบ หรือเลือก "กำหนดวันเอง"'
-            : 'ออกใบแจ้งหนี้ไม่ได้: ช่วงเวลานี้ทับซ้อนกับใบแจ้งหนี้ที่มีอยู่แล้วของการเช่านี้ (หรือสถานะข้อมูลเปลี่ยนไป)';
+        if (isAuto()) {
+            const range = selectedRange();
+            if (range && range.moveout) {
+                return 'ไม่มีช่วงที่ต้องออกบิลเพิ่ม: การเช่านี้ออกบิลครบถึงวันย้ายออก (' + range.moveout + ') แล้ว';
+            }
+            return 'หารอบบิลถัดไปไม่ได้: ประวัติใบแจ้งหนี้ของการเช่านี้มีช่วงที่ทับกันหรือถูกลบ กรุณาตรวจสอบ หรือเลือก "กำหนดวันเอง"';
+        }
+        return 'ออกใบแจ้งหนี้ไม่ได้: ช่วงเวลานี้ทับซ้อนกับใบแจ้งหนี้ที่มีอยู่แล้วของการเช่านี้ (หรือสถานะข้อมูลเปลี่ยนไป)';
     }
 
     /* ขั้น 1 → คำนวณ */
@@ -238,6 +270,13 @@
             else if (f.period_start && f.period_end <= f.period_start) { IV.setText('is-err-end', 'วันสิ้นสุดต้องอยู่หลังวันเริ่ม'); ok = false; }
             else if (f.period_end > today) { IV.setText('is-err-end', 'ยังออกบิลไม่ได้ เพราะยังไม่ถึงวันสิ้นสุดช่วงคิดเงิน'); ok = false; }
             else if (f.period_start && f.period_end > firstOfNextMonth(f.period_start)) { IV.setText('is-err-end', 'หนึ่งใบคิดภายในเดือนเดียว กรุณาแบ่งช่วงตามเดือน'); ok = false; }
+            const range = selectedRange();
+            if (range && range.moveout && f.period_end && f.period_end > range.moveout) {
+                IV.setText('is-err-end', 'การเช่านี้ย้ายออกวันที่ ' + range.moveout + ' — คิดได้ไม่เกินวันย้ายออก'); ok = false;
+            }
+            if (range && range.movein && f.period_start && f.period_start < range.movein) {
+                IV.setText('is-err-start', 'ช่วงคิดเงินต้องไม่เริ่มก่อนวันเข้าพัก (' + range.movein + ')'); ok = false;
+            }
         }
         if (!ok) return;
 

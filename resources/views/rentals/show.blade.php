@@ -3,19 +3,22 @@
 
 <x-layouts::app :title="__('รายละเอียดการเช่า')">
 @include('rentals._styles')
+{{-- ผู้เช่าเปิดหน้านี้ได้ด้วย (เห็นเฉพาะการเช่าของตัวเอง) → ลิงก์ย้อนกลับไปหน้าการเช่าของฉัน --}}
+@php($backUrl = auth()->user()?->u_role === 'admin' ? route('rentals.index') : route('my.rentals'))
+@php($backLabel = auth()->user()?->u_role === 'admin' ? 'การเช่า' : 'การเช่าของฉัน')
 
 <div class="rt rt-page" id="rental-detail-page" data-rental-id="{{ $rentalId }}">
     <div id="detail-state-loading" class="rt-card rt-state">กำลังโหลดข้อมูล...</div>
     <div id="detail-state-error" class="rt-state rt-state--error" hidden>
         <span id="detail-error-message"></span>
         <button type="button" id="detail-btn-retry" class="rt-btn rt-btn--sm">ลองใหม่</button>
-        <a href="{{ route('rentals.index') }}" class="rt-btn rt-btn--sm">← กลับ</a>
+        <a href="{{ $backUrl }}" class="rt-btn rt-btn--sm">← กลับ</a>
     </div>
 
     <div id="detail-view" hidden>
         <div class="rt-head">
             <div>
-                <div class="rt-crumb"><a href="{{ route('rentals.index') }}">การเช่า</a> / <span id="d-crumb">-</span></div>
+                <div class="rt-crumb"><a href="{{ $backUrl }}">{{ $backLabel }}</a> / <span id="d-crumb">-</span></div>
                 <h1 class="rt-title" id="detail-title">การเช่า</h1>
             </div>
             <div class="rt-head-actions">
@@ -24,7 +27,7 @@
                     <button type="button" id="btn-move-out" class="rt-btn rt-btn--danger" data-action="move-out"
                             data-rental-id="{{ $rentalId }}" hidden>ย้ายออก</button>
                 @endif
-                <a href="{{ route('rentals.index') }}" class="rt-btn">‹ ย้อนกลับ</a>
+                <a href="{{ $backUrl }}" class="rt-btn">‹ ย้อนกลับ</a>
             </div>
         </div>
 
