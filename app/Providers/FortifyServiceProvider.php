@@ -10,22 +10,17 @@ use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Laravel\Fortify\Fortify;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Validation\ValidationException;
 
 class FortifyServiceProvider extends ServiceProvider
 {
-    /* Register any application services. */
     public function register(): void
     {
         //
     }
 
-    /* Bootstrap any application services. */
     public function boot(): void
     {
-        /* Login
-        เปลี่ยนจาก email/password ของ Laravel
-        เป็น u_username/u_password ของระบบหอพัก 
-        */
 
         Fortify::username('u_username');
 
@@ -36,9 +31,17 @@ class FortifyServiceProvider extends ServiceProvider
 
             $user = User::where('u_username', $username)->first();
 
+            if (! $user) {
+                return null;
+            }
+
+            if (! $user->is_active) {
+                throw ValidationException::withMessages([
+                    'u_username' => 'บัญชีถูกระงับ กรุณาติดต่อผู้ดูแล',
+                ]);
+            }
+
             if (
-                $user &&
-                $user->is_active &&
                 Hash::check(
                     (string) $request->input('password'),
                     $user->u_password
