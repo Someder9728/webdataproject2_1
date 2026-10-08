@@ -14,7 +14,7 @@ class EnsureUser
     ): Response {
         $user = $request->user();
 
-        if (!$user || $user->u_role !== 'user') {
+        if (!$user || $user->u_role !== 'tenant') {
             abort(403, 'ไม่มีสิทธิ์เข้าถึงหน้านี้');
         }
 
