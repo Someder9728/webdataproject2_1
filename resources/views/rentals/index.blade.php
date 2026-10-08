@@ -127,7 +127,7 @@
     let state = { page: 1, search: '' };
     let rowsById = new Map(); // rt_id -> ข้อมูลแถว (ใช้ส่งให้ modal ย้ายออก)
     let searchDebounce = null;
-    let inFlight = false; // กันยิงซ้ำระหว่างรอ response
+    let loadSeq = 0; // เลขลำดับคำขอ — ใช้ทิ้งคำตอบเก่าที่มาช้า (เช่น พิมพ์ค้นหาต่อระหว่างที่ยังโหลดอยู่)
 
     // แสดง banner หลังสร้างการเช่าสำเร็จ (?created=1)
     if (new URLSearchParams(window.location.search).get('created') === '1') {
@@ -142,8 +142,7 @@
     }
 
     async function loadRentals() {
-        if (inFlight) return;
-        inFlight = true;
+        const mySeq = ++loadSeq;
         showOnly('loading');
 
         const params = new URLSearchParams({ page: state.page, per_page: PER_PAGE });
@@ -169,12 +168,12 @@
             }
 
             const body = await res.json();
+            if (mySeq !== loadSeq) return; // มีคำขอใหม่กว่าแล้ว
             render(body.data, body.meta);
         } catch (err) {
+            if (mySeq !== loadSeq) return;
             el.errorMsg.textContent = err.message || 'โหลดข้อมูลไม่สำเร็จ';
             showOnly('error');
-        } finally {
-            inFlight = false;
         }
     }
 

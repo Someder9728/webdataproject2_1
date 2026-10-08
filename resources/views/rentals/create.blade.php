@@ -141,8 +141,9 @@
 
             const tenantsBody = await tenantsRes.json();
             const roomsBody = await roomsRes.json();
+            const busy = await loadBusyTenantIds();
 
-            populateTenants(tenantsBody.data ?? []);
+            populateTenants(tenantsBody.data ?? [], busy);
             populateRooms(roomsBody.data ?? []);
             refreshAutofill();
 
@@ -155,7 +156,19 @@
         }
     }
 
-    function populateTenants(list) {
+    // id ผู้เช่าที่มีการเช่า ACTIVE อยู่แล้ว (backend ห้ามเช่าซ้อน) — โหลดไม่ได้ก็ไม่เป็นไร backend ยังตรวจอีกชั้น
+    async function loadBusyTenantIds() {
+        try {
+            const res = await fetch('/api/v1/rentals?per_page=100', fetchOpts);
+            if (!res.ok) return new Set();
+            const body = await res.json();
+            return new Set((body.data ?? []).filter((r) => r.rt_status === 'ACTIVE').map((r) => String(r.tenant?.t_id)));
+        } catch (_) {
+            return new Set();
+        }
+    }
+
+    function populateTenants(list, busy = new Set()) {
         tenants = new Map(list.map((t) => [String(t.t_id), t]));
         const select = el['f-tenant'];
         select.innerHTML = '<option value="">-- เลือกผู้เช่า --</option>';
@@ -164,6 +177,10 @@
             const opt = document.createElement('option');
             opt.value = String(t.t_id);
             opt.textContent = `${t.t_Fname ?? ''} ${t.t_Lname ?? ''}`.trim();
+            if (busy.has(opt.value)) {
+                opt.disabled = true;
+                opt.textContent += ' (มีการเช่าอยู่แล้ว)';
+            }
             select.appendChild(opt);
         });
     }

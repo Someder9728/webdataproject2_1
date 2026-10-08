@@ -196,6 +196,8 @@
         finished = false;
         if (cb) cb();
     });
+    // กด Esc ระหว่างกำลังบันทึก → ไม่ให้ปิด (ไม่งั้นหน้าไม่รีเฟรชทั้งที่ย้ายออกสำเร็จ)
+    dlg.addEventListener('cancel', (e) => { if (submitting) e.preventDefault(); });
     dlg.addEventListener('click', (e) => { if (e.target === dlg && step !== 2 && !submitting) close(); });
 
     $('mo-x').addEventListener('click', () => { if (!submitting) close(); });
@@ -253,7 +255,11 @@
                 if (body.errors?.rt_moveout) $('mo-err-date').textContent = body.errors.rt_moveout[0];
                 if (body.errors?.reason) $('mo-err-reason').textContent = body.errors.reason[0];
                 if (!body.errors?.rt_moveout && !body.errors?.reason) {
-                    $('mo-err-date').textContent = body.message || 'ข้อมูลไม่ถูกต้อง';
+                    // error จากการออกบิลสุดท้าย (เช่น period_start / period_end) ไม่ใช่ช่องในฟอร์ม → บอกสาเหตุจริง
+                    const other = Object.values(body.errors || {}).flat()[0];
+                    $('mo-err-date').textContent = other
+                        ? 'ออกบิลสุดท้ายไม่ได้: ' + other + ' — บันทึกมิเตอร์ให้ครบก่อนแล้วลองใหม่'
+                        : (body.message || 'ข้อมูลไม่ถูกต้อง');
                 }
                 showStep(1);
                 return;
