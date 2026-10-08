@@ -13,9 +13,23 @@ Route::middleware(['auth', 'password.changed', 'role:admin'])
             ->name('rentals.index');
         Route::get('/rentals/create', [RentalPageController::class, 'create'])
             ->name('rentals.create');
+    });
+
+// รายละเอียดการเช่า — Admin ดูได้ทุกการเช่า, Tenant ดูได้เฉพาะของตัวเอง (API ตรวจสิทธิ์ แล้วตอบ 404 ถ้าไม่ใช่ของตน)
+Route::middleware(['auth', 'password.changed', 'role:admin,tenant'])
+    ->group(function () {
         Route::get('/rentals/{rental}', [RentalPageController::class, 'show'])
             ->whereNumber('rental')
             ->name('rentals.show');
+    });
+
+// ฝั่งผู้เช่า — แสดงเฉพาะข้อมูลของผู้ที่ล็อกอิน (API กรองตาม tenants_t_id ให้แล้ว)
+Route::middleware(['auth', 'password.changed', 'role:tenant'])
+    ->group(function () {
+        Route::get('/my/rentals', [RentalPageController::class, 'mine'])
+            ->name('my.rentals');
+        Route::get('/my/contracts', [RentalPageController::class, 'myContracts'])
+            ->name('my.contracts');
     });
 
 // ใบแจ้งหนี้ / การชำระเงิน — Admin และ Tenant ใช้หน้าเดียวกัน แยกสิทธิ์ที่ API

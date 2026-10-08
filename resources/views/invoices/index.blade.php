@@ -25,6 +25,14 @@
         </div>
     </div>
 
+    {{-- ผู้เช่า: แถบเตือนยอดค้าง (ตาม Figma "ค่าเช่าและการชำระเงินของฉัน") --}}
+    @if (auth()->user()?->u_role !== 'admin')
+        <div id="iv-due-banner" class="rt-notice rt-notice--warn" role="status" hidden>
+            <strong>มีรายการที่ยังไม่ได้ชำระ</strong><br>
+            <span id="iv-due-text"></span>
+        </div>
+    @endif
+
     <div class="iv-stats" id="iv-stats" hidden>
         <div class="iv-stat">
             <span class="iv-stat-icon iv-stat-icon--total" id="ic-total"></span>
@@ -145,9 +153,24 @@
         IV.setText('st-overdue', IV.money(sum(overdue)));
         IV.setText('st-overdue-sub', `${overdue.length} ใบ`);
 
+        renderDueBanner();
+
         const month = $('iv-month').value;
         IV.setText('iv-subtitle', /^\d{4}-\d{2}$/.test(month) ? 'รอบบิลเดือน' + IV.thaiMonth(month) : 'ทุกรอบบิล');
         $('iv-month-clear').hidden = !/^\d{4}-\d{2}$/.test(month);
+    }
+
+    // ผู้เช่า: ยอดที่ยังต้องจ่าย = รอชำระ + ค้างชำระ + ถูกปฏิเสธ (รอตรวจสอบนับแยก เพราะส่งหลักฐานแล้ว)
+    function renderDueBanner() {
+        const banner = $('iv-due-banner');
+        if (!banner) return; // admin ไม่มีแถบนี้
+        const due = all.filter((i) => ['unpaid', 'overdue', 'rejected'].includes(IV.statusKey(i)));
+        const pending = all.filter((i) => IV.statusKey(i) === 'pending').length;
+        banner.hidden = due.length === 0;
+        if (!due.length) return;
+        let text = `จำนวน ${due.length} รายการ รวมยอด ${IV.money(sum(due))} — ชำระที่สำนักงาน หรือโอนแล้วกด "ส่งหลักฐาน" ในรายการนั้น`;
+        if (pending) text += ` · มีอีก ${pending} รายการรอผู้ดูแลตรวจหลักฐาน`;
+        IV.setText('iv-due-text', text);
     }
 
     function matches(inv, q, status) {
