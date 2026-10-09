@@ -227,6 +227,23 @@ $initials = $user?->initials() ?? 'U';
         margin-bottom: 9px;
     }
 
+    .sidebar-user-link {
+        display: flex;
+        align-items: center;
+        padding: 5px;
+        margin: -5px -5px 9px;
+        border-radius: 10px;
+        color: inherit;
+        text-decoration: none;
+        transition: background 0.15s ease;
+    }
+
+    .sidebar-user-link:hover,
+    .sidebar-user-link:focus-visible {
+        background: rgba(255, 255, 255, 0.08);
+        outline: none;
+    }
+
     .sidebar-avatar {
         width: 34px;
         height: 34px;
@@ -575,7 +592,11 @@ $initials = $user?->initials() ?? 'U';
         {{-- BOTTOM USER --}}
         <div class="sidebar-bottom">
 
+            @if ($isAdmin)
+            <a href="{{ route('admin.accounts') }}" class="sidebar-user sidebar-user-link" aria-label="เปิดหน้าจัดการบัญชีผู้เช่า">
+            @else
             <div class="sidebar-user">
+            @endif
 
                 <div class="sidebar-avatar">
                     {{ $initials }}
@@ -593,7 +614,11 @@ $initials = $user?->initials() ?? 'U';
 
                 </div>
 
+            @if ($isAdmin)
+            </a>
+            @else
             </div>
+            @endif
 
 
             {{-- Logout --}}

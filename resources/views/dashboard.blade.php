@@ -25,7 +25,19 @@
         border: 1px solid #e1e7ef;
         border-radius: 12px;
         min-height: 108px;
+        height: 100%;
+        display: flex;
+        align-items: center;
         box-shadow: 0 2px 5px rgba(15, 23, 42, 0.04);
+    }
+
+    .summary-card > .d-flex {
+        width: 100%;
+        min-width: 0;
+    }
+
+    .summary-card > .d-flex > div:last-child {
+        min-width: 0;
     }
 
     .summary-icon {
@@ -55,6 +67,13 @@
         color: #90a1b9;
         font-size: 11px;
         margin-top: 2px;
+    }
+
+    .summary-value.is-error {
+        color: #64748b;
+        font-size: 13px;
+        line-height: 1.35;
+        white-space: nowrap;
     }
 
 
@@ -736,11 +755,14 @@
         if (!window.dashboardApi) {
             ['dashboard-current-due-amount', 'dashboard-overdue-amount'].forEach(id => {
                 const element = document.getElementById(id);
-                if (element) element.textContent = 'โหลดไม่สำเร็จ';
+                if (element) {
+                    element.textContent = 'โหลดไม่ได้';
+                    element.classList.add('is-error');
+                }
             });
             ['dashboard-current-due-count', 'dashboard-overdue-count'].forEach(id => {
                 const element = document.getElementById(id);
-                if (element) element.textContent = 'กรุณาลองใหม่';
+                if (element) element.textContent = 'ลองใหม่ภายหลัง';
             });
             return;
         }
@@ -805,14 +827,17 @@
                 'dashboard-overdue-amount',
             ].forEach(id => {
                 const element = document.getElementById(id);
-                if (element) element.textContent = 'โหลดไม่สำเร็จ';
+                if (element) {
+                    element.textContent = 'โหลดไม่ได้';
+                    element.classList.add('is-error');
+                }
             });
             [
                 'dashboard-current-due-count',
                 'dashboard-overdue-count',
             ].forEach(id => {
                 const element = document.getElementById(id);
-                if (element) element.textContent = 'กรุณาลองใหม่';
+                if (element) element.textContent = 'ลองใหม่ภายหลัง';
             });
         }
 

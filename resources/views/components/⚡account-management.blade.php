@@ -27,6 +27,24 @@ new class extends Component
     public function mount(): void
     {
         $this->authorizeAdmin();
+
+        $resetId = request()->integer('reset');
+        if ($resetId > 0) {
+            $this->resetUserId = User::query()
+                ->where('u_role', 'tenant')
+                ->where('is_active', true)
+                ->whereKey($resetId)
+                ->value('u_id') ?? '';
+        }
+
+        $suspendId = request()->integer('suspend');
+        if ($suspendId > 0) {
+            $this->suspendUserId = User::query()
+                ->where('u_role', 'tenant')
+                ->where('is_active', true)
+                ->whereKey($suspendId)
+                ->value('u_id') ?? '';
+        }
     }
 
     protected function authorizeAdmin(): User
@@ -42,6 +60,56 @@ new class extends Component
         );
 
         return $admin;
+    }
+
+    public function openPasswordReset(int $userId): void
+    {
+        $this->authorizeAdmin();
+
+        $target = User::query()
+            ->where('u_role', 'tenant')
+            ->where('is_active', true)
+            ->findOrFail($userId);
+
+        $this->resetValidation();
+        $this->resetUserId = $target->u_id;
+        $this->resetPassword = '';
+        $this->resetPassword_confirmation = '';
+        $this->resetReason = '';
+    }
+
+    public function closePasswordReset(): void
+    {
+        $this->resetValidation();
+        $this->reset([
+            'resetUserId',
+            'resetPassword',
+            'resetPassword_confirmation',
+            'resetReason',
+        ]);
+    }
+
+    public function openAccountSuspension(int $userId): void
+    {
+        $this->authorizeAdmin();
+
+        $target = User::query()
+            ->where('u_role', 'tenant')
+            ->where('is_active', true)
+            ->findOrFail($userId);
+
+        $this->resetValidation();
+        $this->suspendUserId = $target->u_id;
+        $this->suspendReason = '';
+    }
+
+    public function closeAccountSuspension(): void
+    {
+        $this->resetValidation();
+        $this->reset([
+            'suspendUserId',
+            'suspendReason',
+        ]);
     }
 
     public function createAccount(
@@ -282,13 +350,45 @@ new class extends Component
 };
 ?>
 
-<div class="container-fluid py-4">
+<style>
+    .account-management-page { max-width: 1500px; margin: 0 auto; padding: 28px 24px; }
+    .account-page-eyebrow { color:#74859c; font-size:13px; margin-bottom:5px; }
+    .account-page-title { color:#172b4d; font-size:28px; font-weight:750; margin:0 0 5px; }
+    .account-page-subtitle { color:#8292aa; margin:0; }
+    .account-stat-card, .account-panel { background:#fff; border:1px solid #e1e8f0; border-radius:14px; box-shadow:0 3px 10px rgba(15,23,42,.04); }
+    .account-stat-card { min-height:112px; padding:18px 20px; }
+    .account-stat-label { color:#8292aa; font-size:12px; }
+    .account-stat-value { color:#172b4d; font-size:25px; font-weight:700; margin-top:4px; }
+    .account-panel { overflow:hidden; }
+    .account-panel-header { align-items:center; border-bottom:1px solid #e9eef4; display:flex; gap:12px; padding:17px 20px; }
+    .account-panel-icon { align-items:center; background:#edf4ff; border-radius:10px; color:#2168f3; display:flex; flex:none; height:40px; justify-content:center; width:40px; }
+    .account-panel-title { color:#172b4d; font-size:17px; font-weight:700; margin:0 0 3px; }
+    .account-panel-subtitle { color:#8292aa; font-size:12px; margin:0; }
+    .account-panel-body { padding:20px; }
+    .account-management-page .form-label { color:#334155; font-size:13px; }
+    .account-management-page .form-control, .account-management-page .form-select { min-height:43px; border-color:#d7e0eb; border-radius:9px; }
+    .account-management-page .form-control:focus, .account-management-page .form-select:focus { border-color:#78a8ff; box-shadow:0 0 0 .2rem rgba(33,104,243,.12); }
+    .account-management-page .btn { border-radius:8px; }
+    .account-table { margin:0; }
+    .account-table thead th { background:#f8fafc; border-bottom:1px solid #e5ebf2; color:#718096; font-size:12px; font-weight:600; padding:13px 16px; white-space:nowrap; }
+    .account-table tbody td { color:#334155; font-size:13px; padding:14px 16px; }
+    .account-user-cell { font-weight:650; color:#172b4d !important; }
+    .account-status { border-radius:999px; display:inline-flex; font-size:11px; font-weight:600; padding:5px 10px; }
+    .account-status.active { background:#ecfdf5; color:#047857; }
+    .account-status.suspended { background:#f1f5f9; color:#64748b; }
+    .account-action-overlay { align-items:center; background:rgba(15,23,42,.52); display:grid; inset:0; padding:18px; position:fixed; z-index:2000; }
+    .account-action-dialog { background:#fff; border:1px solid #e1e8f0; border-radius:16px; box-shadow:0 24px 70px rgba(15,23,42,.24); margin:auto; max-height:90vh; max-width:560px; overflow:auto; width:100%; }
+    .account-dialog-header { align-items:flex-start; border-bottom:1px solid #e9eef4; display:flex; justify-content:space-between; padding:19px 22px; }
+    .account-dialog-body { padding:22px; }
+    @media (max-width:767.98px) { .account-management-page { padding:20px 14px; } .account-page-title { font-size:23px; } .account-panel-body { padding:16px; } }
+</style>
+
+<main class="account-management-page">
 
     <div class="mb-4">
-        <h1 class="fw-bold mb-1">จัดการบัญชีผู้เช่า</h1>
-        <p class="text-secondary mb-0">
-            สร้างบัญชี รีเซ็ตรหัสผ่าน และระงับบัญชีผู้เช่า
-        </p>
+        <div class="account-page-eyebrow">ตั้งค่าผู้ใช้ / บัญชี</div>
+        <h1 class="account-page-title">จัดการบัญชีผู้เช่า</h1>
+        <p class="account-page-subtitle">สร้างบัญชี ตั้งรหัสผ่านใหม่ และจัดการสถานะบัญชี</p>
     </div>
 
     @if (session()->has('success'))
@@ -311,19 +411,31 @@ new class extends Component
     </div>
     @endif
 
-    <div class="card border-0 shadow-sm mb-4">
-        <div class="card-header bg-white py-3">
-            <h5 class="fw-bold mb-1">
-                สร้างบัญชีผู้เช่า
-            </h5>
+    <div class="row g-3 mb-4">
+        <div class="col-sm-4">
+            <div class="account-stat-card"><div class="account-stat-label">บัญชีทั้งหมด</div><div class="account-stat-value">{{ $accounts->count() }}</div></div>
+        </div>
+        <div class="col-sm-4">
+            <div class="account-stat-card"><div class="account-stat-label">กำลังใช้งาน</div><div class="account-stat-value text-success">{{ $accounts->where('is_active', true)->count() }}</div></div>
+        </div>
+        <div class="col-sm-4">
+            <div class="account-stat-card"><div class="account-stat-label">ระงับบัญชี</div><div class="account-stat-value text-secondary">{{ $accounts->where('is_active', false)->count() }}</div></div>
+        </div>
+    </div>
 
-            <small class="text-secondary">
+    <section class="account-panel mb-4">
+        <div class="account-panel-header">
+            <div class="account-panel-icon"><i class="bi bi-person-plus"></i></div>
+            <div><h2 class="account-panel-title">
+                สร้างบัญชีผู้เช่า
+            </h2>
+            <p class="account-panel-subtitle">
                 บัญชีใหม่จะต้องเปลี่ยนรหัสผ่านเมื่อเข้าสู่ระบบครั้งแรก
-            </small>
+            </p></div>
         </div>
 
-        <div class="card-body">
-            <form wire:submit="createAccount">
+        <div class="account-panel-body">
+            <form method="POST" action="{{ route('admin.accounts.create') }}"> @csrf
                 <div class="row g-3">
 
                     <div class="col-md-6">
@@ -332,14 +444,14 @@ new class extends Component
                         </label>
 
                         <select class="form-select @error('selectedTenantId') is-invalid @enderror"
-                            wire:model="selectedTenantId">
-                            <option value="">
+                            name="selectedTenantId" required>
+                            <option value="" @selected(old('selectedTenantId') == '')>
                                 -- เลือกผู้เช่า --
                             </option>
 
                             @foreach ($tenants as $tenant)
                             @if (! $tenant->user)
-                            <option value="{{ $tenant->t_id }}">
+                            <option value="{{ $tenant->t_id }}" @selected(old('selectedTenantId') == $tenant->t_id)>
                                 {{ $tenant->t_Fname }}
                                 {{ $tenant->t_Lname }}
                                 — {{ $tenant->t_tel }}
@@ -361,7 +473,7 @@ new class extends Component
                         </label>
 
                         <input type="text" class="form-control @error('username') is-invalid @enderror"
-                            wire:model="username" placeholder="เช่น tenant001">
+                            name="username" value="{{ old('username') }}" placeholder="เช่น tenant001" required autocomplete="username">
 
                         @error('username')
                         <div class="invalid-feedback">
@@ -376,7 +488,7 @@ new class extends Component
                         </label>
 
                         <input type="password" class="form-control @error('password') is-invalid @enderror"
-                            wire:model="password">
+                            name="password" required autocomplete="new-password">
 
                         @error('password')
                         <div class="invalid-feedback">
@@ -394,30 +506,23 @@ new class extends Component
                             ยืนยันรหัสผ่าน
                         </label>
 
-                        <input type="password" class="form-control" wire:model="password_confirmation">
+                        <input type="password" class="form-control" name="password_confirmation" required autocomplete="new-password">
                     </div>
                 </div>
 
                 <div class="mt-4">
-                    <button type="submit" class="btn btn-primary" wire:loading.attr="disabled">
-                        <span wire:loading.remove>
-                            สร้างบัญชี
-                        </span>
-
-                        <span wire:loading>
-                            กำลังสร้าง...
-                        </span>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-person-plus me-1"></i>สร้างบัญชี
                     </button>
                 </div>
             </form>
         </div>
-    </div>
+    </section>
 
-    <div class="card border-0 shadow-sm">
-        <div class="card-header bg-white py-3">
-            <h5 class="fw-bold mb-0">
-                บัญชีผู้เช่า
-            </h5>
+    <section class="account-panel">
+        <div class="account-panel-header">
+            <div class="account-panel-icon"><i class="bi bi-people"></i></div>
+            <div><h2 class="account-panel-title">บัญชีผู้เช่า</h2><p class="account-panel-subtitle">ตรวจสอบสถานะและจัดการบัญชีที่มีอยู่</p></div>
         </div>
 
         <div class="card-body p-0">
@@ -427,7 +532,7 @@ new class extends Component
             </div>
             @else
             <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0">
+                <table class="table table-hover align-middle account-table">
                     <thead class="table-light">
                         <tr>
                             <th>Username</th>
@@ -441,7 +546,7 @@ new class extends Component
                     <tbody>
                         @foreach ($accounts as $account)
                         <tr>
-                            <td class="fw-semibold">
+                            <td class="account-user-cell">
                                 {{ $account->u_username }}
                             </td>
 
@@ -456,11 +561,11 @@ new class extends Component
 
                             <td>
                                 @if ($account->is_active)
-                                <span class="badge text-bg-success">
+                                <span class="account-status active">
                                     ใช้งาน
                                 </span>
                                 @else
-                                <span class="badge text-bg-secondary">
+                                <span class="account-status suspended">
                                     ระงับ
                                 </span>
                                 @endif
@@ -480,15 +585,15 @@ new class extends Component
 
                             <td class="text-end">
                                 @if ($account->is_active)
-                                <button type="button" class="btn btn-sm btn-outline-primary me-1"
-                                    wire:click="$set('resetUserId', {{ $account->u_id }})">
-                                    Reset Password
-                                </button>
+                                <a class="btn btn-sm btn-outline-primary me-1"
+                                    href="{{ route('admin.accounts', ['reset' => $account->u_id]) }}">
+                                    <i class="bi bi-key me-1"></i>ตั้งรหัสใหม่
+                                </a>
 
-                                <button type="button" class="btn btn-sm btn-outline-danger"
-                                    wire:click="$set('suspendUserId', {{ $account->u_id }})">
-                                    ระงับ
-                                </button>
+                                <a class="btn btn-sm btn-outline-danger"
+                                    href="{{ route('admin.accounts', ['suspend' => $account->u_id]) }}">
+                                    <i class="bi bi-slash-circle me-1"></i>ระงับ
+                                </a>
                                 @else
                                 <span class="text-secondary">
                                     ไม่มีการจัดการ
@@ -502,96 +607,74 @@ new class extends Component
             </div>
             @endif
         </div>
-    </div>
+    </section>
 
     @if ($resetUserId)
-    <div class="card border-0 shadow-sm mt-4">
-        <div class="card-header bg-white py-3">
-            <h5 class="fw-bold mb-0">
-                Reset Password
-            </h5>
-        </div>
+    <div class="account-action-overlay">
+        <section class="account-action-dialog" role="dialog" aria-modal="true" aria-labelledby="reset-account-title">
+            <div class="account-dialog-header">
+                <div><h2 id="reset-account-title" class="account-panel-title">ตั้งรหัสผ่านใหม่</h2><p class="account-panel-subtitle">บัญชี {{ $accounts->firstWhere('u_id', $resetUserId)?->u_username }}</p></div>
+                <a href="{{ route('admin.accounts') }}" class="btn-close" aria-label="ปิด"></a>
+            </div>
+            <div class="account-dialog-body">
+                <form method="POST" action="{{ route('admin.accounts.reset-password', $resetUserId) }}"> @csrf
 
-        <div class="card-body">
-            <form wire:submit="resetAccountPassword">
-
-                <div class="mb-3">
-                    <label class="form-label fw-semibold">
-                        รหัสผ่านใหม่
-                    </label>
-
-                    <input type="password" class="form-control @error('resetPassword') is-invalid @enderror"
-                        wire:model="resetPassword">
-
-                    @error('resetPassword')
-                    <div class="invalid-feedback">
-                        {{ $message }}
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">รหัสผ่านใหม่</label>
+                        <input type="password" autocomplete="new-password" class="form-control @error('password') is-invalid @enderror" name="password" required>
+                        @error('password')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        <div class="form-text">อย่างน้อย 12 ตัวอักษร</div>
                     </div>
-                    @enderror
-                </div>
 
-                <div class="mb-3">
-                    <label class="form-label fw-semibold">
-                        ยืนยันรหัสผ่านใหม่
-                    </label>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">ยืนยันรหัสผ่านใหม่</label>
+                        <input type="password" autocomplete="new-password" class="form-control @error('password_confirmation') is-invalid @enderror" name="password_confirmation" required autocomplete="new-password">
+                        @error('password_confirmation')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    </div>
 
-                    <input type="password" class="form-control" wire:model="resetPassword_confirmation">
-                </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">เหตุผล (ถ้ามี)</label>
+                        <textarea class="form-control" rows="3" name="reason"></textarea>
+                    </div>
 
-                <div class="mb-3">
-                    <label class="form-label fw-semibold">
-                        เหตุผล
-                    </label>
-
-                    <textarea class="form-control" rows="3" wire:model="resetReason"></textarea>
-                </div>
-
-                <button type="submit" class="btn btn-primary me-2" wire:loading.attr="disabled">
-                    Reset Password
-                </button>
-
-                <button type="button" class="btn btn-outline-secondary" wire:click="$set('resetUserId', '')">
-                    ยกเลิก
-                </button>
-            </form>
-        </div>
+                    <div class="d-flex justify-content-end gap-2">
+                        <a href="{{ route('admin.accounts') }}" class="btn btn-outline-secondary">ยกเลิก</a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-key me-1"></i>บันทึกรหัสผ่านใหม่
+                            
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </section>
     </div>
     @endif
 
     @if ($suspendUserId)
-    <div class="card border-0 shadow-sm mt-4">
-        <div class="card-header bg-white py-3">
-            <h5 class="fw-bold mb-0 text-danger">
-                ระงับบัญชี
-            </h5>
-        </div>
-
-        <div class="card-body">
-            <form wire:submit="suspendAccount">
-
-                <div class="mb-3">
-                    <label class="form-label fw-semibold">
-                        เหตุผล
-                    </label>
-
-                    <textarea class="form-control" rows="3" wire:model="suspendReason"
-                        placeholder="ระบุเหตุผล (ถ้ามี)"></textarea>
-                </div>
-
-                <div class="alert alert-warning">
-                    เมื่อระงับบัญชีแล้ว ผู้ใช้จะไม่สามารถเข้าสู่ระบบได้
-                </div>
-
-                <button type="submit" class="btn btn-danger me-2" wire:loading.attr="disabled">
-                    ยืนยันระงับบัญชี
-                </button>
-
-                <button type="button" class="btn btn-outline-secondary" wire:click="$set('suspendUserId', '')">
-                    ยกเลิก
-                </button>
-            </form>
-        </div>
+    <div class="account-action-overlay">
+        <section class="account-action-dialog" role="dialog" aria-modal="true" aria-labelledby="suspend-account-title">
+            <div class="account-dialog-header">
+                <div><h2 id="suspend-account-title" class="account-panel-title text-danger">ระงับบัญชีผู้เช่า</h2><p class="account-panel-subtitle">บัญชี {{ $accounts->firstWhere('u_id', $suspendUserId)?->u_username }}</p></div>
+                <a href="{{ route('admin.accounts') }}" class="btn-close" aria-label="ปิด"></a>
+            </div>
+            <div class="account-dialog-body">
+                <form method="POST" action="{{ route('admin.accounts.suspend', $suspendUserId) }}"> @csrf
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">เหตุผล (ถ้ามี)</label>
+                        <textarea class="form-control" rows="3" name="reason" placeholder="ระบุเหตุผลประกอบการระงับบัญชี"></textarea>
+                    </div>
+                    <div class="alert alert-warning"><i class="bi bi-exclamation-triangle me-2"></i>เมื่อระงับบัญชีแล้ว ผู้ใช้จะไม่สามารถเข้าสู่ระบบได้</div>
+                    <div class="d-flex justify-content-end gap-2">
+                        <a href="{{ route('admin.accounts') }}" class="btn btn-outline-secondary">ยกเลิก</a>
+                        <button type="submit" class="btn btn-danger">
+                            ยืนยันระงับบัญชี
+                            
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </section>
     </div>
     @endif
 
-</div>
+</main>
