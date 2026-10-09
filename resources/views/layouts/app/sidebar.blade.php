@@ -26,6 +26,7 @@ $initials = $user?->initials() ?? 'U';
     <meta charset="utf-8">
 
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
 
     <title>
         {{ $title ?? 'หอพักสุขสบาย' }}
@@ -343,6 +344,65 @@ $initials = $user?->initials() ?? 'U';
         min-height: calc(100vh - 60px);
         background: #F5F7FA;
     }
+
+    .app-global-search {
+        position: relative;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex: 0 1 430px;
+        width: auto;
+        min-width: 140px;
+        margin-left: auto;
+        margin-right: 18px;
+        padding: 0 12px;
+        border: 1px solid #d8e0e9;
+        border-radius: 8px;
+        background: #fff;
+        color: #64748b;
+    }
+
+    .app-global-search input {
+        width: 100%;
+        height: 38px;
+        border: 0;
+        outline: 0;
+        color: #172033;
+        background: transparent;
+        font-size: 13px;
+    }
+
+    .global-search-results {
+        position: absolute;
+        z-index: 1100;
+        top: calc(100% + 6px);
+        left: 0;
+        right: 0;
+        max-height: 65vh;
+        overflow: auto;
+        border: 1px solid #d8e0e9;
+        border-radius: 8px;
+        background: #fff;
+        box-shadow: 0 12px 28px rgba(15, 23, 42, .16);
+    }
+
+    .global-search-results a, .global-search-message {
+        display: block;
+        padding: 10px 13px;
+        color: #334155;
+        font-size: 13px;
+        text-decoration: none;
+    }
+
+    .global-search-results a + a { border-top: 1px solid #eef2f6; }
+    .global-search-results a:hover, .global-search-results a:focus { background: #f1f5f9; }
+    .global-search-results small { display: block; color: #64748b; }
+
+    @media (max-width: 700px) {
+        .app-global-search { width: min(56vw, 250px); margin-right: 10px; }
+        .app-global-search input { font-size: 12px; }
+        .app-global-search input::placeholder { color: transparent; }
+    }
     </style>
     @livewireStyles
 </head>
@@ -430,9 +490,17 @@ $initials = $user?->initials() ?? 'U';
                 </a>
 
                 {{-- การเช่า --}}
-                <a href="#" class="sidebar-menu-item">
+                <a href="{{ route('rentals.index') }}"
+                    class="sidebar-menu-item {{ request()->routeIs('rentals.*') ? 'active' : '' }}">
                     <i class="bi bi-key"></i>
                     <span>การเช่า</span>
+                </a>
+
+                {{-- สัญญาเช่า --}}
+                <a href="{{ route('contracts.index') }}"
+                    class="sidebar-menu-item {{ request()->routeIs('contracts.*') ? 'active' : '' }}">
+                    <i class="bi bi-file-earmark-text"></i>
+                    <span>สัญญาเช่า</span>
                 </a>
 
                 {{-- ค่าน้ำ-ค่าไฟ --}}
@@ -565,6 +633,15 @@ $initials = $user?->initials() ?? 'U';
 
             </div>
 
+            @if($isAdmin)
+                <div class="app-global-search" role="search">
+                    <i class="bi bi-search" aria-hidden="true"></i>
+                    <input id="global-search-input" type="search" maxlength="100" placeholder="ค้นหาผู้เช่า ห้อง การเช่า และสัญญา..."
+                        aria-label="ค้นหาทั่วทั้งระบบ" autocomplete="off" aria-controls="global-search-results">
+                    <div id="global-search-results" class="global-search-results d-none" role="listbox" aria-live="polite"></div>
+                </div>
+            @endif
+
 
             {{-- User Avatar --}}
             <div class="app-top-avatar">
@@ -585,6 +662,97 @@ $initials = $user?->initials() ?? 'U';
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
     @livewireScripts
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const input = document.getElementById('global-search-input');
+        const results = document.getElementById('global-search-results');
+        if (!input || !results) return;
+
+        let timer;
+        let controller;
+        const escapeHtml = value => {
+            const node = document.createElement('span');
+            node.textContent = value ?? '';
+            return node.innerHTML;
+        };
+        const statusLabel = status => ({
+            VACANT: 'ว่าง', OCCUPIED: 'มีผู้พัก',
+            ACTIVE: 'กำลังเช่า', ENDED: 'สิ้นสุดแล้ว',
+        })[status] ?? status ?? '';
+
+        input.addEventListener('input', () => {
+            clearTimeout(timer);
+            controller?.abort();
+            const term = input.value.trim();
+            if (term.length < 2) {
+                results.classList.add('d-none');
+                results.replaceChildren();
+                return;
+            }
+
+            results.classList.remove('d-none');
+            results.innerHTML = '<div class="global-search-message">กำลังค้นหา...</div>';
+            timer = setTimeout(async () => {
+                controller = new AbortController();
+                const params = new URLSearchParams({ search: term, per_page: 5 });
+                const resources = [
+                    { path: '/api/v1/tenants', label: 'ผู้เช่า' },
+                    { path: '/api/v1/rooms', label: 'ห้องพัก' },
+                    { path: '/api/v1/rentals', label: 'การเช่า' },
+                ];
+                try {
+                    const groups = await Promise.all(resources.map(async resource => {
+                        const response = await fetch(`${resource.path}?${params}`, {
+                            credentials: 'same-origin',
+                            headers: { Accept: 'application/json' },
+                            signal: controller.signal,
+                        });
+                        if (response.status === 401) {
+                            window.location.assign('/login');
+                            throw new Error('กรุณาเข้าสู่ระบบใหม่');
+                        }
+                        if (!response.ok) throw new Error('ค้นหาบางรายการไม่สำเร็จ');
+                        const body = await response.json();
+                        return { ...resource, rows: body.data ?? [] };
+                    }));
+                    const hits = groups.flatMap(group => group.rows.map(row => {
+                        if (group.label === 'ผู้เช่า') {
+                            return { label: group.label, title: `${row.t_Fname ?? ''} ${row.t_Lname ?? ''}`.trim(), detail: row.t_tel ?? '', href: `/tenants/${row.t_id}/edit` };
+                        }
+                        if (group.label === 'ห้องพัก') {
+                            return { label: group.label, title: `ห้อง ${row.r_name ?? row.r_id}`, detail: `${row.r_type ?? ''} · ${statusLabel(row.r_status)}`, href: `/rooms/${row.r_id}/edit` };
+                        }
+                        const person = `${row.tenant?.t_Fname ?? ''} ${row.tenant?.t_Lname ?? ''}`.trim();
+                        return {
+                            label: row.contract?.c_number ? 'สัญญาเช่า' : group.label,
+                            title: `${person || 'ผู้เช่า'} · ห้อง ${row.room?.r_name ?? '—'}`,
+                            detail: row.contract?.c_number ?? `${row.rt_movein ?? ''} · ${row.rt_status ?? ''}`,
+                            href: row.contract?.c_number
+                                ? `/contracts?search=${encodeURIComponent(term)}`
+                                : `/rentals?search=${encodeURIComponent(term)}`,
+                        };
+                    }));
+
+                    if (!hits.length) {
+                        results.innerHTML = '<div class="global-search-message">ไม่พบข้อมูลที่ตรงกับคำค้น</div>';
+                        return;
+                    }
+                    results.innerHTML = hits.slice(0, 12).map(hit => `<a role="option" href="${escapeHtml(hit.href)}"><strong>${escapeHtml(hit.title)}</strong><small>${escapeHtml(hit.label)}${hit.detail ? ` · ${escapeHtml(hit.detail)}` : ''}</small></a>`).join('');
+                } catch (error) {
+                    if (error.name === 'AbortError') return;
+                    results.innerHTML = `<div class="global-search-message text-danger">${escapeHtml(error.message || 'ค้นหาไม่สำเร็จ')}</div>`;
+                }
+            }, 250);
+        });
+
+        document.addEventListener('click', event => {
+            if (!event.target.closest('.app-global-search')) results.classList.add('d-none');
+        });
+        input.addEventListener('focus', () => {
+            if (input.value.trim().length >= 2) results.classList.remove('d-none');
+        });
+    });
+    </script>
 </body>
 
 </html>

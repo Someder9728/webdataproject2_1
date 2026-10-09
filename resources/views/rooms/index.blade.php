@@ -1167,9 +1167,9 @@
                                     type="button"
                                     class="room-action-btn"
                                     data-room-id="${room.r_id}"
-                                    onclick="return false;"
+                                    data-room-name="${escapeHtml(room.r_name)}"
                                 >
-                                    ดูข้อมูล
+                                    ประวัติห้อง
                                 </button>
 
 
@@ -1260,6 +1260,16 @@
 
 
                             <td class="text-center">
+
+                                <button
+                                    type="button"
+                                    class="btn btn-sm btn-outline-secondary me-1"
+                                    data-room-id="${room.r_id}"
+                                    data-room-name="${escapeHtml(room.r_name)}"
+                                    title="ประวัติห้อง"
+                                >
+                                    <i class="bi bi-clock-history"></i>
+                                </button>
 
                                 <a
                                     href="/rooms/${room.r_id}/edit"
@@ -1839,6 +1849,124 @@
             1
         );
 
+    });
+    </script>
+
+    <div class="modal fade" id="room-history-modal" tabindex="-1" aria-labelledby="room-history-title" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 class="modal-title fs-5" id="room-history-title">ประวัติห้อง</h2>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="ปิด"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="room-history-state" class="text-center text-secondary py-5" role="status" aria-live="polite">กำลังโหลดประวัติ...</div>
+                    <div id="room-history-content" class="d-none">
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover align-middle">
+                                <thead><tr><th>ประเภท</th><th>วันที่</th><th>รายละเอียด</th><th>สถานะ</th></tr></thead>
+                                <tbody id="room-history-rows"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">ปิด</button></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const modalElement = document.getElementById('room-history-modal');
+        const modal = new bootstrap.Modal(modalElement);
+        const state = document.getElementById('room-history-state');
+        const content = document.getElementById('room-history-content');
+        const rows = document.getElementById('room-history-rows');
+
+        const escapeHtml = value => {
+            const node = document.createElement('span');
+            node.textContent = value ?? '';
+            return node.innerHTML;
+        };
+
+        const thaiStatus = status => ({
+            ACTIVE: 'กำลังเช่า', ENDED: 'สิ้นสุดแล้ว',
+            UNPAID: 'ยังไม่ชำระ', PENDING: 'รอตรวจสอบ', PAID: 'ชำระแล้ว', REJECTED: 'ถูกปฏิเสธ',
+            REPORTED: 'แจ้งใหม่', IN_PROGRESS: 'กำลังดำเนินการ', COMPLETED: 'เสร็จแล้ว',
+        })[status] ?? status ?? '—';
+
+        async function fetchPages(endpoint, extra = {}) {
+            const accumulated = [];
+            let page = 1;
+            let lastPage = 1;
+            do {
+                const params = new URLSearchParams({ page, per_page: 100, ...extra });
+                const response = await fetch(`${endpoint}?${params}`, {
+                    credentials: 'same-origin',
+                    headers: { Accept: 'application/json' },
+                });
+                const body = await response.json().catch(() => ({}));
+                if (response.status === 401) {
+                    window.location.assign('/login');
+                    throw new Error('กรุณาเข้าสู่ระบบใหม่');
+                }
+                if (!response.ok) throw new Error(body.message || 'ไม่สามารถอ่านข้อมูลประวัติได้');
+                accumulated.push(...(body.data ?? []));
+                lastPage = Number(body.meta?.last_page ?? 1);
+                page++;
+            } while (page <= lastPage);
+            return accumulated;
+        }
+
+        async function showHistory(roomId, roomName) {
+            document.getElementById('room-history-title').textContent = `ประวัติห้อง ${roomName}`;
+            state.className = 'text-center text-secondary py-5';
+            state.textContent = 'กำลังโหลดประวัติ...';
+            content.classList.add('d-none');
+            modal.show();
+
+            try {
+                const [rentals, invoices, repairs] = await Promise.all([
+                    fetchPages('/api/v1/rentals', { search: roomName }),
+                    fetchPages('/api/v1/invoices', { search: roomName }),
+                    fetchPages('/api/v1/repairs'),
+                ]);
+
+                const history = [];
+                for (const rental of rentals) {
+                    if (Number(rental.room?.r_id) !== roomId) continue;
+                    const name = `${rental.tenant?.t_Fname ?? ''} ${rental.tenant?.t_Lname ?? ''}`.trim() || 'ไม่ระบุผู้เช่า';
+                    history.push({ type: 'การเช่า', date: rental.rt_movein ?? rental.created_at, detail: `${name} · ย้ายเข้า ${rental.rt_movein ?? '—'} · ย้ายออก ${rental.rt_moveout ?? '—'}`, status: thaiStatus(rental.rt_status) });
+                }
+                for (const invoice of invoices) {
+                    if (Number(invoice.room?.r_id) !== roomId) continue;
+                    history.push({ type: 'ใบแจ้งหนี้', date: invoice.i_date, detail: `รอบ ${invoice.period_start ?? '—'} ถึง ${invoice.period_end ?? '—'} · ฿${Number(invoice.i_total ?? 0).toLocaleString('th-TH', { minimumFractionDigits: 2 })}`, status: thaiStatus(invoice.payment?.p_status ?? 'UNPAID') });
+                }
+                for (const repair of repairs) {
+                    if (Number(repair.rooms_r_id) !== roomId) continue;
+                    history.push({ type: 'แจ้งซ่อม', date: repair.created_at, detail: repair.rp_name ?? repair.rp_description ?? repair.rp_type ?? 'แจ้งซ่อม', status: thaiStatus(repair.rp_status) });
+                }
+
+                history.sort((left, right) => String(right.date ?? '').localeCompare(String(left.date ?? '')));
+                if (!history.length) {
+                    state.textContent = 'ยังไม่มีประวัติ Rental, Invoice หรือ Repair ของห้องนี้';
+                    return;
+                }
+
+                rows.innerHTML = history.map(item => `<tr><td>${escapeHtml(item.type)}</td><td>${escapeHtml(item.date ?? '—')}</td><td class="text-wrap">${escapeHtml(item.detail)}</td><td>${escapeHtml(item.status)}</td></tr>`).join('');
+                state.classList.add('d-none');
+                content.classList.remove('d-none');
+            } catch (error) {
+                state.className = 'text-center text-danger py-5';
+                state.textContent = `${error.message || 'โหลดประวัติไม่สำเร็จ'} · กรุณาปิดแล้วลองใหม่`;
+            }
+        }
+
+        document.addEventListener('click', event => {
+            const button = event.target.closest('[data-room-id][data-room-name]');
+            if (!button) return;
+            showHistory(Number(button.dataset.roomId), button.dataset.roomName);
+        });
     });
     </script>
 

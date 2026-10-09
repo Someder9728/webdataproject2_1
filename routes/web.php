@@ -23,6 +23,14 @@ Route::middleware(['auth', 'password.changed'])->group(function () {
     // ADMIN - TENANTS AND ROOMS
     Route::middleware('admin')->group(function () {
 
+        Route::view('rentals', 'rentals.index', [
+            'mode' => 'rentals',
+        ])->name('rentals.index');
+
+        Route::view('contracts', 'rentals.index', [
+            'mode' => 'contracts',
+        ])->name('contracts.index');
+
         Route::resource('tenants', TenantController::class)
             ->except(['show']);
 

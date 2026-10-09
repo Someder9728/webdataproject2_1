@@ -65,7 +65,9 @@
                             </label>
 
                             <input type="text" id="t_Fname" name="t_Fname"
-                                value="{{ old('t_Fname', $tenant->t_Fname) }}" class="form-control" required>
+                                value="{{ old('t_Fname', $tenant->t_Fname) }}" class="form-control @error('t_Fname') is-invalid @enderror"
+                                maxlength="255" autocomplete="given-name" aria-invalid="@error('t_Fname') true @else false @enderror" required>
+                            @error('t_Fname')<div class="invalid-feedback">{{ $message }}</div>@enderror
 
                         </div>
 
@@ -78,7 +80,9 @@
                             </label>
 
                             <input type="text" id="t_Lname" name="t_Lname"
-                                value="{{ old('t_Lname', $tenant->t_Lname) }}" class="form-control" required>
+                                value="{{ old('t_Lname', $tenant->t_Lname) }}" class="form-control @error('t_Lname') is-invalid @enderror"
+                                maxlength="255" autocomplete="family-name" aria-invalid="@error('t_Lname') true @else false @enderror" required>
+                            @error('t_Lname')<div class="invalid-feedback">{{ $message }}</div>@enderror
 
                         </div>
 
@@ -91,7 +95,9 @@
                             </label>
 
                             <input type="tel" id="t_tel" name="t_tel" value="{{ old('t_tel', $tenant->t_tel) }}"
-                                class="form-control" maxlength="10" required>
+                                class="form-control @error('t_tel') is-invalid @enderror" inputmode="numeric" autocomplete="tel"
+                                pattern="[0-9]{10}" maxlength="10" aria-invalid="@error('t_tel') true @else false @enderror" required>
+                            @error('t_tel')<div class="invalid-feedback">{{ $message }}</div>@enderror
 
                             <div class="form-text">
                                 เบอร์โทรศัพท์ต้องมี 10 หลัก
@@ -107,7 +113,9 @@
                             </label>
 
                             <input type="email" id="t_mail" name="t_mail" value="{{ old('t_mail', $tenant->t_mail) }}"
-                                class="form-control">
+                                class="form-control @error('t_mail') is-invalid @enderror" maxlength="255" autocomplete="email"
+                                aria-invalid="@error('t_mail') true @else false @enderror">
+                            @error('t_mail')<div class="invalid-feedback">{{ $message }}</div>@enderror
 
                         </div>
 
@@ -118,8 +126,9 @@
                                 ที่อยู่
                             </label>
 
-                            <textarea id="t_address" name="t_address" rows="4"
-                                class="form-control">{{ old('t_address', $tenant->t_address) }}</textarea>
+                            <textarea id="t_address" name="t_address" rows="4" maxlength="2000"
+                                class="form-control @error('t_address') is-invalid @enderror" aria-invalid="@error('t_address') true @else false @enderror">{{ old('t_address', $tenant->t_address) }}</textarea>
+                            @error('t_address')<div class="invalid-feedback">{{ $message }}</div>@enderror
 
                         </div>
 

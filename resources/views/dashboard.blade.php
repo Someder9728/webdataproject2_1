@@ -417,7 +417,7 @@
             </div>
 
 
-            {{-- ยอดค้างชำระ --}}
+            {{-- ยังไม่ถึงกำหนด --}}
             <div class="col">
                 <div class="summary-card p-3">
 
@@ -429,15 +429,45 @@
 
                         <div>
                             <div class="summary-label">
-                                ยอดค้างชำระ
+                                ยังไม่ชำระ
                             </div>
 
-                            <div class="summary-value" id="dashboard-outstanding-amount">
-                                ฿0
+                            <div class="summary-value" id="dashboard-current-due-amount">
+                                กำลังโหลด...
                             </div>
 
-                            <div class="summary-unit" id="dashboard-outstanding-count">
-                                0 รายการ
+                            <div class="summary-unit" id="dashboard-current-due-count">
+                                —
+                            </div>
+                        </div>
+
+                    </div>
+
+                </div>
+            </div>
+
+
+            {{-- เกินกำหนด --}}
+            <div class="col">
+                <div class="summary-card p-3">
+
+                    <div class="d-flex align-items-center gap-3">
+
+                        <div class="summary-icon" style="background:#dc2626;color:#ffffff;">
+                            <i class="bi bi-exclamation-circle"></i>
+                        </div>
+
+                        <div>
+                            <div class="summary-label">
+                                เกินกำหนดชำระ
+                            </div>
+
+                            <div class="summary-value" id="dashboard-overdue-amount">
+                                กำลังโหลด...
+                            </div>
+
+                            <div class="summary-unit" id="dashboard-overdue-count">
+                                —
                             </div>
                         </div>
 
@@ -619,11 +649,11 @@
                                 </tr>
                             </thead>
 
-                            <tbody>
+                            <tbody id="dashboard-invoice-rows">
 
                                 <tr>
-                                    <td colspan="5" class="empty-table">
-                                        ยังไม่มีข้อมูลค้างชำระ
+                                    <td colspan="5" class="empty-table" role="status" aria-live="polite">
+                                        กำลังโหลดรายการใบแจ้งหนี้...
                                     </td>
                                 </tr>
 
@@ -679,11 +709,11 @@
                                 </tr>
                             </thead>
 
-                            <tbody>
+                            <tbody id="dashboard-repair-rows">
 
                                 <tr>
-                                    <td colspan="5" class="empty-table">
-                                        ยังไม่มีข้อมูลแจ้งซ่อม
+                                    <td colspan="5" class="empty-table" role="status" aria-live="polite">
+                                        กำลังโหลดรายการแจ้งซ่อม...
                                     </td>
                                 </tr>
 
@@ -704,6 +734,14 @@
     <script>
     document.addEventListener('DOMContentLoaded', async () => {
         if (!window.dashboardApi) {
+            ['dashboard-current-due-amount', 'dashboard-overdue-amount'].forEach(id => {
+                const element = document.getElementById(id);
+                if (element) element.textContent = 'โหลดไม่สำเร็จ';
+            });
+            ['dashboard-current-due-count', 'dashboard-overdue-count'].forEach(id => {
+                const element = document.getElementById(id);
+                if (element) element.textContent = 'กรุณาลองใหม่';
+            });
             return;
         }
 
@@ -711,30 +749,46 @@
             const response = await window.dashboardApi.get();
             const data = response.data;
 
-            const outstandingAmount = document.getElementById(
-                'dashboard-outstanding-amount'
+            const currentDueAmount = document.getElementById(
+                'dashboard-current-due-amount'
             );
 
-            const outstandingCount = document.getElementById(
-                'dashboard-outstanding-count'
+            const currentDueCount = document.getElementById(
+                'dashboard-current-due-count'
+            );
+
+            const overdueAmount = document.getElementById(
+                'dashboard-overdue-amount'
+            );
+
+            const overdueCount = document.getElementById(
+                'dashboard-overdue-count'
             );
 
             const repairCount = document.getElementById(
                 'dashboard-repair-count'
             );
 
-            if (outstandingAmount) {
-                outstandingAmount.textContent =
-                    `฿${Number(data.payments.outstanding_amount).toLocaleString('th-TH', {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2
-                    })}`;
-            }
+            const toCents = value => Math.round(Number(value ?? 0) * 100);
+            const formatBaht = cents => `฿${(cents / 100).toLocaleString('th-TH', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            })}`;
+            const currentDueAmountCents = Math.max(
+                0,
+                toCents(data.payments.outstanding_amount) -
+                    toCents(data.payments.overdue_amount)
+            );
+            const currentDueCountValue = Math.max(
+                0,
+                Number(data.payments.outstanding_count ?? 0) -
+                    Number(data.payments.overdue_count ?? 0)
+            );
 
-            if (outstandingCount) {
-                outstandingCount.textContent =
-                    `${data.payments.outstanding_count} รายการ`;
-            }
+            if (currentDueAmount) currentDueAmount.textContent = formatBaht(currentDueAmountCents);
+            if (currentDueCount) currentDueCount.textContent = `${currentDueCountValue} รายการ · ยังไม่เกินกำหนด`;
+            if (overdueAmount) overdueAmount.textContent = formatBaht(toCents(data.payments.overdue_amount));
+            if (overdueCount) overdueCount.textContent = `${Number(data.payments.overdue_count ?? 0)} รายการ`;
 
             if (repairCount) {
                 const repairs = data.repairs ?? {};
@@ -746,7 +800,82 @@
             }
         } catch (error) {
             console.error('Dashboard API error:', error);
+            [
+                'dashboard-current-due-amount',
+                'dashboard-overdue-amount',
+            ].forEach(id => {
+                const element = document.getElementById(id);
+                if (element) element.textContent = 'โหลดไม่สำเร็จ';
+            });
+            [
+                'dashboard-current-due-count',
+                'dashboard-overdue-count',
+            ].forEach(id => {
+                const element = document.getElementById(id);
+                if (element) element.textContent = 'กรุณาลองใหม่';
+            });
         }
+
+        const escapeHtml = value => {
+            const node = document.createElement('span');
+            node.textContent = value ?? '';
+            return node.innerHTML;
+        };
+        const statusLabel = status => ({
+            UNPAID: 'ยังไม่ชำระ',
+            PENDING: 'รอตรวจสอบ',
+            REJECTED: 'ถูกปฏิเสธ',
+            PAID: 'ชำระแล้ว',
+            REPORTED: 'แจ้งใหม่',
+            IN_PROGRESS: 'กำลังดำเนินการ',
+            COMPLETED: 'เสร็จแล้ว',
+        })[status] ?? status ?? '—';
+        const apiGet = async path => {
+            const response = await fetch(path, {
+                credentials: 'same-origin',
+                headers: { Accept: 'application/json' },
+            });
+            const body = await response.json().catch(() => ({}));
+            if (response.status === 401) {
+                window.location.assign('/login');
+                throw new Error('กรุณาเข้าสู่ระบบใหม่');
+            }
+            if (!response.ok) throw new Error(body.message || 'โหลดข้อมูลไม่สำเร็จ');
+            return body;
+        };
+
+        const invoiceRows = document.getElementById('dashboard-invoice-rows');
+        try {
+            const statusResults = await Promise.all(['UNPAID', 'PENDING', 'REJECTED'].map(status => {
+                const params = new URLSearchParams({ status, per_page: 5 });
+                return apiGet(`/api/v1/invoices?${params}`);
+            }));
+            const invoices = statusResults.flatMap(result => result.data ?? [])
+                .sort((left, right) => String(left.i_due ?? '').localeCompare(String(right.i_due ?? '')))
+                .slice(0, 5);
+            invoiceRows.innerHTML = invoices.length ? invoices.map(invoice => {
+                const tenant = `${invoice.tenant?.t_Fname ?? ''} ${invoice.tenant?.t_Lname ?? ''}`.trim() || '—';
+                const status = invoice.payment?.p_status ?? 'UNPAID';
+                return `<tr><td>${escapeHtml(invoice.room?.r_name ?? '—')}</td><td>${escapeHtml(tenant)}</td><td>${escapeHtml(invoice.period_start ?? invoice.i_date ?? '—')}</td><td class="amount">฿${Number(invoice.i_total ?? 0).toLocaleString('th-TH', { minimumFractionDigits: 2 })}</td><td><span class="status-badge ${status === 'REJECTED' ? 'status-overdue' : 'status-waiting'}">${escapeHtml(statusLabel(status))}</span></td></tr>`;
+            }).join('') : '<tr><td colspan="5" class="empty-table">ยังไม่มีรายการค้างชำระ</td></tr>';
+        } catch (error) {
+            invoiceRows.innerHTML = `<tr><td colspan="5" class="empty-table text-danger">${escapeHtml(error.message || 'โหลดรายการไม่สำเร็จ')} <button type="button" class="btn btn-sm btn-outline-primary ms-2" data-dashboard-retry="invoices">ลองใหม่</button></td></tr>`;
+        }
+
+        const repairRows = document.getElementById('dashboard-repair-rows');
+        try {
+            const result = await apiGet('/api/v1/repairs?per_page=5');
+            const repairs = result.data ?? [];
+            repairRows.innerHTML = repairs.length ? repairs.map(repair => `<tr><td>${escapeHtml(repair.rp_id ?? '—')}</td><td>${escapeHtml(repair.room?.r_name ?? repair.rooms_r_id ?? 'ส่วนกลาง')}</td><td>${escapeHtml(repair.rp_name ?? 'แจ้งซ่อม')}</td><td>${escapeHtml((repair.created_at ?? '—').toString().slice(0, 10))}</td><td><span class="status-badge status-repair">${escapeHtml(statusLabel(repair.rp_status))}</span></td></tr>`).join('') : '<tr><td colspan="5" class="empty-table">ยังไม่มีข้อมูลแจ้งซ่อม</td></tr>';
+        } catch (error) {
+            repairRows.innerHTML = `<tr><td colspan="5" class="empty-table text-danger">${escapeHtml(error.message || 'โหลดรายการไม่สำเร็จ')} <button type="button" class="btn btn-sm btn-outline-primary ms-2" data-dashboard-retry="repairs">ลองใหม่</button></td></tr>`;
+        }
+
+        document.addEventListener('click', event => {
+            const retry = event.target.closest('[data-dashboard-retry]');
+            if (!retry) return;
+            window.location.reload();
+        });
     });
     </script>
 

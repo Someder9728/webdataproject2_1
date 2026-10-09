@@ -3,8 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Room;
-use App\Models\Rental;
 use App\Models\Tenant;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class DashboardController extends Controller
 {
@@ -21,7 +22,9 @@ class DashboardController extends Controller
 
             $totalTenants = Tenant::count();
 
-            $currentTenants = Rental::where('rt_status', 'ACTIVE')->count();
+            $currentTenants = Schema::hasTable('rentals')
+                ? DB::table('rentals')->where('rt_status', 'ACTIVE')->count()
+                : 0;
 
             $rooms = Room::orderBy('r_floor')
                 ->orderBy('r_name')
