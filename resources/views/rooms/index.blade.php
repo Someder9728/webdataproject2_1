@@ -538,15 +538,15 @@
                             สถานะทั้งหมด
                         </option>
 
-                        <option value="ว่าง">
+                        <option value="VACANT">
                             ว่าง
                         </option>
 
-                        <option value="มีผู้พัก">
+                        <option value="OCCUPIED">
                             มีผู้พัก
                         </option>
 
-                        <option value="ปิดปรับปรุง">
+                        <option value="MAINTENANCE">
                             ปิดปรับปรุง
                         </option>
 
@@ -948,7 +948,7 @@
             const availableCount =
                 rooms.filter(
                     room =>
-                    room.r_status === 'ว่าง'
+                    ['VACANT', 'ว่าง'].includes(room.r_status)
                 ).length;
 
 
@@ -1061,8 +1061,7 @@
 
 
             if (
-                room.r_status ===
-                'ว่าง'
+                ['VACANT', 'ว่าง'].includes(room.r_status)
             ) {
 
                 cardClass =
@@ -1078,8 +1077,7 @@
 
 
             if (
-                room.r_status ===
-                'ปิดปรับปรุง'
+                ['MAINTENANCE', 'ปิดปรับปรุง'].includes(room.r_status)
             ) {
 
                 cardClass =
@@ -1095,8 +1093,7 @@
 
 
             const tenantHtml =
-                room.r_status ===
-                'มีผู้พัก'
+                ['OCCUPIED', 'มีผู้พัก'].includes(room.r_status)
 
                 ?
                 `
@@ -1146,7 +1143,7 @@
                             <span
                                 class="room-status-badge ${badgeClass}"
                             >
-                                ${escapeHtml(room.r_status)}
+                                ${escapeHtml(roomStatusLabel(room.r_status))}
                             </span>
 
 
@@ -1200,8 +1197,7 @@
 
 
             if (
-                room.r_status ===
-                'ว่าง'
+                ['VACANT', 'ว่าง'].includes(room.r_status)
             ) {
 
                 badgeClass =
@@ -1211,8 +1207,7 @@
 
 
             if (
-                room.r_status ===
-                'ปิดปรับปรุง'
+                ['MAINTENANCE', 'ปิดปรับปรุง'].includes(room.r_status)
             ) {
 
                 badgeClass =
@@ -1258,7 +1253,7 @@
                                 <span
                                     class="room-status-badge ${badgeClass}"
                                 >
-                                    ${escapeHtml(room.r_status)}
+                                    ${escapeHtml(roomStatusLabel(room.r_status))}
                                 </span>
 
                             </td>
@@ -1813,6 +1808,14 @@
 
 
         /* ESCAPE HTML */
+        function roomStatusLabel(status) {
+            return ({
+                VACANT: 'ว่าง',
+                OCCUPIED: 'มีผู้พัก',
+                MAINTENANCE: 'ปิดปรับปรุง',
+            })[status] ?? status ?? '';
+        }
+
         function escapeHtml(value) {
 
             const div =

@@ -276,6 +276,19 @@
         color: #94a3b8;
         padding: 35px 15px !important;
     }
+
+    .room-box.maintenance {
+        background: #fff7ed;
+        border-color: #fdba74;
+    }
+
+    .room-status.maintenance-text {
+        color: #c2410c;
+    }
+
+    .room-dot.maintenance-dot {
+        background: #f97316;
+    }
     </style>
 
 
@@ -495,10 +508,23 @@
                     @foreach ($floorRooms as $room)
 
                     @php
-                    $isAvailable = $room->r_status === 'ว่าง';
+                    $isAvailable = in_array($room->r_status, ['VACANT', 'ว่าง'], true);
+                    $isOccupied = in_array($room->r_status, ['OCCUPIED', 'มีผู้พัก'], true);
+                    $roomStatusLabel = match ($room->r_status) {
+                        'VACANT' => 'ว่าง',
+                        'OCCUPIED' => 'มีผู้พัก',
+                        'MAINTENANCE' => 'ปิดปรับปรุง',
+                        default => $room->r_status,
+                    };
+
+                    $roomStatusClass = match ($room->r_status) {
+                    'VACANT', 'ว่าง' => 'available',
+                    'OCCUPIED', 'มีผู้พัก' => 'occupied',
+                    default => 'maintenance',
+                    };
                     @endphp
 
-                    <div class="room-box {{ $isAvailable ? 'available' : 'occupied' }}">
+                    <div class="room-box {{ $roomStatusClass }}">
 
                         <div class="d-flex justify-content-between">
 
@@ -508,14 +534,13 @@
                                     ห้อง {{ $room->r_name }}
                                 </div>
 
-                                <div class="room-status {{ $isAvailable ? 'available-text' : 'occupied-text' }}">
-                                    {{ $room->r_status }}
+                                <div
+                                    class="room-status {{ $isAvailable ? 'available-text' : ($isOccupied ? 'occupied-text' : 'maintenance-text') }}">
+                                    {{ $roomStatusLabel }}
                                 </div>
 
-                                @if (!$isAvailable)
-                                <div class="room-tenant">
-                                    มีผู้เช่า
-                                </div>
+                                @if ($isOccupied)
+                                <div class="room-tenant">มีผู้เช่า</div>
                                 @endif
 
                                 <div class="room-price">
@@ -524,7 +549,10 @@
 
                             </div>
 
-                            <div class="room-dot {{ $isAvailable ? 'available-dot' : 'occupied-dot' }}"></div>
+                            <div
+                                class="room-dot
+                                {{ $isAvailable ? 'available-dot' : ($isOccupied ? 'occupied-dot' : 'maintenance-dot') }}">
+                            </div>
 
                         </div>
 
@@ -709,11 +737,10 @@
             }
 
             if (repairCount) {
-                const repairs = Object.values(data.repairs ?? {});
-                const totalRepairs = repairs.reduce(
-                    (total, count) => total + Number(count),
-                    0
-                );
+                const repairs = data.repairs ?? {};
+                const totalRepairs =
+                    Number(repairs.REPORTED ?? 0) +
+                    Number(repairs.IN_PROGRESS ?? 0);
 
                 repairCount.textContent = totalRepairs;
             }

@@ -33,29 +33,30 @@ export const roomApi = {
             params.set("search", search);
         }
 
-        return request(`/api/rooms?${params.toString()}`);
+        const result = await request(`/api/v1/rooms?${params.toString()}`);
+        return { ...result, pagination: result.meta ?? result.pagination };
     },
 
     async get(id) {
-        return request(`/api/rooms/${id}`);
+        return request(`/api/v1/rooms/${id}`);
     },
 
     async create(room) {
-        return request("/api/rooms", {
+        return request("/api/v1/rooms", {
             method: "POST",
             body: JSON.stringify(room),
         });
     },
 
     async update(id, room) {
-        return request(`/api/rooms/${id}`, {
-            method: "PUT",
+        return request(`/api/v1/rooms/${id}`, {
+            method: "PATCH",
             body: JSON.stringify(room),
         });
     },
 
     async delete(id) {
-        return request(`/api/rooms/${id}`, {
+        return request(`/api/v1/rooms/${id}`, {
             method: "DELETE",
         });
     },
@@ -73,29 +74,30 @@ export const tenantApi = {
             params.set("search", search);
         }
 
-        return request(`/api/tenants?${params.toString()}`);
+        const result = await request(`/api/v1/tenants?${params.toString()}`);
+        return { ...result, pagination: result.meta ?? result.pagination };
     },
 
     async get(id) {
-        return request(`/api/tenants/${id}`);
+        return request(`/api/v1/tenants/${id}`);
     },
 
     async create(tenant) {
-        return request("/api/tenants", {
+        return request("/api/v1/tenants", {
             method: "POST",
             body: JSON.stringify(tenant),
         });
     },
 
     async update(id, tenant) {
-        return request(`/api/tenants/${id}`, {
-            method: "PUT",
+        return request(`/api/v1/tenants/${id}`, {
+            method: "PATCH",
             body: JSON.stringify(tenant),
         });
     },
 
     async delete(id) {
-        return request(`/api/tenants/${id}`, {
+        return request(`/api/v1/tenants/${id}`, {
             method: "DELETE",
         });
     },

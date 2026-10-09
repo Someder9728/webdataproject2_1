@@ -24,6 +24,7 @@ class FortifyServiceProvider extends ServiceProvider
 
         Fortify::username('u_username');
 
+
         Fortify::authenticateUsing(function (Request $request) {
             $username = Str::lower(
                 trim((string) $request->input('u_username'))
@@ -31,27 +32,29 @@ class FortifyServiceProvider extends ServiceProvider
 
             $user = User::where('u_username', $username)->first();
 
+            // ไม่พบบัญชี ให้เข้าสู่กระบวนการ Login ล้มเหลวตามปกติ
             if (! $user) {
                 return null;
             }
 
+            // ตรวจรหัสผ่านก่อนเปิดเผยสถานะบัญชี
+            if (! Hash::check(
+                (string) $request->input('password'),
+                $user->u_password
+            )) {
+                return null;
+            }
+
+            // รหัสผ่านถูกต้องแล้ว จึงตรวจสอบสถานะบัญชี
             if (! $user->is_active) {
                 throw ValidationException::withMessages([
-                    'u_username' => 'บัญชีถูกระงับ กรุณาติดต่อผู้ดูแล',
+                    'u_username' => 'บัญชีนี้ถูกระงับ กรุณาติดต่อผู้ดูแลระบบ',
                 ]);
             }
 
-            if (
-                Hash::check(
-                    (string) $request->input('password'),
-                    $user->u_password
-                )
-            ) {
-                return $user;
-            }
-
-            return null;
+            return $user;
         });
+
 
         /* Login View */
         Fortify::loginView(function () {
