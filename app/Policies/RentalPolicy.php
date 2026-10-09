@@ -40,6 +40,13 @@ class RentalPolicy
         return $user->is_active && $user->u_role === 'admin';
     }
 
+    public function viewHistory(User $user, Rental $rental): bool
+    {
+        return $user->is_active
+            && ! $user->must_change_password
+            && $user->u_role === 'admin';
+    }
+
     public function moveOut(User $user, Rental $rental): bool
     {
         return $user->is_active
