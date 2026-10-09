@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\V1\PaymentHistoryController;
 use App\Http\Controllers\Api\V1\PaymentProofController;
 use App\Http\Controllers\Api\V1\PaymentReviewController;
 use App\Http\Controllers\Api\V1\RentalController;
+use App\Http\Controllers\Api\V1\RentalHistoryController;
 use App\Http\Controllers\Api\V1\RepairController;
 use App\Http\Controllers\Api\V1\RoomController;
 use App\Http\Controllers\Api\V1\TenantAccountController;
@@ -20,6 +21,7 @@ Route::prefix('api/v1')
     ->name('api.v1.')
     ->middleware(['auth', 'password.changed'])
     ->group(function () {
+        Route::get('/rentals/{rental}/history', [RentalHistoryController::class, 'index'])->whereNumber('rental')->middleware('role:admin')->name('rentals.history');
         Route::get('/dashboard', [DashboardController::class, 'show'])->middleware('role:admin')->name('dashboard');
         Route::patch('/rentals/{rental}/contract', [RentalController::class, 'updateContract'])->whereNumber('rental')->middleware('role:admin')->name('rentals.contract.update');
         Route::get('/repairs', [RepairController::class, 'index'])->name('repairs.index');
