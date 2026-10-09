@@ -82,6 +82,11 @@
                     <div class="rt-card-head"><h2 class="rt-card-title rt-card-title--lg" id="timeline-title">ประวัติการเช่า</h2></div>
                     <div style="padding:16px 20px;">
                         <ul class="rt-timeline" id="timeline-list"></ul>
+                        {{-- สถานะการโหลดประวัติแก้/ต่อสัญญา (เฉพาะ admin) --}}
+                        <div class="rt-tl-note" id="history-note" hidden>
+                            <span id="history-note-text"></span>
+                            <button type="button" id="history-retry" class="rt-btn rt-btn--sm" hidden>ลองใหม่</button>
+                        </div>
                     </div>
                 </section>
             </div>
@@ -99,6 +104,11 @@
     const page = document.getElementById('rental-detail-page');
     const rentalId = page.dataset.rentalId;
     const API_URL = `/api/v1/rentals/${rentalId}`;
+    // ประวัติแก้/ต่อสัญญา — API เป็น admin-only (ผู้เช่าได้ 403) จึงเรียกเฉพาะเมื่อเป็น admin
+    const IS_ADMIN = @json(auth()->user()?->u_role === 'admin');
+    const HISTORY_URL = `/api/v1/rentals/${rentalId}/history`;
+    const HISTORY_PER_PAGE = 100;
+    const HISTORY_MAX_PAGES = 10; // อ่านได้สูงสุด 1,000 รายการ เกินนี้แจ้งว่าแสดงไม่ครบ
     const fetchOpts = { headers: { Accept: 'application/json' }, credentials: 'same-origin' };
 
     // ค่าสถานะยืนยันกับ backend แล้ว
@@ -117,7 +127,7 @@
     const escapeHtml = (s) => { const d = document.createElement('div'); d.textContent = s ?? ''; return d.innerHTML; };
 
     // ข้อมูลที่ใช้สร้างไทม์ไลน์ — ค่อย ๆ เติมเมื่อแต่ละส่วนโหลดเสร็จ
-    const tl = { rental: null, contract: null };
+    const tl = { rental: null, contract: null, history: [], historyComplete: false };
 
     async function loadDetail() {
         $('detail-state-loading').hidden = false;
@@ -199,6 +209,7 @@
         // โหลดส่วนเสริมแบบไม่บล็อกหน้า — พลาดก็แค่แสดง "-"
         if (r.tenant?.t_id) loadTenantExtra(r.tenant.t_id);
         if (r.room?.r_id) loadRoomExtra(r.room.r_id);
+        if (IS_ADMIN) loadHistory();
 
         // สัญญาอาจโหลดเสร็จก่อนแล้ว
         if (window.__rentalContract) onContract(window.__rentalContract);
@@ -223,15 +234,106 @@
     }
 
     // ---------- ไทม์ไลน์ ----------
-    // สร้างจากข้อมูลการเช่า + สัญญาเท่านั้น
-    // (backend-completion ยังไม่มี API อ่าน audit_events จึงยังแสดงประวัติ "แก้/ต่อสัญญา" พร้อมเหตุผลไม่ได้
-    //  ถ้าเกลือเพิ่ม endpoint ภายหลัง ค่อยดึง action 'contract_updated' ของ entity 'contracts' มาเติม)
+    // ย้ายเข้า / สร้างสัญญา / ย้ายออก / สัญญาสิ้นสุด มาจากข้อมูลการเช่า + สัญญา
+    // แก้/ต่อสัญญา มาจาก GET /api/v1/rentals/{id}/history (admin เท่านั้น)
     function onContract(c) {
         tl.contract = c;
         renderTimeline();
     }
     document.addEventListener('rental:contract-loaded', (e) => onContract(e.detail));
-    document.addEventListener('rental:contract-updated', (e) => onContract(e.detail));
+    document.addEventListener('rental:contract-updated', (e) => {
+        onContract(e.detail);
+        // audit ใหม่ถูกบันทึกพร้อมการแก้ไขแล้ว → โหลดประวัติใหม่จาก API (ไม่เติมรายการเอง กันซ้ำ)
+        if (IS_ADMIN) loadHistory();
+    });
+
+    let historySeq = 0;
+
+    function showHistoryNote(text, canRetry) {
+        $('history-note').hidden = !text;
+        $('history-note-text').textContent = text || '';
+        $('history-retry').hidden = !canRetry;
+    }
+
+    // อ่านทุกหน้าตาม meta.last_page (ไม่ถือว่าหน้าแรกคือประวัติทั้งหมด)
+    async function loadHistory() {
+        const mySeq = ++historySeq;
+        showHistoryNote('กำลังโหลดประวัติการแก้ไขสัญญา...', false);
+        try {
+            const events = [];
+            let page = 1;
+            let lastPage = 1;
+            do {
+                const res = await fetch(`${HISTORY_URL}?page=${page}&per_page=${HISTORY_PER_PAGE}`, fetchOpts);
+                if (mySeq !== historySeq) return;
+                if (res.status === 401) { window.location.href = '/login'; return; }
+                if (res.status === 403) { showHistoryNote('', false); return; } // ไม่มีสิทธิ์ดูประวัติ → แสดงเฉพาะไทม์ไลน์พื้นฐาน
+                if (!res.ok) throw new Error(String(res.status));
+                const body = await res.json();
+                events.push(...(body.data ?? []));
+                lastPage = body.meta?.last_page ?? 1;
+                page += 1;
+            } while (page <= lastPage && page <= HISTORY_MAX_PAGES);
+            if (mySeq !== historySeq) return;
+
+            tl.history = events;
+            tl.historyComplete = lastPage <= HISTORY_MAX_PAGES;
+            renderTimeline();
+            showHistoryNote(lastPage > HISTORY_MAX_PAGES
+                ? `แสดงประวัติการแก้ไขสัญญาล่าสุด ${events.length.toLocaleString('th-TH')} รายการ (ยังมีรายการเก่ากว่านี้)`
+                : '', false);
+        } catch (_) {
+            if (mySeq !== historySeq) return;
+            showHistoryNote('โหลดประวัติการแก้ไขสัญญาไม่สำเร็จ', true);
+        }
+    }
+    $('history-retry').addEventListener('click', loadHistory);
+
+    const CONTRACT_STATUS_TEXT = { ACTIVE: 'มีผล', EXPIRED: 'หมดอายุ', ENDED: 'สิ้นสุด' };
+    const endText = (d) => d || 'ไม่กำหนด';
+
+    // แปลง audit 1 รายการ → รายการไทม์ไลน์
+    // created_at เป็นเวลาไทยอยู่แล้ว (+07:00) จึงตัดสตริงตรง ๆ ไม่แปลงเขตเวลาซ้ำ
+    function historyItem(ev) {
+        const oldV = ev.old_values || {};
+        const newV = ev.new_values || {};
+        const hasOldEnd = 'c_end' in oldV;
+        const hasNewEnd = 'c_end' in newV;
+
+        let title = 'แก้ไขสัญญา';
+        if (ev.action === 'CONTRACT_EXTENDED') title = 'ต่อสัญญา';
+        else if (hasOldEnd && hasNewEnd) {
+            if (oldV.c_end && newV.c_end) {
+                if (newV.c_end > oldV.c_end) title = 'ต่อสัญญา';
+                else if (newV.c_end < oldV.c_end) title = 'แก้วันสิ้นสุดสัญญา';
+            }
+            else if (!newV.c_end && oldV.c_end) title = 'เปลี่ยนเป็นไม่กำหนดวันสิ้นสุด';
+            else if (newV.c_end && !oldV.c_end) title = 'กำหนดวันสิ้นสุดสัญญา';
+        }
+
+        const parts = [];
+        if (hasOldEnd || hasNewEnd) {
+            parts.push(`วันสิ้นสุด ${hasOldEnd ? endText(oldV.c_end) : '?'} → ${hasNewEnd ? endText(newV.c_end) : '?'}`);
+        }
+        if (oldV.c_status && newV.c_status && oldV.c_status !== newV.c_status) {
+            const st = (k) => CONTRACT_STATUS_TEXT[k] || k;
+            parts.push(`สถานะ ${st(oldV.c_status)} → ${st(newV.c_status)}`);
+        }
+
+        const at = String(ev.created_at || '');
+        return {
+            date: at.slice(0, 10),
+            time: at.slice(11, 16),
+            order: 2,
+            seq: ev.ae_id,
+            kind: 'edit',
+            title,
+            desc: parts.join(' · '),
+            // ไม่เดาชื่อผู้แก้จาก admin ที่ล็อกอินอยู่ — ไม่มีข้อมูลก็บอกตรง ๆ
+            by: ev.actor?.u_username ? `โดย ${ev.actor.u_username}` : 'ไม่พบข้อมูลผู้ดำเนินการ',
+            reason: ev.reason ?? 'ไม่ได้ระบุ',
+        };
+    }
 
     function buildTimeline() {
         const items = [];
@@ -243,7 +345,10 @@
             items.push({ date: r.rt_movein, order: 0, title: 'ย้ายเข้า', desc: `ห้อง ${roomName}`, kind: '' });
         }
         if (tl.contract?.c_start) {
-            const end = tl.contract.c_end ? `สิ้นสุด ${tl.contract.c_end}` : 'ไม่กำหนดวันสิ้นสุด';
+            // ถ้ามีประวัติแก้ไขครบ วันสิ้นสุดตอนทำสัญญา = ค่าเดิมของการแก้ไขครั้งแรก (ไม่ใช่ค่าปัจจุบัน)
+            const oldest = tl.historyComplete ? tl.history[tl.history.length - 1] : null;
+            const firstEnd = oldest && 'c_end' in (oldest.old_values || {}) ? oldest.old_values.c_end : tl.contract.c_end;
+            const end = firstEnd ? `สิ้นสุด ${firstEnd}` : 'ไม่กำหนดวันสิ้นสุด';
             items.push({ date: tl.contract.c_start, order: 1, title: 'สร้างสัญญาเช่า', desc: `${tl.contract.c_number} · ${end}`, kind: '' });
         }
 
@@ -256,7 +361,15 @@
             if (endDate) items.push({ date: endDate, order: 4, kind: 'end', title: 'สัญญาสิ้นสุด', desc: tl.contract.c_number || '' });
         }
 
-        items.sort((a, b) => (a.date === b.date ? a.order - b.order : a.date < b.date ? -1 : 1));
+        tl.history.forEach((ev) => items.push(historyItem(ev)));
+
+        // เรียงตามวันที่ → ลำดับเหตุการณ์ในวันเดียวกัน → เวลา/ae_id ของการแก้ไข
+        items.sort((a, b) => {
+            if (a.date !== b.date) return a.date < b.date ? -1 : 1;
+            if (a.order !== b.order) return a.order - b.order;
+            if ((a.time || '') !== (b.time || '')) return (a.time || '') < (b.time || '') ? -1 : 1;
+            return (a.seq || 0) - (b.seq || 0);
+        });
         return items;
     }
 
@@ -271,8 +384,9 @@
             <li>
                 <span class="rt-dot ${i.kind ? 'rt-dot--' + i.kind : ''}"></span>
                 <div>
-                    <div><span class="rt-tl-date">${escapeHtml(i.date)}</span><span class="rt-tl-title">${escapeHtml(i.title)}</span></div>
+                    <div><span class="rt-tl-date">${escapeHtml(i.date)}${i.time ? ' ' + escapeHtml(i.time) : ''}</span><span class="rt-tl-title">${escapeHtml(i.title)}</span></div>
                     ${i.desc ? `<div class="rt-tl-desc">${escapeHtml(i.desc)}</div>` : ''}
+                    ${i.by ? `<div class="rt-tl-desc">${escapeHtml(i.by)}</div>` : ''}
                     ${i.reason ? `<div class="rt-tl-reason">เหตุผล: ${escapeHtml(i.reason)}</div>` : ''}
                 </div>
             </li>

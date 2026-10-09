@@ -162,6 +162,8 @@
     .rt-tl-title { font-weight: 600; font-size: 0.9rem; margin-left: 6px; }
     .rt-tl-desc { font-size: 0.8rem; color: var(--rt-muted); margin-top: 2px; }
     .rt-tl-reason { font-size: 0.8rem; margin-top: 2px; }
+    .rt-dot--edit::after { background: var(--rt-warn-fg); }
+    .rt-tl-note { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 14px; font-size: 0.8rem; color: var(--rt-muted); }
 
     /* ---------- กล่องฟอร์มสร้างการเช่า (R2) ---------- */
     .rt-modal { max-width: 520px; margin: 16px auto 0; background: var(--rt-card); border: 1px solid var(--rt-border); border-radius: 16px; padding: 24px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25); }
