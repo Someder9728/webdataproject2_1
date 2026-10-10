@@ -646,7 +646,7 @@
                                 </div>
                             </div>
 
-                            <a href="#" class="view-all">
+                            <a href="{{ route('invoices.index') }}" class="view-all">
                                 ดูทั้งหมด →
                             </a>
 
@@ -706,7 +706,7 @@
                                 </div>
                             </div>
 
-                            <a href="#" class="view-all">
+                            <a href="{{ route('repairs.index') }}" class="view-all">
                                 ดูทั้งหมด →
                             </a>
 
