@@ -43,9 +43,9 @@
         }
     }
     function cell(row, text) { const el = document.createElement('td'); el.textContent = text ?? '-'; row.append(el); return el; }
-    function button(parent, text, action) { const el = document.createElement('button'); el.type = 'button'; el.textContent = text; el.addEventListener('click', action); parent.append(el); }
+    function button(parent, text, action) { const el = document.createElement('button'); el.type = 'button'; el.className = `btn btn-sm me-2 my-1 ${text === 'ยกเลิกรายการ' ? 'tenant-delete-btn' : 'tenant-edit-btn'}`; el.textContent = text; el.addEventListener('click', action); parent.append(el); }
     function pagination(meta) { page = meta.current_page; lastPage = meta.last_page; $('page-label').textContent = `${page} / ${lastPage} (${meta.total} รายการ)`; }
-    function empty(tbody, count) { if (!tbody.children.length) { const row = tbody.insertRow(); const el = cell(row, 'ยังไม่มีรายการ'); el.colSpan = count; } }
+    function empty(tbody, count) { if (!tbody.children.length) { const row = tbody.insertRow(); const el = cell(row, 'ยังไม่มีรายการ'); el.className = 'tenant-state text-center'; el.colSpan = count; } }
     async function load() {
         if (root.dataset.maintenance === 'meters') {
             const room = $('meter-room').value;
@@ -53,7 +53,7 @@
             const result = await api(`/rooms/${room}/meters?include_cancelled=1&page=${page}`);
             const tbody = $('meter-rows'); tbody.replaceChildren();
             result.data.forEach(meter => {
-                const row = tbody.insertRow(); cell(row, `${meter.m_date}${meter.status === 'CANCELLED' ? ' · ยกเลิก' : ''}`); cell(row, meter.m_water); cell(row, meter.m_elec);
+                const row = tbody.insertRow(); cell(row, `${meter.m_date}${meter.status === 'CANCELLED' ? ' · ยกเลิก' : ''}`); if (meter.status === 'CANCELLED') row.className = 'text-secondary'; cell(row, meter.m_water); cell(row, meter.m_elec);
                 const actions = cell(row, '');
                 if (meter.status !== 'CANCELLED') {
                 button(actions, 'ต้นช่วง', () => { if (!busy) { start = meter; selection(); } });
@@ -82,7 +82,7 @@
                         start = end = editing = null; $('meter-edit-section').hidden = true; selection(); page = 1; await load();
                     });
                 });
-                if (!meter.can_edit) { const note = document.createElement('span'); note.textContent = ' ล็อก: ใช้ในบิลแล้วหรือรายการยกเลิก'; actions.append(note); }
+                if (!meter.can_edit) { const note = document.createElement('span'); note.className = 'd-block small text-secondary mt-1'; note.textContent = ' ล็อก: ใช้ในบิลแล้วหรือรายการยกเลิก'; actions.append(note); }
             });
             empty(tbody, 4); pagination(result.meta);
         } else {
@@ -90,7 +90,7 @@
             const result = await api(`/repairs?page=${page}${status ? `&rp_status=${status}` : ''}`);
             const tbody = $('repair-rows'); tbody.replaceChildren();
             result.data.forEach(repair => {
-                const row = tbody.insertRow(); cell(row, repair.rp_name); cell(row, labels[repair.rp_type]); cell(row, labels[repair.rp_status]);
+                const row = tbody.insertRow(); cell(row, repair.rp_name); cell(row, labels[repair.rp_type]); const statusCell = cell(row, ''); const badge = document.createElement('span'); badge.className = `badge ${ { REPORTED: 'text-bg-warning', IN_PROGRESS: 'text-bg-primary', COMPLETED: 'text-bg-success' }[repair.rp_status] || 'text-bg-secondary' }`; badge.textContent = labels[repair.rp_status] || repair.rp_status; statusCell.append(badge);
                 const actions = cell(row, '');
                 button(actions, 'ประวัติ', () => run(() => detail(repair.rp_id)));
                 const next = { REPORTED: 'IN_PROGRESS', IN_PROGRESS: 'COMPLETED' }[repair.rp_status];
@@ -109,7 +109,8 @@
     async function detail(id) {
         const { data } = await api(`/repairs/${id}`);
         $('repair-detail').hidden = false;
-        $('repair-description').textContent = `${data.rp_name}\n${data.rp_description || ''}`;
+        $('repair-description').replaceChildren();
+        [data.rp_name, ...(data.rp_description || '').split('\n')].forEach(line => { const paragraph = document.createElement('p'); paragraph.className = 'mb-2'; paragraph.textContent = line; $('repair-description').append(paragraph); });
         $('repair-history').replaceChildren();
         data.histories.forEach(history => { const el = document.createElement('li'); el.textContent = `${labels[history.rph_status]} · ${new Date(history.created_at).toLocaleString('th-TH')} · ผู้ดำเนินการ #${history.changed_by_user_id}`; $('repair-history').append(el); });
     }

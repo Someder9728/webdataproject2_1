@@ -1,14 +1,15 @@
 @php($mode = $mode ?? 'rentals')
 <x-layouts::app.sidebar :title="$mode === 'contracts' ? 'สัญญาเช่า' : 'การเช่า'">
-    <div class="container-fluid py-4">
+    @include('partials.admin-page-style')
+    <div class="tenant-page">
         <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-4">
             <div>
-                <h1 class="h3 fw-bold mb-1">{{ $mode === 'contracts' ? 'สัญญาเช่า' : 'รายการการเช่า' }}</h1>
-                <p class="text-secondary mb-0">
+                <h1 class="tenant-title">{{ $mode === 'contracts' ? 'สัญญาเช่า' : 'รายการการเช่า' }}</h1>
+                <p class="tenant-subtitle mb-0">
                     {{ $mode === 'contracts' ? 'ตรวจสอบและแก้ไขวันสิ้นสุดสัญญา' : 'ดูรายการเช่าและบันทึกการย้ายออก' }}
                 </p>
             </div>
-            <a class="btn btn-outline-primary" href="{{ route($mode === 'contracts' ? 'rentals.index' : 'contracts.index') }}">
+            <a class="btn tenant-edit-btn" href="{{ route($mode === 'contracts' ? 'rentals.index' : 'contracts.index') }}">
                 <i class="bi bi-{{ $mode === 'contracts' ? 'key' : 'file-earmark-text' }} me-1"></i>
                 {{ $mode === 'contracts' ? 'ไปหน้าการเช่า' : 'จัดการสัญญา' }}
             </a>
@@ -16,12 +17,12 @@
 
         <div id="rental-notice" class="alert d-none" role="status" aria-live="polite"></div>
 
-        <div class="card border-0 shadow-sm">
+        <div class="card tenant-table-card">
             <div class="card-body border-bottom">
                 <label class="visually-hidden" for="rental-search">ค้นหาผู้เช่าหรือห้อง</label>
                 <div class="input-group" style="max-width: 440px">
-                    <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
-                    <input id="rental-search" class="form-control" type="search"
+                    <span class="input-group-text tenant-search-icon"><i class="bi bi-search"></i></span>
+                    <input id="rental-search" class="form-control tenant-search-input" type="search"
                         placeholder="ค้นหาชื่อผู้เช่าหรือเลขห้อง" value="{{ request('search', '') }}" autocomplete="off">
                 </div>
             </div>
@@ -31,7 +32,7 @@
             </div>
 
             <div id="rental-table-wrap" class="table-responsive d-none">
-                <table class="table table-hover align-middle mb-0">
+                <table class="table tenant-table align-middle mb-0">
                     <thead class="table-light">
                         <tr>
                             @if($mode === 'contracts')
@@ -48,8 +49,8 @@
             <div id="rental-pagination" class="d-none align-items-center justify-content-between gap-3 p-3">
                 <span id="rental-page-label" class="small text-secondary"></span>
                 <div class="btn-group">
-                    <button id="rental-prev" class="btn btn-outline-secondary btn-sm" type="button">ก่อนหน้า</button>
-                    <button id="rental-next" class="btn btn-outline-secondary btn-sm" type="button">ถัดไป</button>
+                    <button id="rental-prev" class="btn tenant-clear-btn" type="button">ก่อนหน้า</button>
+                    <button id="rental-next" class="btn tenant-clear-btn" type="button">ถัดไป</button>
                 </div>
             </div>
         </div>
@@ -82,8 +83,8 @@
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">ปิด</button>
-                        <button id="contract-save" type="submit" class="btn btn-primary d-none">บันทึกสัญญา</button>
+                        <button type="button" class="btn tenant-clear-btn" data-bs-dismiss="modal">ปิด</button>
+                        <button id="contract-save" type="submit" class="btn tenant-add-btn d-none">บันทึกสัญญา</button>
                     </div>
                 </form>
             </div>
@@ -107,7 +108,7 @@
                         <div id="moveout-error" class="text-danger small mt-2" role="alert"></div>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">ยกเลิก</button>
+                        <button type="button" class="btn tenant-clear-btn" data-bs-dismiss="modal">ยกเลิก</button>
                         <button id="moveout-submit" type="submit" class="btn btn-danger">ยืนยันย้ายออก</button>
                     </div>
                 </form>
@@ -167,7 +168,7 @@
             tableWrap.classList.add('d-none');
             pagination.classList.add('d-none');
             state.className = `p-5 text-center ${isError ? 'text-danger' : 'text-secondary'}`;
-            state.innerHTML = `${escapeHtml(message)}${retry ? ' <button id="rental-retry" type="button" class="btn btn-sm btn-outline-primary ms-2">ลองใหม่</button>' : ''}`;
+            state.innerHTML = `${escapeHtml(message)}${retry ? ' <button id="rental-retry" type="button" class="btn btn-sm tenant-edit-btn ms-2">ลองใหม่</button>' : ''}`;
             document.getElementById('rental-retry')?.addEventListener('click', loadRentals);
         };
 
@@ -206,10 +207,10 @@
             const status = statusLabel(rental.rt_status);
             const badge = rental.rt_status === 'ACTIVE' ? 'text-bg-success' : 'text-bg-secondary';
             if (mode === 'contracts') {
-                return `<tr><td>${escapeHtml(rental.contract?.c_number ?? '—')}</td><td>${escapeHtml(tenant)}</td><td>${escapeHtml(room)}</td><td>${escapeHtml(rental.contract?.c_start ?? rental.rt_movein ?? '—')}</td><td>${escapeHtml(rental.contract?.c_end ?? 'ไม่มีกำหนด')}</td><td><span class="badge ${badge}">${escapeHtml(statusLabel(rental.contract?.c_status ?? rental.rt_status))}</span></td><td><button type="button" class="btn btn-sm btn-outline-primary" data-contract-id="${Number(rental.rt_id)}" data-contract-editable="${rental.rt_status === 'ACTIVE' ? 'true' : 'false'}">ดู/แก้ไข</button></td></tr>`;
+                return `<tr><td>${escapeHtml(rental.contract?.c_number ?? '—')}</td><td>${escapeHtml(tenant)}</td><td>${escapeHtml(room)}</td><td>${escapeHtml(rental.contract?.c_start ?? rental.rt_movein ?? '—')}</td><td>${escapeHtml(rental.contract?.c_end ?? 'ไม่มีกำหนด')}</td><td><span class="badge ${badge}">${escapeHtml(statusLabel(rental.contract?.c_status ?? rental.rt_status))}</span></td><td><button type="button" class="btn btn-sm tenant-edit-btn" data-contract-id="${Number(rental.rt_id)}" data-contract-editable="${rental.rt_status === 'ACTIVE' ? 'true' : 'false'}">ดู/แก้ไข</button></td></tr>`;
             }
             const contractButton = rental.contract
-                ? `<button type="button" class="btn btn-sm btn-outline-secondary" data-contract-id="${Number(rental.rt_id)}" data-contract-editable="${rental.rt_status === 'ACTIVE' ? 'true' : 'false'}">สัญญา</button>`
+                ? `<button type="button" class="btn btn-sm tenant-edit-btn" data-contract-id="${Number(rental.rt_id)}" data-contract-editable="${rental.rt_status === 'ACTIVE' ? 'true' : 'false'}">สัญญา</button>`
                 : '<span class="text-secondary small">ไม่มีสัญญา</span>';
             const moveOutButton = rental.rt_status === 'ACTIVE'
                 ? `<button type="button" class="btn btn-sm btn-outline-danger" data-moveout-id="${Number(rental.rt_id)}" data-moveout-name="${escapeHtml(tenant)}" data-moveout-room="${escapeHtml(room)}" data-movein="${escapeHtml(rental.rt_movein ?? '')}">ย้ายออก</button>`

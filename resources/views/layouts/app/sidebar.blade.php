@@ -515,8 +515,8 @@ $initials = $user?->initials() ?? 'U';
 
                 {{-- สัญญาเช่า --}}
                 <!-- <a href="{{ route('invoices.index') }}" class="sidebar-menu-item">ค่าเช่าและการชำระเงิน</a>
-                <a href="{{ route('meters.index') }}" class="sidebar-menu-item">มิเตอร์และการใช้งาน</a>
-                <a href="{{ route('repairs.index') }}" class="sidebar-menu-item">แจ้งซ่อม</a> -->
+                <a href="{{ route('meters.index') }}" class="sidebar-menu-item {{ request()->routeIs('meters.*') ? 'active' : '' }}">มิเตอร์และการใช้งาน</a>
+                <a href="{{ route('repairs.index') }}" class="sidebar-menu-item {{ request()->routeIs('repairs.*') ? 'active' : '' }}">แจ้งซ่อม</a> -->
                 <a href="{{ route('contracts.index') }}"
                     class="sidebar-menu-item {{ request()->routeIs('contracts.*') ? 'active' : '' }}">
                     <i class="bi bi-file-earmark-text"></i>
@@ -524,7 +524,7 @@ $initials = $user?->initials() ?? 'U';
                 </a>
 
                 {{-- ค่าน้ำ-ค่าไฟ --}}
-                <a href="{{ route('meters.index') }}" class="sidebar-menu-item">
+                <a href="{{ route('meters.index') }}" class="sidebar-menu-item {{ request()->routeIs('meters.*') ? 'active' : '' }}">
                     <i class="bi bi-lightning-charge"></i>
                     <span>ค่าน้ำ-ค่าไฟ</span>
                 </a>
@@ -536,7 +536,7 @@ $initials = $user?->initials() ?? 'U';
                 </a>
 
                 {{-- แจ้งซ่อม --}}
-                <a href="{{ route('repairs.index') }}" class="sidebar-menu-item">
+                <a href="{{ route('repairs.index') }}" class="sidebar-menu-item {{ request()->routeIs('repairs.*') ? 'active' : '' }}">
                     <i class="bi bi-gear"></i>
                     <span>แจ้งซ่อม</span>
                 </a>
@@ -546,7 +546,7 @@ $initials = $user?->initials() ?? 'U';
                 {{-- Dashboard --}}
                 <a href="{{ route('my.contracts') }}" class="sidebar-menu-item">สัญญาของฉัน</a>
                 <a href="{{ route('invoices.index') }}" class="sidebar-menu-item">ค่าเช่าและการชำระเงิน</a>
-                <a href="{{ route('repairs.index') }}" class="sidebar-menu-item">แจ้งซ่อม</a>
+                <a href="{{ route('repairs.index') }}" class="sidebar-menu-item {{ request()->routeIs('repairs.*') ? 'active' : '' }}">แจ้งซ่อม</a>
                 <a href="{{ route('user.dashboard') }}" class="sidebar-menu-item active">
                     <i class="bi bi-house-door"></i>
                     <span>Dashboard ของฉัน</span>
