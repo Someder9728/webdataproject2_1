@@ -1,22 +1,66 @@
 <?php
 
-use Livewire\Component;
 use Livewire\Attributes\Title;
+use Livewire\Component;
 
-new #[Title('Appearance settings')] class extends Component {
-    //
-}; ?>
+new #[Title('Appearance settings')] class extends Component
+{
+    public string $appearance = 'light';
+};
 
-<section class="w-full">
-    @include('partials.settings-heading')
+?>
 
-    <flux:heading level="2" class="sr-only">{{ __('Appearance settings') }}</flux:heading>
+<x-pages::settings.layout>
 
-    <x-pages::settings.layout :heading="__('Appearance')" :subheading="__('Update the appearance settings for your account')">
-        <flux:radio.group x-data variant="segmented" x-model="$flux.appearance">
-            <flux:radio value="light" icon="sun">{{ __('Light') }}</flux:radio>
-            <flux:radio value="dark" icon="moon">{{ __('Dark') }}</flux:radio>
-            <flux:radio value="system" icon="computer-desktop">{{ __('System') }}</flux:radio>
-        </flux:radio.group>
-    </x-pages::settings.layout>
-</section>
+    <h2>การแสดงผล</h2>
+
+    <p class="settings-description">
+        ปรับแต่งรูปแบบการแสดงผลของระบบ
+    </p>
+
+    <div class="settings-divider"></div>
+
+
+    {{-- APPEARANCE --}}
+    <div class="settings-field">
+
+        <label for="appearance">
+            รูปแบบการแสดงผล
+        </label>
+
+        <select id="appearance" wire:model="appearance">
+
+            <option value="light">
+                Light
+            </option>
+
+            <option value="dark">
+                Dark
+            </option>
+
+        </select>
+
+    </div>
+
+    {{-- INFORMATION --}}
+    <div class="settings-content-box">
+
+        <div class="settings-content-box-icon">
+            <i class="bi bi-palette"></i>
+        </div>
+
+        <div>
+
+            <div class="settings-content-box-title">
+                การตั้งค่าการแสดงผล
+            </div>
+
+            <div class="settings-content-box-text">
+                เลือกรูปแบบการแสดงผลที่ต้องการใช้งาน
+            </div>
+
+        </div>
+
+    </div>
+
+</x-pages::settings.layout>

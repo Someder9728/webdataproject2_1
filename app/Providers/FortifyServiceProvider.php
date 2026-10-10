@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Laravel\Fortify\Fortify;
 
 class FortifyServiceProvider extends ServiceProvider
@@ -39,18 +40,17 @@ class FortifyServiceProvider extends ServiceProvider
 
             $user = User::where('u_username', $username)->first();
 
-            if (
-                $user &&
-                $user->is_active &&
-                Hash::check(
-                    (string) $request->input('password'),
-                    $user->u_password
-                )
-            ) {
-                return $user;
+            if (! $user || ! Hash::check((string) $request->input('password'), $user->u_password)) {
+                return null;
             }
 
-            return null;
+            if (! $user->is_active) {
+                throw ValidationException::withMessages([
+                    'u_username' => 'บัญชีนี้ถูกระงับ กรุณาติดต่อผู้ดูแลระบบ',
+                ]);
+            }
+
+            return $user;
         });
 
     }
