@@ -22,3 +22,6 @@ yarn-error.log
 /.nova
 /.vscode
 /.zed
+/storage/backups/
+/storage/backup-restores/
+.backend-completion.patch

@@ -1,0 +1,571 @@
+diff --git a/app/Actions/Billing/IssueInvoice.php b/app/Actions/Billing/IssueInvoice.php
+index f6c1367..516a666 100644
+--- a/app/Actions/Billing/IssueInvoice.php
++++ b/app/Actions/Billing/IssueInvoice.php
+@@ -13,7 +13,8 @@ class IssueInvoice
+ {
+     public function __construct(
+         private CalculateInvoice $calculator,
+-        private SqliteTransaction $transactions
++        private SqliteTransaction $transactions,
++        private NextBillingPeriod $nextPeriod
+     ) {}
+ 
+     /**
+@@ -36,6 +37,14 @@ public function handle(
+                 403
+             );
+ 
++            $id = Validator::make($input, [
++                'rentals_rt_id' => ['required', 'integer', 'min:1'],
++            ])->validate();
++            $rental = Rental::whereKey($id['rentals_rt_id'])->firstOrFail();
++            // Omitting both boundaries asks the backend for the earliest unbilled period.
++            if (! array_key_exists('period_start', $input) && ! array_key_exists('period_end', $input)) {
++                $input = [...$input, ...$this->nextPeriod->handle($rental)];
++            }
+             $validated = Validator::make($input, [
+                 'rentals_rt_id' => ['required', 'integer', 'min:1'],
+                 'period_start' => ['required', 'date_format:Y-m-d'],
+diff --git a/app/Actions/Billing/NextBillingPeriod.php b/app/Actions/Billing/NextBillingPeriod.php
+new file mode 100644
+index 0000000..a42bb2f
+--- /dev/null
++++ b/app/Actions/Billing/NextBillingPeriod.php
+@@ -0,0 +1,37 @@
++<?php
++
++namespace App\Actions\Billing;
++
++use App\Models\Rental;
++use Carbon\CarbonImmutable;
++
++class NextBillingPeriod
++{
++    /** @return array{period_start: string, period_end: string} */
++    public function handle(Rental $rental): array
++    {
++        $cursor = $rental->rt_movein->toDateString();
++        $limit = $rental->rt_moveout?->toDateString();
++        $gapEnd = null;
++        foreach ($rental->invoices()->withTrashed()->orderBy('period_start')->get() as $invoice) {
++            abort_if($invoice->trashed(), 409, 'พบใบแจ้งหนี้ที่ถูกลบ กรุณาตรวจสอบก่อนออกบิล');
++            $start = $invoice->period_start?->toDateString();
++            $end = $invoice->period_end?->toDateString();
++            abort_if($start === null || $end === null || $start < $cursor || $start >= $end || ($limit !== null && $end > $limit), 409);
++            if ($start > $cursor) {
++                $gapEnd = $start;
++                break;
++            }
++            $cursor = $end;
++        }
++        abort_if($limit !== null && $cursor >= $limit, 409, 'ออกบิลครบถึงวันย้ายออกแล้ว');
++        $end = CarbonImmutable::parse($cursor, 'Asia/Bangkok')->startOfMonth()->addMonth()->toDateString();
++        foreach ([$gapEnd, $limit] as $boundary) {
++            if ($boundary !== null && $boundary < $end) {
++                $end = $boundary;
++            }
++        }
++
++        return ['period_start' => $cursor, 'period_end' => $end];
++    }
++}
+diff --git a/app/Actions/Rentals/UpdateContract.php b/app/Actions/Rentals/UpdateContract.php
+new file mode 100644
+index 0000000..345c248
+--- /dev/null
++++ b/app/Actions/Rentals/UpdateContract.php
+@@ -0,0 +1,58 @@
++<?php
++
++namespace App\Actions\Rentals;
++
++use App\Models\AuditEvent;
++use App\Models\Contract;
++use App\Models\Rental;
++use App\Models\User;
++use App\Support\SqliteTransaction;
++use Illuminate\Support\Facades\Validator;
++use Illuminate\Validation\ValidationException;
++
++class UpdateContract
++{
++    public function __construct(private SqliteTransaction $transactions) {}
++
++    /** @param array<string, mixed> $input */
++    public function handle(User $actor, Rental $rental, array $input): Contract
++    {
++        return $this->transactions->run(function () use ($actor, $rental, $input) {
++            $actor = User::whereKey($actor->getKey())->first();
++            abort_unless($actor && $actor->is_active && ! $actor->must_change_password && $actor->u_role === 'admin', 403);
++            $rental = Rental::whereKey($rental->getKey())->firstOrFail();
++            $contract = $rental->contract()->firstOrFail();
++            abort_unless($rental->rt_status === 'ACTIVE' && $rental->rt_moveout === null && in_array($contract->c_status, ['ACTIVE', 'EXPIRED'], true), 409);
++
++            $input['reason'] = is_string($input['reason'] ?? null) ? trim($input['reason']) : ($input['reason'] ?? null);
++            $validated = Validator::make($input, [
++                'c_end' => ['present', 'nullable', 'date_format:Y-m-d', 'after:'.$contract->c_start->toDateString()],
++                'reason' => ['required', 'string', 'max:500'],
++                'c_rent' => ['prohibited'],
++                'c_deposit' => ['prohibited'],
++                'c_start' => ['prohibited'],
++                'c_status' => ['prohibited'],
++                'c_number' => ['prohibited'],
++                'rentals_rt_id' => ['prohibited'],
++            ])->validate();
++            $before = ['c_end' => $contract->c_end?->toDateString(), 'c_status' => $contract->c_status];
++            if ($before['c_end'] === $validated['c_end']) {
++                throw ValidationException::withMessages(['c_end' => 'ไม่มีข้อมูลเปลี่ยนแปลง']);
++            }
++
++            $contract->c_end = $validated['c_end'];
++            // Contract expiry is a date; only MoveOutRental ends occupancy.
++            $contract->c_status = $validated['c_end'] !== null && $validated['c_end'] < now('Asia/Bangkok')->toDateString() ? 'EXPIRED' : 'ACTIVE';
++            $contract->save();
++            AuditEvent::create([
++                'actor_user_id' => $actor->getKey(), 'entity_type' => 'contracts',
++                'entity_id' => $contract->getKey(), 'action' => 'contract_updated',
++                'old_values' => $before,
++                'new_values' => ['c_end' => $contract->c_end?->toDateString(), 'c_status' => $contract->c_status],
++                'reason' => $validated['reason'],
++            ]);
++
++            return $contract;
++        });
++    }
++}
+diff --git a/app/Http/Controllers/Api/V1/DashboardController.php b/app/Http/Controllers/Api/V1/DashboardController.php
+new file mode 100644
+index 0000000..02869c2
+--- /dev/null
++++ b/app/Http/Controllers/Api/V1/DashboardController.php
+@@ -0,0 +1,71 @@
++<?php
++
++namespace App\Http\Controllers\Api\V1;
++
++use App\Http\Controllers\Controller;
++use App\Models\Invoice;
++use App\Models\Payment;
++use App\Models\Rental;
++use App\Models\Repair;
++use App\Models\Room;
++use Brick\Math\BigDecimal;
++use Carbon\CarbonImmutable;
++use Illuminate\Http\JsonResponse;
++use Illuminate\Http\Request;
++use Illuminate\Support\Facades\DB;
++
++class DashboardController extends Controller
++{
++    public function show(Request $request): JsonResponse
++    {
++        $actor = $request->user();
++        abort_unless($actor->is_active && ! $actor->must_change_password && $actor->u_role === 'admin', 403);
++        $validated = $request->validate(['month' => ['sometimes', 'date_format:Y-m']]);
++        $month = CarbonImmutable::createFromFormat('!Y-m', $validated['month'] ?? now('Asia/Bangkok')->format('Y-m'), 'Asia/Bangkok');
++        $start = $month->toDateString();
++        $end = $month->addMonth()->toDateString();
++
++        // One read transaction keeps all cards on the same SQLite snapshot.
++        $data = DB::transaction(function () use ($start, $end, $month) {
++            $invoices = Invoice::query()->whereDate('period_start', '>=', $start)->whereDate('period_start', '<', $end);
++            $payments = Payment::query()->whereHas('invoice');
++            $outstanding = (clone $payments)->whereIn('p_status', ['UNPAID', 'PENDING', 'REJECTED']);
++            $overdue = (clone $outstanding)->whereHas('invoice', fn ($q) => $q->whereDate('i_due', '<', now('Asia/Bangkok')->toDateString()));
++            $received = (clone $payments)->where('p_status', 'PAID')->whereDate('p_date', '>=', $start)->whereDate('p_date', '<', $end);
++
++            return [
++                'month' => $month->format('Y-m'),
++                'as_of' => now('Asia/Bangkok')->toDateString(),
++                'rooms' => [
++                    'total' => Room::count(),
++                    'vacant' => Room::where('r_status', 'VACANT')->count(),
++                    'occupied' => Room::where('r_status', 'OCCUPIED')->count(),
++                ],
++                'active_rentals' => Rental::where('rt_status', 'ACTIVE')->count(),
++                'invoices' => ['count' => (clone $invoices)->count(), 'amount' => $this->money((clone $invoices)->pluck('i_total'))],
++                'payments' => [
++                    'received_amount' => $this->money($received->pluck('p_amount')),
++                    'outstanding_count' => (clone $outstanding)->count(),
++                    'outstanding_amount' => $this->money($outstanding->pluck('p_amount')),
++                    'overdue_count' => (clone $overdue)->count(),
++                    'overdue_amount' => $this->money($overdue->pluck('p_amount')),
++                    'pending_count' => (clone $payments)->where('p_status', 'PENDING')->count(),
++                ],
++                'repairs' => Repair::query()->selectRaw('rp_status, count(*) as total')->groupBy('rp_status')->pluck('total', 'rp_status'),
++            ];
++        });
++
++        return response()->json(['data' => $data, 'message' => 'อ่านภาพรวมสำเร็จ']);
++    }
++
++    /** @param iterable<string|int|float> $amounts */
++    private function money(iterable $amounts): string
++    {
++        $total = BigDecimal::zero();
++        foreach ($amounts as $amount) {
++            $total = $total->plus((string) $amount);
++        }
++
++        return (string) $total->toScale(2);
++    }
++}
+diff --git a/app/Http/Controllers/Api/V1/RentalController.php b/app/Http/Controllers/Api/V1/RentalController.php
+index 10c01d4..3881beb 100644
+--- a/app/Http/Controllers/Api/V1/RentalController.php
++++ b/app/Http/Controllers/Api/V1/RentalController.php
+@@ -4,6 +4,7 @@
+ 
+ use App\Actions\Rentals\CreateRental;
+ use App\Actions\Rentals\MoveOutRental;
++use App\Actions\Rentals\UpdateContract;
+ use App\Http\Controllers\Controller;
+ use App\Models\Rental;
+ use Illuminate\Http\JsonResponse;
+@@ -96,11 +97,19 @@ public function showContract(Rental $rental): JsonResponse
+                 'c_rent' => $contract->c_rent,
+                 'c_deposit' => $contract->c_deposit,
+                 'c_status' => $contract->c_status,
++                'price_locked' => $rental->invoices()->withTrashed()->exists(),
+             ],
+             'message' => 'อ่านสัญญาการเช่าสำเร็จ',
+         ]);
+     }
+ 
++    public function updateContract(Request $request, Rental $rental, UpdateContract $action): JsonResponse
++    {
++        $action->handle($request->user(), $rental, $request->all());
++
++        return $this->showContract($rental);
++    }
++
+     public function moveOut(
+         Request $request,
+         Rental $rental,
+diff --git a/docs/backend-completion.md b/docs/backend-completion.md
+new file mode 100644
+index 0000000..a70f4d1
+--- /dev/null
++++ b/docs/backend-completion.md
+@@ -0,0 +1,140 @@
++# Backend completion — 6 October 2026
++
++## ฐานงานและขอบเขต
++
++ตรวจ repository จริงและ clone branches ก่อนแก้ ไม่มีการแก้ GitHub remote หรือ merge งาน teammate ระหว่างงานนี้
++Checkout อยู่ใน `work/webdataproject2_1`, branch `backend-completion`, HEAD ฐาน `2959b54991346afb839a46589f8e076006dfe0f6` จาก `feature/meter-repair`.
++Branch นี้รวม Move-out, Invoice Edit, Payment, Meter/Repair และ type fixes แล้ว จึงใช้เป็นฐานแทน `main` ซึ่งยังไม่มี Backend ชุดนี้
++
++| Branch ที่ตรวจ | Commit |
++| --- | --- |
++| main | a7930125a24f4ed9e8bbe430ba558f3b8800690e |
++| feature/meter-repair | 2959b54991346afb839a46589f8e076006dfe0f6 |
++| integration/invoice-edit | 85deb31632e5b400ff5323e29c0583e64396fa5d |
++| integration/move-out-backend | ebcecef109b51b39a4fbee2e4ecb5f0bc2ba4e7c |
++| feature-invoice-payment-ui | 0d32eadc23a8cfbb99ea202965e5398e98d260c6 |
++| feature-invoice-moveout-ui | 782619ca928b521a6677186fc96b5fbae44c7cb7 |
++| feature-rental-ui | 88c55a21e573d98db11f68850683ed99bb4e3044 |
++
++## กฎ Invoice/Billing ที่ใช้
++
++- ไม่มี automatic invoice scheduler การออกบิลเริ่มจากคำสั่ง Admin รวมถึงการกด Move-out ซึ่งออกบิลปิดงวดใน transaction เดียวกัน
++- ช่วงวันเป็น `[start, end)` ไม่รวมวันปลายช่วง วันที่ 1 เป็น standard boundary
++- ค่าเช่า = rent rate × จำนวนวัน / จำนวนวันในเดือนของวันเริ่ม ปัด HalfUp เป็น 2 ตำแหน่ง
++- หนึ่งบิลอยู่ภายในเดือนเดียว ปลายช่วงเป็นวันที่ 1 เดือนถัดไปได้
++- น้ำ/ไฟ = exact end meter − exact start meter แล้วคูณ rate ไม่มีการเฉลี่ยน้ำไฟหรือใช้มิเตอร์ใกล้วันที่สุดแทน
++- Preview และ Issue ต้องคำนวณใหม่ใน Backend ไม่เชื่อยอดจาก client ไม่มีบิลซ้อน รวมบิลที่ soft delete แล้ว
++- Invoice Edit: Admin ที่ active และเปลี่ยนรหัสผ่านแล้ว, Payment ต้องเป็น UNPAID เริ่มต้น ไม่มี payment events หรือรายละเอียดชำระเก่า ต้องมีเหตุผล
++- ตามคำตอบผู้ใช้: Rental ENDED ยังแก้ period ได้ภายในวันเข้า–วันย้ายออก ไม่ล็อก period หลังย้ายออก
++- เปลี่ยน period จะคำนวณใหม่จากมิเตอร์ตรงวัน โดยใช้อัตรา snapshot เดิมและวันออกบิลเดิม เปลี่ยน due อย่างเดียวจะไม่อ่านมิเตอร์ใหม่
++- Due ต้องไม่ก่อนวันออกบิล Invoice/Payment/Audit เปลี่ยนใน transaction เดียวกัน
++- การแก้ period อาจเปิด billing gap ได้ การออกบิลโดยไม่ส่งวันที่จะกลับไปเติม gap แรก ส่วน Move-out เดิมตรวจและเติม gaps ทั้งหมด
++
++`CalculateInvoice.php` และ `UpdateInvoice.php` มีแกนกฎที่ต้องการอยู่แล้ว จึงเพิ่ม regression tests ยืนยัน ENDED โดยไม่เปลี่ยน logic ให้ผิดจาก source เดิม
++
++## อ่านโค้ดที่เปลี่ยนตามลำดับ
++
++### 1. `app/Actions/Billing/NextBillingPeriod.php`
++
++เริ่ม cursor ที่ move-in อ่าน invoices ตาม period_start ถ้าบิลเริ่มหลัง cursor จะพบ gap ถ้าบิลติดกันจะเลื่อน cursor ไป period_end
++เลือกปลายช่วงที่ใกล้ที่สุดระหว่างวันที่ 1 เดือนถัดไป, จุดเริ่มบิลถัดไป, และ move-out
++พบข้อมูลบิลผิดรูปแบบ/ทับกัน/soft delete จะคืน conflict เพื่อไม่ข้ามข้อมูลที่ต้องตรวจสอบ
++ENDED ที่คิดครบถึง move-out แล้วคืน 409
++
++### 2. `app/Actions/Billing/IssueInvoice.php`
++
++เพิ่มการเรียก NextBillingPeriod เมื่อไม่ส่งทั้ง period_start และ period_end ภายใน transaction เดิม
++ส่งเพียงหนึ่งวันยังเป็น validation error ส่งทั้งสองวันยังรองรับเหมือนเดิม
++Calculator เดิมยังตรวจไม่ให้คิดช่วงที่ยังไม่จบหรือไม่มี exact meters
++
++```json
++POST /api/v1/invoices/preview
++{"rentals_rt_id": 12}
++```
++
++Preview คืน period และยอดโดยไม่เขียนข้อมูล หลังผู้ใช้ตรวจ Preview สามารถส่ง period ที่ได้รับไป `POST /api/v1/invoices` เพื่อยืนยันช่วงเดียวกัน
++Issue โดย Rental ID อย่างเดียวก็รองรับ แต่ Preview → Confirm ควรส่ง explicit boundaries เพื่อให้ผู้ใช้ยืนยันช่วงที่เห็น
++
++### 3. `app/Http/Controllers/Api/V1/DashboardController.php`
++
++เพิ่ม `GET /api/v1/dashboard?month=2026-09` เฉพาะ Admin ใช้ read transaction ให้ cards เห็น SQLite snapshot เดียวกัน
++ค่าเงินเป็น string ทศนิยม 2 ตำแหน่ง รวมด้วย BigDecimal เพื่อไม่รวมเงินด้วย floating-point
++
++| Response | ความหมาย |
++| --- | --- |
++| month | เดือนที่เลือก ถ้าไม่ส่งใช้เดือนปัจจุบัน Asia/Bangkok |
++| as_of | วันปัจจุบัน Asia/Bangkok |
++| rooms.total/vacant/occupied | ห้องปัจจุบันที่ไม่ soft delete |
++| active_rentals | การเช่า ACTIVE ปัจจุบัน |
++| invoices.count/amount | บิลที่ period_start อยู่ในเดือนที่เลือก |
++| payments.received_amount | Payment PAID ที่ p_date อยู่ในเดือนที่เลือก ไม่ใช้เดือนรอบบิล |
++| payments.outstanding_count/amount | ยอดค้างทั้งหมด ณ ปัจจุบัน UNPAID/PENDING/REJECTED |
++| payments.overdue_count/amount | ยอดค้างที่ i_due ก่อนวันนี้ วันครบกำหนดยังไม่ถือว่าเกินกำหนด |
++| payments.pending_count | Payment รอตรวจทั้งหมด ณ ปัจจุบัน |
++| repairs | จำนวนงานซ่อมปัจจุบันแยกตาม rp_status |
++
++Payments ต้องมี Invoice ที่ยังไม่ soft delete ถึงนับในภาพรวม ช่อง current/as_of ไม่ใช่ประวัติ occupancy ย้อนหลังตาม month
++หน้า Dashboard ปัจจุบันยังเป็น placeholder งานนี้เพิ่ม Backend API ไม่ได้ทำ UI Dashboard
++
++### 4. `app/Actions/Rentals/UpdateContract.php`
++
++เพิ่ม `PATCH /api/v1/rentals/{rental}/contract` ด้วย `c_end` และ `reason`
++ใช้ SqliteTransaction เดียวกับ Move-out โหลด actor/rental/contract ใหม่ทุก retry ตรวจสิทธิ์ Admin และ Rental ACTIVE/ไม่มี move-out
++Contract ต้องเป็น ACTIVE หรือ EXPIRED; ENDED ไม่เปิดกลับด้วยการแก้วันสิ้นสุด
++c_end ต้องส่งมา explicit เป็น null หรือ Y-m-d ที่หลัง c_start, reason ต้องไม่ว่าง/ไม่เกิน 500 ตัวอักษร และ no-op คืน 422
++c_rent/c_deposit/c_start/c_status/c_number/rentals_rt_id ห้ามแก้ผ่าน endpoint นี้
++อัปเดต c_status เป็น EXPIRED เมื่อ c_end ก่อนวันนี้ หรือ ACTIVE เมื่อ null/วันนี้/อนาคต ใช้ Asia/Bangkok
++การแก้วันหมดอายุไม่ย้ายผู้เช่าออก ไม่เปลี่ยน room หรือ Invoice snapshot
++Audit `contract_updated` เก็บก่อน/หลังและเหตุผล หาก Audit ล้มเหลว rollback Contract
++
++```json
++PATCH /api/v1/rentals/12/contract
++{"c_end":"2027-01-01","reason":"ผู้เช่าขอต่อสัญญา"}
++```
++
++### 5. Controller/Routes และ tests
++
++`RentalController.php`: เพิ่ม updateContract และ price_locked ใน GET contract โดยรวม invoices ที่ soft delete ในการตรวจประวัติ
++GET เดิมยังใช้ RentalPolicy เพื่อให้ Tenant อ่านได้เฉพาะสัญญาตัวเอง
++`routes/api-session.php`: เพิ่ม Dashboard GET และ Contract PATCH ภายใต้ session auth/password-change และ role:admin โดยยังใช้ CSRF middleware
++`tests/Feature/UpdateInvoiceApiTest.php`: ใช้ fixture Billing/Payment/Rental เดิมทดสอบกฎ ENDED, next period/gaps, Dashboard, Contract permission/validation/stale model/rollback/CSRF
++
++## Integration ที่ตรวจจาก branches ล่าสุด
++
++| ส่วน | ผลตรวจ |
++| --- | --- |
++| Meter/Repair | อยู่ในฐาน feature/meter-repair รวม tenant ownership, history และ migrations ของมิเตอร์แล้ว regression ของ Meter/Repair ผ่าน |
++| Payment UI | ส่ง amount/payment_date/method/expected_event_id ตรง Backend guard; review ใช้ event ID และ submit ใช้ multipart proof |
++| Invoice UI | ส่ง explicit periods ตรง Preview/Issue เดิม ยังบังคับเลือกวันที่เอง ต้องปรับ UI หากจะใช้ next-period อัตโนมัติ |
++| Invoice Edit | API และ tests รองรับ period correction หลัง ENDED โดยจำกัดวันย้ายออก; payment เริ่มดำเนินการแล้วแก้ไม่ได้ |
++| Move-out UI | ส่ง rt_moveout/reason ตรง Backend และดึงมิเตอร์ห้องผ่าน endpoint เดิม |
++| Contract UI | ส่ง c_end/reason ไป endpoint เดียวกับที่เพิ่ม งาน controller ใน branch ของ Big ยังมี TODO authorization จึงไม่แทนที่ Backend ที่ตรวจแล้วด้วยไฟล์นั้น |
++
++การตรวจ UI branches เป็น source/payload review ยังไม่ได้ merge หรือทดสอบ browser end-to-end ของ UI branches ทั้งชุด
++เมื่อรวมงานให้รักษา Backend actions/models/policies/migrations ที่ฐานนี้ และนำ UI เข้ามาโดย resolve routes/controllers อย่างเจาะจง หลีกเลี่ยงการแทนทั้งไฟล์จาก branch ที่ไม่มี type fixes/Meter/Repair integration
++
++## ผลตรวจ
++
++- PHP 8.4, dependencies ตาม composer.lock/package-lock.json, Frontend build ผ่าน
++- Regression: 538 tests, 519 passed, 19 skipped, 2,418 assertions, ไม่มี failures
++- 19 skips มาจาก `skipUnlessFortifyHas` สำหรับ Fortify features ที่ config ไม่เปิด ไม่ใช่ skips ที่เพิ่มในงานนี้
++- PHPStan ผ่าน 0 errors ด้วย memory limit 1G (128M เดิมไม่พอ)
++- Pint ผ่านหลังจัดรูปแบบเฉพาะไฟล์ที่เปลี่ยน
++- Invoice Edit vs Payment concurrency: 4 cases ผ่าน
++- Billing concurrency: same period และ overlapping periods 2 cases ผ่าน มี Invoice/Payment/Audit เพียงหนึ่งชุดสำหรับช่วงซ้ำ
++- Move-out concurrency: 5 cases ผ่าน (Move-out ซ้ำ, Issue และ Edit ทั้งสองลำดับ)
++- Concurrency ใช้ฐานข้อมูลชั่วคราว ไม่ใช้ฐานข้อมูลจริงของผู้ใช้
++
++## ใช้ patch และงานที่ยังแยกอยู่
++
++`backend-completion.patch` เป็น Git diff บนฐาน commit 2959b54 รวม source ใหม่, tests และเอกสารนี้ ไม่มี .env, vendor, node_modules หรือไฟล์ build
++ใช้ใน checkout ที่มีฐาน Backend นี้ หลังตรวจงาน local ที่ยังไม่ commit ก่อน ไม่ควร apply ไป main โดยตรง
++
++```text
++git apply --check backend-completion.patch
++git apply backend-completion.patch
++```
++
++ตรวจซ้ำด้วย `php artisan test`, `vendor/bin/phpstan analyse --memory-limit=1G` และ `vendor/bin/pint --test` ในสภาพแวดล้อม PHP 8.4 ที่ติดตั้ง dependencies/build assets แล้ว
++ยังไม่ได้ push/สร้าง PR/merge/deploy ไม่มีการรอ teammate สำหรับ Backend ที่เพิ่ม
++UI Dashboard, UI next-period และการรวม UI branches/ทดสอบ browser ของทีมยังแยกจากงาน Backend ชุดนี้
+diff --git a/routes/api-session.php b/routes/api-session.php
+index 8ce0628..b6e48c3 100644
+--- a/routes/api-session.php
++++ b/routes/api-session.php
+@@ -1,6 +1,7 @@
+ <?php
+ 
+ use App\Http\Controllers\Api\V1\AccountController;
++use App\Http\Controllers\Api\V1\DashboardController;
+ use App\Http\Controllers\Api\V1\InvoiceController;
+ use App\Http\Controllers\Api\V1\MeterController;
+ use App\Http\Controllers\Api\V1\PaymentHistoryController;
+@@ -19,6 +20,8 @@
+     ->name('api.v1.')
+     ->middleware(['auth', 'password.changed'])
+     ->group(function () {
++        Route::get('/dashboard', [DashboardController::class, 'show'])->middleware('role:admin')->name('dashboard');
++        Route::patch('/rentals/{rental}/contract', [RentalController::class, 'updateContract'])->whereNumber('rental')->middleware('role:admin')->name('rentals.contract.update');
+         Route::get('/repairs', [RepairController::class, 'index'])->name('repairs.index');
+         Route::post('/repairs', [RepairController::class, 'store'])->name('repairs.store');
+         Route::get('/repairs/{repair}', [RepairController::class, 'show'])->whereNumber('repair')->name('repairs.show');
+diff --git a/tests/Feature/UpdateInvoiceApiTest.php b/tests/Feature/UpdateInvoiceApiTest.php
+index 72cbac7..58a3d2a 100644
+--- a/tests/Feature/UpdateInvoiceApiTest.php
++++ b/tests/Feature/UpdateInvoiceApiTest.php
+@@ -2,6 +2,7 @@
+ 
+ use App\Actions\Billing\IssueInvoice;
+ use App\Actions\Billing\UpdateInvoice;
++use App\Actions\Rentals\UpdateContract;
+ use App\Models\AuditEvent;
+ use App\Models\Invoice;
+ use App\Models\Meter;
+@@ -114,6 +115,146 @@
+     $this->travelBack();
+ });
+ 
++test('ended rental still allows period correction within move out and due only edit', function () {
++    $this->rental->update(['rt_status' => 'ENDED', 'rt_moveout' => '2026-10-01']);
++    $this->contract->update(['c_status' => 'ENDED']);
++
++    $this->actingAs($this->admin)->patchJson($this->url, $this->payload)
++        ->assertOk()->assertJsonPath('data.i_total', '1488.00');
++    $this->actingAs($this->admin)->patchJson($this->url, [
++        'i_due' => '2026-10-15', 'reason' => 'Correct due date after move out',
++    ])->assertOk()->assertJsonPath('data.i_total', '1488.00');
++});
++
++test('ended rental rejects period beyond move out without changing money or audit', function () {
++    $this->rental->update(['rt_status' => 'ENDED', 'rt_moveout' => '2026-09-20']);
++    $invoiceBefore = $this->invoice->fresh()->getAttributes();
++    $paymentBefore = $this->payment->fresh()->getAttributes();
++    $auditCount = AuditEvent::count();
++    $this->actingAs($this->admin)->patchJson($this->url, $this->payload)
++        ->assertUnprocessable()->assertJsonValidationErrors('period_end');
++    ($this->assertUnchanged)($invoiceBefore, $paymentBefore, $auditCount);
++});
++
++test('manual issue resolves earliest gap and advances to standard monthly boundary', function () {
++    $this->actingAs($this->admin)->postJson('/api/v1/invoices/preview', [
++        'rentals_rt_id' => $this->rental->getKey(),
++    ])->assertOk()->assertJsonPath('data.period_start', '2026-09-01')
++        ->assertJsonPath('data.period_end', '2026-09-16')->assertJsonPath('data.i_rent', '1500.00');
++    $this->assertDatabaseCount('invoices', 1);
++    $this->actingAs($this->admin)->postJson('/api/v1/invoices', [
++        'rentals_rt_id' => $this->rental->getKey(),
++    ])->assertCreated();
++    $this->actingAs($this->admin)->postJson('/api/v1/invoices/preview', [
++        'rentals_rt_id' => $this->rental->getKey(),
++    ])->assertUnprocessable()->assertJsonValidationErrors('period_end');
++});
++
++test('ended rental manual issue fills edit gap and stops when fully billed', function () {
++    $this->rental->update(['rt_status' => 'ENDED', 'rt_moveout' => '2026-10-01']);
++    $this->actingAs($this->admin)->patchJson($this->url, $this->payload)->assertOk();
++    $this->actingAs($this->admin)->postJson('/api/v1/invoices', [
++        'rentals_rt_id' => $this->rental->getKey(),
++    ])->assertCreated()->assertJsonPath('data.period_start', '2026-09-01')
++        ->assertJsonPath('data.period_end', '2026-09-20');
++    $this->actingAs($this->admin)->postJson('/api/v1/invoices/preview', [
++        'rentals_rt_id' => $this->rental->getKey(),
++    ])->assertConflict();
++});
++
++test('contract extension audits changes and leaves rent and occupancy unchanged', function () {
++    $url = '/api/v1/rentals/'.$this->rental->getKey().'/contract';
++    $this->actingAs($this->admin)->patchJson($url, [
++        'c_end' => '2027-01-01', 'reason' => 'Extend contract',
++    ])->assertOk()->assertJsonPath('data.c_end', '2027-01-01')
++        ->assertJsonPath('data.c_rent', '3000.00')->assertJsonPath('data.price_locked', true);
++    expect($this->room->fresh()->r_status)->toBe('OCCUPIED');
++    expect(AuditEvent::where('action', 'contract_updated')->sole()->reason)->toBe('Extend contract');
++    $this->actingAs($this->admin)->patchJson($url, [
++        'c_end' => '2027-02-01', 'c_rent' => '1.00', 'reason' => 'Forbidden price change',
++    ])->assertUnprocessable()->assertJsonValidationErrors('c_rent');
++    $this->rental->update(['rt_status' => 'ENDED', 'rt_moveout' => '2026-10-01']);
++    $this->actingAs($this->admin)->patchJson($url, [
++        'c_end' => null, 'reason' => 'Cannot reopen ended rental',
++    ])->assertConflict();
++});
++
++test('contract validation and tenant permissions protect write and read', function () {
++    $url = '/api/v1/rentals/'.$this->rental->getKey().'/contract';
++    $this->actingAs($this->admin)->patchJson($url, [
++        'c_end' => '2026-09-01', 'reason' => ' ',
++    ])->assertUnprocessable()->assertJsonValidationErrors(['c_end', 'reason']);
++    $tenant = User::factory()->create(['u_role' => 'tenant', 'tenants_t_id' => null, 'must_change_password' => false]);
++    $this->actingAs($tenant)->getJson($url)->assertNotFound();
++    $this->actingAs($tenant)->patchJson($url, [
++        'c_end' => null, 'reason' => 'Attempt',
++    ])->assertForbidden();
++});
++
++test('contract action rechecks ended rental and rolls back when audit fails', function () {
++    $input = ['c_end' => '2027-01-01', 'reason' => 'Extend'];
++    $before = $this->contract->fresh()->getAttributes();
++    $dispatcher = AuditEvent::getEventDispatcher();
++    $eventName = 'eloquent.creating: '.AuditEvent::class;
++    $listeners = $dispatcher->getRawListeners()[$eventName] ?? [];
++    $dispatcher->listen($eventName, function (AuditEvent $audit) {
++        if ($audit->action === 'contract_updated') {
++            throw new RuntimeException('Contract audit failed');
++        }
++    });
++    try {
++        app(UpdateContract::class)->handle($this->admin, $this->rental, $input);
++        $this->fail('Expected audit failure');
++    } catch (RuntimeException $exception) {
++        expect($exception->getMessage())->toBe('Contract audit failed');
++    } finally {
++        $dispatcher->forget($eventName);
++        foreach ($listeners as $listener) {
++            $dispatcher->listen($eventName, $listener);
++        }
++    }
++    expect($this->contract->fresh()->getAttributes())->toBe($before);
++    Rental::whereKey($this->rental->getKey())->update(['rt_status' => 'ENDED', 'rt_moveout' => '2026-10-01']);
++    try {
++        app(UpdateContract::class)->handle($this->admin, $this->rental, $input);
++        $this->fail('Stale rental allowed contract update');
++    } catch (HttpExceptionInterface $exception) {
++        expect($exception->getStatusCode())->toBe(409);
++    }
++});
++
++test('contract update requires csrf and accepts matching evidence', function () {
++    enableInvoiceEditCsrf($this->app);
++    $url = '/api/v1/rentals/'.$this->rental->getKey().'/contract';
++    $input = ['c_end' => '2027-01-01', 'reason' => 'Extend'];
++    $token = str_repeat('a', 40);
++    $this->actingAs($this->admin)->withSession(['_token' => $token])
++        ->patchJson($url, $input)->assertStatus(419);
++    expect($this->contract->fresh()->c_end)->toBeNull();
++    $this->actingAs($this->admin)->withSession(['_token' => $token])
++        ->patchJson($url, $input, ['X-CSRF-TOKEN' => $token])->assertOk();
++});
++
++test('dashboard separates billing month from received cash and overdue totals', function () {
++    $this->actingAs($this->admin)->getJson('/api/v1/dashboard?month=2026-09')
++        ->assertOk()->assertJsonPath('data.invoices.amount', '1994.00')
++        ->assertJsonPath('data.payments.received_amount', '0.00')
++        ->assertJsonPath('data.payments.outstanding_amount', '1994.00')
++        ->assertJsonPath('data.rooms.occupied', 1);
++    $this->actingAs($this->admin)->postJson($this->url.'/payment/walk-in', [
++        'amount' => '1994.00', 'payment_date' => '2026-10-02', 'method' => 'CASH',
++        'note' => 'Paid at office', 'expected_event_id' => null,
++    ])->assertSuccessful();
++    $this->actingAs($this->admin)->getJson('/api/v1/dashboard?month=2026-10')
++        ->assertOk()->assertJsonPath('data.invoices.amount', '0.00')
++        ->assertJsonPath('data.payments.received_amount', '1994.00')
++        ->assertJsonPath('data.payments.outstanding_amount', '0.00');
++    $this->actingAs($this->admin)->getJson('/api/v1/dashboard?month=invalid')
++        ->assertUnprocessable();
++    $this->admin->update(['u_role' => 'tenant']);
++    $this->actingAs($this->admin->fresh())->getJson('/api/v1/dashboard')->assertForbidden();
++});
++
+ test('edit preserves rates and dates while updating amounts and audit', function () {
+     $originalDate = $this->invoice->i_date->toDateString();
+     $originalDue = $this->invoice->i_due->toDateString();
