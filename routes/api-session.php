@@ -21,6 +21,8 @@ Route::prefix('api/v1')
     ->name('api.v1.')
     ->middleware(['auth', 'password.changed'])
     ->group(function () {
+        Route::patch('/rooms/{room}/meters/{meter}', [MeterController::class, 'update'])->whereNumber('room')->whereNumber('meter')->middleware('role:admin')->name('rooms.meters.update');
+        Route::delete('/rooms/{room}/meters/{meter}', [MeterController::class, 'destroy'])->whereNumber('room')->whereNumber('meter')->middleware('role:admin')->name('rooms.meters.destroy');
         Route::get('/rentals/{rental}/history', [RentalHistoryController::class, 'index'])->whereNumber('rental')->middleware('role:admin')->name('rentals.history');
         Route::get('/dashboard', [DashboardController::class, 'show'])->middleware('role:admin')->name('dashboard');
         Route::patch('/rentals/{rental}/contract', [RentalController::class, 'updateContract'])->whereNumber('rental')->middleware('role:admin')->name('rentals.contract.update');

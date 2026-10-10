@@ -3,10 +3,12 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Actions\Meters\CalculateMeterUsage;
+use App\Actions\Meters\CorrectMeterReading;
 use App\Actions\Meters\RecordMeterReading;
 use App\Http\Controllers\Controller;
 use App\Models\Meter;
 use App\Models\Room;
+use App\Support\MeterMutationRules;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -89,6 +91,20 @@ class MeterController extends Controller
         );
     }
 
+    public function update(Request $request, Room $room, Meter $meter, CorrectMeterReading $action): JsonResponse
+    {
+        $meter = $action->handle($request->user(), $room, $meter, $request->only(['m_date', 'm_water', 'm_elec', 'reason', 'confirmed', 'expected_event_id']));
+
+        return response()->json(['data' => $this->present($meter), 'message' => 'แก้ไขมิเตอร์สำเร็จ']);
+    }
+
+    public function destroy(Request $request, Room $room, Meter $meter, CorrectMeterReading $action): JsonResponse
+    {
+        $action->handle($request->user(), $room, $meter, $request->only(['reason', 'confirmed', 'expected_event_id']), delete: true);
+
+        return response()->json(['data' => ['m_id' => $meter->getKey()], 'message' => 'ลบรายการที่กรอกผิดแล้ว ประวัติการลบเก็บไว้ใน Audit']);
+    }
+
     /**
      * @return array<string, mixed>
      */
@@ -100,6 +116,10 @@ class MeterController extends Controller
             'm_date' => $meter->m_date->toDateString(),
             'm_water' => $meter->m_water,
             'm_elec' => $meter->m_elec,
+            'latest_event_id' => MeterMutationRules::latestEventId($meter),
+            'can_edit' => ! MeterMutationRules::usedByInvoice($meter) && ! MeterMutationRules::activeOpening($meter),
+            'can_delete' => ! MeterMutationRules::usedByInvoice($meter) && ! MeterMutationRules::rentalBoundary($meter),
+            'date_locked' => MeterMutationRules::rentalBoundary($meter),
         ];
     }
 }
