@@ -40,7 +40,7 @@
     }
 
     /* ---------- โครงหน้า ---------- */
-    .rt-page { max-width: 1200px; margin: 0 auto; padding: 24px 16px 48px; }
+    .rt-page { max-width: 1500px; margin: 0 auto; padding: 24px 16px 48px; }
     .rt-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
     .rt-crumb { font-size: 0.75rem; color: var(--rt-muted); margin-bottom: 4px; }
     .rt-crumb a { color: inherit; text-decoration: none; }

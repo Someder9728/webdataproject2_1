@@ -38,8 +38,8 @@ class DashboardController extends Controller
                 'as_of' => now('Asia/Bangkok')->toDateString(),
                 'rooms' => [
                     'total' => Room::count(),
-                    'vacant' => Room::where('r_status', 'VACANT')->count(),
-                    'occupied' => Room::where('r_status', 'OCCUPIED')->count(),
+                    'vacant' => Room::whereIn('r_status', ['VACANT', 'ว่าง'])->count(),
+                    'occupied' => Room::whereIn('r_status', ['OCCUPIED', 'มีผู้พัก'])->count(),
                 ],
                 'active_rentals' => Rental::where('rt_status', 'ACTIVE')->count(),
                 'invoices' => ['count' => (clone $invoices)->count(), 'amount' => $this->money((clone $invoices)->pluck('i_total'))],

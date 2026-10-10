@@ -7,6 +7,7 @@ use App\Http\Controllers\MaintenancePageController;
 use App\Http\Controllers\RentalPageController;
 use App\Http\Controllers\RoomController;
 use App\Http\Controllers\TenantController;
+use App\Http\Controllers\TenantMeterPageController;
 use Illuminate\Support\Facades\Route;
 
 Route::view('/', 'welcome')->name('home');
@@ -67,7 +68,8 @@ Route::middleware(['auth', 'password.changed', 'role:admin'])->group(function ()
 });
 
 Route::middleware(['auth', 'password.changed', 'role:tenant'])->group(function () {
-    Route::redirect('user/dashboard', '/my/rentals')->name('user.dashboard');
+    Route::view('user/dashboard', 'user.dashboard')->name('user.dashboard');
+    Route::get('/my/meters', [TenantMeterPageController::class, 'index'])->name('my.meters');
 });
 
 require __DIR__.'/settings.php';

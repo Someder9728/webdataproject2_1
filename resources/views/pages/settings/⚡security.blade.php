@@ -95,51 +95,33 @@ new #[Title('เปลี่ยนรหัสผ่าน')] class extends Comp
         :subheading="__('ใช้รหัสผ่านอย่างน้อย 12 ตัวอักษร')"
     >
         @if (auth()->user()->must_change_password)
-            <flux:text class="mb-4">
-                กรุณาเปลี่ยนรหัสผ่านชั่วคราวก่อนเข้าใช้งานระบบ
-            </flux:text>
+            <div class="settings-note mb-4">กรุณาเปลี่ยนรหัสผ่านชั่วคราวก่อนเข้าใช้งานระบบ</div>
         @endif
 
-        <form wire:submit="updatePassword" class="space-y-6">
-            <flux:input
-                wire:model="current_password"
-                label="รหัสผ่านปัจจุบัน"
-                type="password"
-                autocomplete="current-password"
-                required
-                viewable
-            />
+        <form wire:submit="updatePassword" class="settings-password-form">
+            <div class="settings-field">
+                <label for="current_password">รหัสผ่านปัจจุบัน</label>
+                <input id="current_password" wire:model="current_password" type="password" autocomplete="current-password" required>
+                @error('current_password') <div class="settings-error">{{ $message }}</div> @enderror
+            </div>
 
-            <flux:input
-                wire:model="password"
-                label="รหัสผ่านใหม่"
-                type="password"
-                autocomplete="new-password"
-                minlength="12"
-                maxlength="72"
-                required
-                viewable
-            />
+            <div class="settings-field">
+                <label for="new_password">รหัสผ่านใหม่</label>
+                <input id="new_password" wire:model="password" type="password" autocomplete="new-password" minlength="12" maxlength="72" required>
+                <div class="settings-note">ใช้รหัสผ่านอย่างน้อย 12 ตัวอักษร</div>
+                @error('password') <div class="settings-error">{{ $message }}</div> @enderror
+            </div>
 
-            <flux:input
-                wire:model="password_confirmation"
-                label="ยืนยันรหัสผ่านใหม่"
-                type="password"
-                autocomplete="new-password"
-                minlength="12"
-                maxlength="72"
-                required
-                viewable
-            />
+            <div class="settings-field">
+                <label for="password_confirmation">ยืนยันรหัสผ่านใหม่</label>
+                <input id="password_confirmation" wire:model="password_confirmation" type="password" autocomplete="new-password" minlength="12" maxlength="72" required>
+                @error('password_confirmation') <div class="settings-error">{{ $message }}</div> @enderror
+            </div>
 
-            <flux:button
-                variant="primary"
-                type="submit"
-                wire:loading.attr="disabled"
-                wire:target="updatePassword"
-            >
-                เปลี่ยนรหัสผ่าน
-            </flux:button>
+            <button class="settings-button" type="submit" wire:loading.attr="disabled" wire:target="updatePassword">
+                <span wire:loading.remove wire:target="updatePassword">เปลี่ยนรหัสผ่าน</span>
+                <span wire:loading wire:target="updatePassword">กำลังบันทึก...</span>
+            </button>
         </form>
     </x-pages::settings.layout>
     @endif

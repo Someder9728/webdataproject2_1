@@ -530,7 +530,8 @@ $initials = $user?->initials() ?? 'U';
                 </a>
 
                 {{-- ใบแจ้งหนี้ / การชำระ --}}
-                <a href="{{ route('invoices.index') }}" class="sidebar-menu-item {{ request()->routeIs('invoices.*') ? 'active' : '' }}" >
+                <a href="{{ route('invoices.index') }}"
+                    class="sidebar-menu-item {{ request()->routeIs('invoices.*') ? 'active' : '' }}">
                     <i class="bi bi-credit-card"></i>
                     <span>ใบแจ้งหนี้ / การชำระ</span>
                 </a>
@@ -543,12 +544,46 @@ $initials = $user?->initials() ?? 'U';
 
                 @else
 
-                <a href="{{ route('my.rentals') }}" class="sidebar-menu-item {{ request()->routeIs('my.rentals', 'rentals.show', 'user.dashboard') ? 'active' : '' }}"><i class="bi bi-key"></i><span>การเช่าของฉัน</span></a>
-                <a href="{{ route('my.contracts') }}" class="sidebar-menu-item {{ request()->routeIs('my.contracts') ? 'active' : '' }}"><i class="bi bi-file-earmark-text"></i><span>สัญญาของฉัน</span></a>
-                <a href="{{ route('invoices.index') }}" class="sidebar-menu-item {{ request()->routeIs('invoices.index', 'invoices.show') ? 'active' : '' }}"><i class="bi bi-receipt"></i><span>ใบแจ้งหนี้ / ค่าน้ำค่าไฟ</span></a>
-                <a href="{{ route('invoices.history') }}" class="sidebar-menu-item {{ request()->routeIs('invoices.history') ? 'active' : '' }}"><i class="bi bi-clock-history"></i><span>ประวัติการชำระเงิน</span></a>
-                <a href="{{ route('repairs.index') }}" class="sidebar-menu-item {{ request()->routeIs('repairs.*') ? 'active' : '' }}"><i class="bi bi-gear"></i><span>แจ้งซ่อม</span></a>
-                <a href="{{ route('my.profile') }}" class="sidebar-menu-item {{ request()->routeIs('my.profile', 'profile.edit', 'security.edit') ? 'active' : '' }}"><i class="bi bi-person"></i><span>ข้อมูลส่วนตัว</span></a>
+                <a href="{{ route('user.dashboard') }}"
+                    class="sidebar-menu-item {{ request()->routeIs('user.dashboard') ? 'active' : '' }}">
+                    <i class="bi bi-house-door"></i>
+                    <span>Dashboard ของฉัน</span>
+                </a>
+                <a href="{{ route('my.rentals') }}"
+                    class="sidebar-menu-item {{ request()->routeIs('my.rentals', 'rentals.show') ? 'active' : '' }}">
+                    <i class="bi bi-key"></i>
+                    <span>การเช่าของฉัน</span>
+                </a>
+                <a href="{{ route('my.contracts') }}"
+                    class="sidebar-menu-item {{ request()->routeIs('my.contracts') ? 'active' : '' }}">
+                    <i class="bi bi-file-earmark-text"></i>
+                    <span>สัญญาของฉัน</span>
+                </a>
+                <a href="{{ route('my.meters') }}"
+                    class="sidebar-menu-item {{ request()->routeIs('my.meters') ? 'active' : '' }}">
+                    <i class="bi bi-lightning-charge"></i>
+                    <span>ค่าน้ำ-ค่าไฟของฉัน</span>
+                </a>
+                <a href="{{ route('invoices.index') }}"
+                    class="sidebar-menu-item {{ request()->routeIs('invoices.index', 'invoices.show') ? 'active' : '' }}">
+                    <i class="bi bi-receipt"></i>
+                    <span>ใบแจ้งหนี้ / ค่าน้ำค่าไฟ</span>
+                </a>
+                <a href="{{ route('invoices.history') }}"
+                    class="sidebar-menu-item {{ request()->routeIs('invoices.history') ? 'active' : '' }}">
+                    <i class="bi bi-clock-history"></i>
+                    <span>ประวัติการชำระเงิน</span>
+                </a>
+                <a href="{{ route('repairs.index') }}"
+                    class="sidebar-menu-item {{ request()->routeIs('repairs.*') ? 'active' : '' }}">
+                    <i class="bi bi-gear"></i>
+                    <span>แจ้งซ่อม</span>
+                </a>
+                <a href="{{ route('my.profile') }}"
+                    class="sidebar-menu-item {{ request()->routeIs('my.profile', 'profile.edit', 'security.edit') ? 'active' : '' }}">
+                    <i class="bi bi-person"></i>
+                    <span>ข้อมูลส่วนตัว</span>
+                </a>
 
                 @endif
 
