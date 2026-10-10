@@ -514,9 +514,9 @@ $initials = $user?->initials() ?? 'U';
                 </a>
 
                 {{-- สัญญาเช่า --}}
-                <a href="{{ route('invoices.index') }}" class="sidebar-menu-item">ค่าเช่าและการชำระเงิน</a>
+                <!-- <a href="{{ route('invoices.index') }}" class="sidebar-menu-item">ค่าเช่าและการชำระเงิน</a>
                 <a href="{{ route('meters.index') }}" class="sidebar-menu-item">มิเตอร์และการใช้งาน</a>
-                <a href="{{ route('repairs.index') }}" class="sidebar-menu-item">แจ้งซ่อม</a>
+                <a href="{{ route('repairs.index') }}" class="sidebar-menu-item">แจ้งซ่อม</a> -->
                 <a href="{{ route('contracts.index') }}"
                     class="sidebar-menu-item {{ request()->routeIs('contracts.*') ? 'active' : '' }}">
                     <i class="bi bi-file-earmark-text"></i>
@@ -524,19 +524,19 @@ $initials = $user?->initials() ?? 'U';
                 </a>
 
                 {{-- ค่าน้ำ-ค่าไฟ --}}
-                <a href="#" class="sidebar-menu-item">
+                <a href="{{ route('meters.index') }}" class="sidebar-menu-item">
                     <i class="bi bi-lightning-charge"></i>
                     <span>ค่าน้ำ-ค่าไฟ</span>
                 </a>
 
                 {{-- ใบแจ้งหนี้ / การชำระ --}}
-                <a href="#" class="sidebar-menu-item">
+                <a href="{{ route('invoices.index') }}" class="sidebar-menu-item">
                     <i class="bi bi-credit-card"></i>
                     <span>ใบแจ้งหนี้ / การชำระ</span>
                 </a>
 
                 {{-- แจ้งซ่อม --}}
-                <a href="#" class="sidebar-menu-item">
+                <a href="{{ route('repairs.index') }}" class="sidebar-menu-item">
                     <i class="bi bi-gear"></i>
                     <span>แจ้งซ่อม</span>
                 </a>

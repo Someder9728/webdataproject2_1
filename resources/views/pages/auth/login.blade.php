@@ -14,7 +14,7 @@
 
 
         {{-- Account --}}
-        <div class="accounts">
+        <!-- <div class="accounts">
 
             <button type="button" class="account active" onclick="selectAccount('admin', this)">
                 <b>👑 Admin</b>
@@ -28,7 +28,7 @@
                 <small>นาย ชัยนันท์</small>
             </button>
 
-        </div>
+        </div> -->
 
 
         {{-- Login --}}
@@ -95,10 +95,10 @@
             </form>
 
 
-            <div class="demo">
+            <!-- <div class="demo">
                 รหัสผ่านบัญชี:
                 <code>1234</code>
-            </div>
+            </div> -->
 
         </div>
 
