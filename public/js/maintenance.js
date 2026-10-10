@@ -90,7 +90,16 @@
             const result = await api(`/repairs?page=${page}${status ? `&rp_status=${status}` : ''}`);
             const tbody = $('repair-rows'); tbody.replaceChildren();
             result.data.forEach(repair => {
-                const row = tbody.insertRow(); cell(row, repair.rp_name); cell(row, labels[repair.rp_type]); const statusCell = cell(row, ''); const badge = document.createElement('span'); badge.className = `badge ${ { REPORTED: 'text-bg-warning', IN_PROGRESS: 'text-bg-primary', COMPLETED: 'text-bg-success' }[repair.rp_status] || 'text-bg-secondary' }`; badge.textContent = labels[repair.rp_status] || repair.rp_status; statusCell.append(badge);
+                const row = tbody.insertRow();
+                    cell(row, repair.rp_name);
+                    cell(row, labels[repair.rp_type]);
+                    cell(
+                        row,
+                        repair.rp_type === 'ROOM'
+                            ? (repair.room?.r_name ?? 'ไม่พบข้อมูลห้อง')
+                            : 'พื้นที่ส่วนกลาง'
+                    );
+                const statusCell = cell(row, ''); const badge = document.createElement('span'); badge.className = `badge ${ { REPORTED: 'text-bg-warning', IN_PROGRESS: 'text-bg-primary', COMPLETED: 'text-bg-success' }[repair.rp_status] || 'text-bg-secondary' }`; badge.textContent = labels[repair.rp_status] || repair.rp_status; statusCell.append(badge);
                 const actions = cell(row, '');
                 button(actions, 'ประวัติ', () => run(() => detail(repair.rp_id)));
                 const next = { REPORTED: 'IN_PROGRESS', IN_PROGRESS: 'COMPLETED' }[repair.rp_status];

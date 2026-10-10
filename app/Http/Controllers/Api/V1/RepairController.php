@@ -22,6 +22,7 @@ class RepairController extends Controller
             'rp_status' => ['sometimes', Rule::in(['REPORTED', 'IN_PROGRESS', 'COMPLETED'])],
         ]);
         $repairs = Repair::visibleTo($request->user())
+            ->with('room:r_id,r_name')
             ->when(isset($data['rp_status']), fn ($q) => $q->where('rp_status', $data['rp_status']))
             ->orderByDesc('rp_id')->paginate($data['per_page'] ?? 20);
 
