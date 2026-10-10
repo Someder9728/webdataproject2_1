@@ -24,7 +24,7 @@ class TenantMeterPageController extends Controller
                 ->when($rental->rt_moveout, fn ($query) => $query->whereDate('m_date', '<=', $rental->rt_moveout))
                 ->orderByDesc('m_date')
                 ->orderByDesc('m_id')
-                ->get() ?? new Collection();
+                ->get() ?? new Collection;
 
             return compact('rental', 'meters');
         });
