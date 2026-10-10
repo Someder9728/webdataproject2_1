@@ -530,7 +530,7 @@ $initials = $user?->initials() ?? 'U';
                 </a>
 
                 {{-- ใบแจ้งหนี้ / การชำระ --}}
-                <a href="{{ route('invoices.index') }}" class="sidebar-menu-item">
+                <a href="{{ route('invoices.index') }}" class="sidebar-menu-item {{ request()->routeIs('invoices.*') ? 'active' : '' }}" >
                     <i class="bi bi-credit-card"></i>
                     <span>ใบแจ้งหนี้ / การชำระ</span>
                 </a>
