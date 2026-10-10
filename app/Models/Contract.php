@@ -1,0 +1,45 @@
+<?php
+
+namespace App\Models;
+
+use Carbon\CarbonInterface;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
+
+/**
+ * @property CarbonInterface $c_start
+ * @property CarbonInterface|null $c_end
+ */
+class Contract extends Model
+{
+    use SoftDeletes;
+
+    protected $fillable = [
+        'c_number',
+        'c_start',
+        'c_end',
+        'c_rent',
+        'c_deposit',
+        'c_status',
+        'rentals_rt_id',
+    ];
+
+    protected $primaryKey = 'c_id';
+
+    /** @return BelongsTo<Rental, $this> */
+    public function rental(): BelongsTo
+    {
+        return $this->belongsTo(Rental::class, 'rentals_rt_id', 'rt_id');
+    }
+
+    protected function casts(): array
+    {
+        return [
+            'c_start' => 'date',
+            'c_end' => 'date',
+            'c_rent' => 'decimal:2',
+            'c_deposit' => 'decimal:2',
+        ];
+    }
+}

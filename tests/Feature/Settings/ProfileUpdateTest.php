@@ -3,73 +3,43 @@
 use App\Models\User;
 use Livewire\Livewire;
 
-test('profile page is displayed', function () {
-    $this->actingAs($user = User::factory()->create());
+test('profile displays current account information', function () {
+    $user = User::factory()->create([
+        'must_change_password' => false,
+    ]);
 
-    $this->get(route('profile.edit'))->assertOk();
+    $this->actingAs($user)
+        ->get(route('profile.edit'))
+        ->assertOk()
+        ->assertSee($user->u_username)
+        ->assertSee($user->u_role)
+        ->assertDontSee('wire:submit="updateProfileInformation"', false)
+        ->assertDontSee('wire:submit="deleteUser"', false);
 });
 
-test('profile information can be updated', function () {
+test('profile requires initial password change', function () {
     $user = User::factory()->create();
 
-    $this->actingAs($user);
-
-    $response = Livewire::test('pages::settings.profile')
-        ->set('name', 'Test User')
-        ->set('email', 'test@example.com')
-        ->call('updateProfileInformation');
-
-    $response->assertHasNoErrors();
-
-    $user->refresh();
-
-    expect($user->name)->toEqual('Test User');
-    expect($user->email)->toEqual('test@example.com');
-    expect($user->email_verified_at)->toBeNull();
+    $this->actingAs($user)
+        ->get(route('profile.edit'))
+        ->assertRedirect(route('security.edit'));
 });
 
-test('email verification status is unchanged when email address is unchanged', function () {
-    $user = User::factory()->create();
+test('self deletion is denied and account remains unchanged', function () {
+    $user = User::factory()->create([
+        'must_change_password' => false,
+    ]);
 
-    $this->actingAs($user);
+    Livewire::actingAs($user)
+        ->test('pages::settings.delete-user-modal')
+        ->call('deleteUser')
+        ->assertForbidden();
 
-    $response = Livewire::test('pages::settings.profile')
-        ->set('name', 'Test User')
-        ->set('email', $user->email)
-        ->call('updateProfileInformation');
+    $this->assertDatabaseHas('users', [
+        'u_id' => $user->getKey(),
+        'deleted_at' => null,
+        'is_active' => true,
+    ]);
 
-    $response->assertHasNoErrors();
-
-    expect($user->refresh()->email_verified_at)->not->toBeNull();
-});
-
-test('user can delete their account', function () {
-    $user = User::factory()->create();
-
-    $this->actingAs($user);
-
-    $response = Livewire::test('pages::settings.delete-user-modal')
-        ->set('password', 'password')
-        ->call('deleteUser');
-
-    $response
-        ->assertHasNoErrors()
-        ->assertRedirect('/');
-
-    expect($user->fresh())->toBeNull();
-    expect(auth()->check())->toBeFalse();
-});
-
-test('correct password must be provided to delete account', function () {
-    $user = User::factory()->create();
-
-    $this->actingAs($user);
-
-    $response = Livewire::test('pages::settings.delete-user-modal')
-        ->set('password', 'wrong-password')
-        ->call('deleteUser');
-
-    $response->assertHasErrors(['password']);
-
-    expect($user->fresh())->not->toBeNull();
+    $this->assertAuthenticatedAs($user);
 });
