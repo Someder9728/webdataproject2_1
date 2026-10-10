@@ -88,25 +88,6 @@
             </a>
 
 
-            {{-- APPEARANCE --}}
-            <a href="{{ route('appearance.edit') }}" wire:navigate
-                class="settings-menu-item {{ request()->routeIs('appearance.edit') ? 'active' : '' }}">
-
-                <span class="settings-menu-icon">
-                    <i class="bi bi-palette"></i>
-                </span>
-
-                <span class="settings-menu-text">
-                    Appearance
-                </span>
-
-                @if(request()->routeIs('appearance.edit'))
-                <i class="bi bi-chevron-right settings-menu-arrow"></i>
-                @endif
-
-            </a>
-
-
             {{-- ================================================= --}}
             {{-- ACCOUNT INFO --}}
             {{-- ================================================= --}}

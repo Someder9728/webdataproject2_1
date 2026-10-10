@@ -17,9 +17,10 @@ class DashboardController extends Controller
         if ($user && $user->u_role === 'admin') {
             $totalRooms = Room::count();
 
-            $availableRooms = Room::where('r_status', 'VACANT')->count();
+            // รองรับแถวเก่าที่ยังเก็บสถานะภาษาไทยจาก seed/ข้อมูลเดิม
+            $availableRooms = Room::whereIn('r_status', ['VACANT', 'ว่าง'])->count();
 
-            $occupiedRooms = Room::where('r_status', 'OCCUPIED')->count();
+            $occupiedRooms = Room::whereIn('r_status', ['OCCUPIED', 'มีผู้พัก'])->count();
 
             $totalTenants = Tenant::count();
 

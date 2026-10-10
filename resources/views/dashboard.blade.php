@@ -31,12 +31,12 @@
         box-shadow: 0 2px 5px rgba(15, 23, 42, 0.04);
     }
 
-    .summary-card > .d-flex {
+    .summary-card>.d-flex {
         width: 100%;
         min-width: 0;
     }
 
-    .summary-card > .d-flex > div:last-child {
+    .summary-card>.d-flex>div:last-child {
         min-width: 0;
     }
 
@@ -560,10 +560,10 @@
                     $isAvailable = in_array($room->r_status, ['VACANT', 'ว่าง'], true);
                     $isOccupied = in_array($room->r_status, ['OCCUPIED', 'มีผู้พัก'], true);
                     $roomStatusLabel = match ($room->r_status) {
-                        'VACANT' => 'ว่าง',
-                        'OCCUPIED' => 'มีผู้พัก',
-                        'MAINTENANCE' => 'ปิดปรับปรุง',
-                        default => $room->r_status,
+                    'VACANT' => 'ว่าง',
+                    'OCCUPIED' => 'มีผู้พัก',
+                    'MAINTENANCE' => 'ปิดปรับปรุง',
+                    default => $room->r_status,
                     };
 
                     $roomStatusClass = match ($room->r_status) {
@@ -799,18 +799,21 @@
             const currentDueAmountCents = Math.max(
                 0,
                 toCents(data.payments.outstanding_amount) -
-                    toCents(data.payments.overdue_amount)
+                toCents(data.payments.overdue_amount)
             );
             const currentDueCountValue = Math.max(
                 0,
                 Number(data.payments.outstanding_count ?? 0) -
-                    Number(data.payments.overdue_count ?? 0)
+                Number(data.payments.overdue_count ?? 0)
             );
 
             if (currentDueAmount) currentDueAmount.textContent = formatBaht(currentDueAmountCents);
-            if (currentDueCount) currentDueCount.textContent = `${currentDueCountValue} รายการ · ยังไม่เกินกำหนด`;
-            if (overdueAmount) overdueAmount.textContent = formatBaht(toCents(data.payments.overdue_amount));
-            if (overdueCount) overdueCount.textContent = `${Number(data.payments.overdue_count ?? 0)} รายการ`;
+            if (currentDueCount) currentDueCount.textContent =
+                `${currentDueCountValue} รายการ · ยังไม่เกินกำหนด`;
+            if (overdueAmount) overdueAmount.textContent = formatBaht(toCents(data.payments
+            .overdue_amount));
+            if (overdueCount) overdueCount.textContent =
+                `${Number(data.payments.overdue_count ?? 0)} รายการ`;
 
             if (repairCount) {
                 const repairs = data.repairs ?? {};
@@ -858,7 +861,9 @@
         const apiGet = async path => {
             const response = await fetch(path, {
                 credentials: 'same-origin',
-                headers: { Accept: 'application/json' },
+                headers: {
+                    Accept: 'application/json'
+                },
             });
             const body = await response.json().catch(() => ({}));
             if (response.status === 401) {
@@ -872,28 +877,36 @@
         const invoiceRows = document.getElementById('dashboard-invoice-rows');
         try {
             const statusResults = await Promise.all(['UNPAID', 'PENDING', 'REJECTED'].map(status => {
-                const params = new URLSearchParams({ status, per_page: 5 });
+                const params = new URLSearchParams({
+                    status,
+                    per_page: 5
+                });
                 return apiGet(`/api/v1/invoices?${params}`);
             }));
             const invoices = statusResults.flatMap(result => result.data ?? [])
                 .sort((left, right) => String(left.i_due ?? '').localeCompare(String(right.i_due ?? '')))
                 .slice(0, 5);
             invoiceRows.innerHTML = invoices.length ? invoices.map(invoice => {
-                const tenant = `${invoice.tenant?.t_Fname ?? ''} ${invoice.tenant?.t_Lname ?? ''}`.trim() || '—';
+                const tenant = `${invoice.tenant?.t_Fname ?? ''} ${invoice.tenant?.t_Lname ?? ''}`
+                    .trim() || '—';
                 const status = invoice.payment?.p_status ?? 'UNPAID';
                 return `<tr><td>${escapeHtml(invoice.room?.r_name ?? '—')}</td><td>${escapeHtml(tenant)}</td><td>${escapeHtml(invoice.period_start ?? invoice.i_date ?? '—')}</td><td class="amount">฿${Number(invoice.i_total ?? 0).toLocaleString('th-TH', { minimumFractionDigits: 2 })}</td><td><span class="status-badge ${status === 'REJECTED' ? 'status-overdue' : 'status-waiting'}">${escapeHtml(statusLabel(status))}</span></td></tr>`;
             }).join('') : '<tr><td colspan="5" class="empty-table">ยังไม่มีรายการค้างชำระ</td></tr>';
         } catch (error) {
-            invoiceRows.innerHTML = `<tr><td colspan="5" class="empty-table text-danger">${escapeHtml(error.message || 'โหลดรายการไม่สำเร็จ')} <button type="button" class="btn btn-sm btn-outline-primary ms-2" data-dashboard-retry="invoices">ลองใหม่</button></td></tr>`;
+            invoiceRows.innerHTML =
+                `<tr><td colspan="5" class="empty-table text-danger">${escapeHtml(error.message || 'โหลดรายการไม่สำเร็จ')} <button type="button" class="btn btn-sm btn-outline-primary ms-2" data-dashboard-retry="invoices">ลองใหม่</button></td></tr>`;
         }
 
         const repairRows = document.getElementById('dashboard-repair-rows');
         try {
             const result = await apiGet('/api/v1/repairs?per_page=5');
             const repairs = result.data ?? [];
-            repairRows.innerHTML = repairs.length ? repairs.map(repair => `<tr><td>${escapeHtml(repair.rp_id ?? '—')}</td><td>${escapeHtml(repair.room?.r_name ?? repair.rooms_r_id ?? 'ส่วนกลาง')}</td><td>${escapeHtml(repair.rp_name ?? 'แจ้งซ่อม')}</td><td>${escapeHtml((repair.created_at ?? '—').toString().slice(0, 10))}</td><td><span class="status-badge status-repair">${escapeHtml(statusLabel(repair.rp_status))}</span></td></tr>`).join('') : '<tr><td colspan="5" class="empty-table">ยังไม่มีข้อมูลแจ้งซ่อม</td></tr>';
+            repairRows.innerHTML = repairs.length ? repairs.map(repair =>
+                `<tr><td>${escapeHtml(repair.rp_id ?? '—')}</td><td>${escapeHtml(repair.room?.r_name ?? repair.rooms_r_id ?? 'ส่วนกลาง')}</td><td>${escapeHtml(repair.rp_name ?? 'แจ้งซ่อม')}</td><td>${escapeHtml((repair.created_at ?? '—').toString().slice(0, 10))}</td><td><span class="status-badge status-repair">${escapeHtml(statusLabel(repair.rp_status))}</span></td></tr>`
+                ).join('') : '<tr><td colspan="5" class="empty-table">ยังไม่มีข้อมูลแจ้งซ่อม</td></tr>';
         } catch (error) {
-            repairRows.innerHTML = `<tr><td colspan="5" class="empty-table text-danger">${escapeHtml(error.message || 'โหลดรายการไม่สำเร็จ')} <button type="button" class="btn btn-sm btn-outline-primary ms-2" data-dashboard-retry="repairs">ลองใหม่</button></td></tr>`;
+            repairRows.innerHTML =
+                `<tr><td colspan="5" class="empty-table text-danger">${escapeHtml(error.message || 'โหลดรายการไม่สำเร็จ')} <button type="button" class="btn btn-sm btn-outline-primary ms-2" data-dashboard-retry="repairs">ลองใหม่</button></td></tr>`;
         }
 
         document.addEventListener('click', event => {

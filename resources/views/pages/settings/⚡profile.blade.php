@@ -10,8 +10,6 @@ new #[Title('บัญชีของฉัน')] class extends Component {
 ?>
 
 <section class="w-full">
-    @include('partials.settings-heading')
-
     <x-pages::settings.layout
         :heading="__('บัญชีของฉัน')"
         :subheading="__('ข้อมูลบัญชีสำหรับเข้าสู่ระบบ')"
