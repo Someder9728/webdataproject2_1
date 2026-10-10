@@ -14,6 +14,7 @@ use App\Support\MeterMutationRules;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Encryption\Encrypter;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
+use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 beforeEach(function () {
@@ -45,9 +46,36 @@ test('unused reading corrects with confirmation and before after audit', functio
 test('delete unused mistake permits recording again on same date while retaining audit', function () {
     $this->actingAs($this->admin)->deleteJson($this->url, [...$this->payload, 'confirmed' => false])->assertUnprocessable()->assertJsonValidationErrors('confirmed');
     $this->actingAs($this->admin)->deleteJson($this->url, $this->payload)->assertOk();
-    expect(Meter::withTrashed()->whereKey($this->meter->getKey())->exists())->toBeFalse();
-    expect(AuditEvent::where('action', 'meter_reading_deleted')->sole()->old_values['m_date'])->toBe('2026-09-15');
+    expect(Meter::withTrashed()->findOrFail($this->meter->getKey())->trashed())->toBeTrue();
+    expect(AuditEvent::where('action', 'meter_reading_cancelled')->sole()->old_values['m_date'])->toBe('2026-09-15');
+    $this->actingAs($this->admin)->getJson('/api/v1/rooms/'.$this->room->getKey().'/meters?include_cancelled=1')
+        ->assertOk()->assertJsonCount(3, 'data')->assertJsonPath('data.1.status', 'CANCELLED')->assertJsonPath('data.1.can_edit', false);
+    $this->actingAs($this->admin)->getJson('/api/v1/rooms/'.$this->room->getKey().'/meters')->assertJsonCount(2, 'data');
     $this->actingAs($this->admin)->postJson('/api/v1/rooms/'.$this->room->getKey().'/meters', ['m_date' => '2026-09-15', 'm_water' => '22.00', 'm_elec' => '220.00'])->assertCreated();
+    expect(AuditEvent::where('action', 'meter_reading_replaced')->sole()->old_values['m_water'])->toBe('20.00');
+    expect($this->meter->fresh()->m_water)->toBe('22.00');
+});
+
+test('cancelled boundary cannot issue invoice until replacement is recorded on exact date', function () {
+    $tenant = Tenant::create(['t_Fname' => 'Boundary', 't_Lname' => 'Tenant', 't_tel' => '0812345678']);
+    $rental = Rental::create(['tenants_t_id' => $tenant->getKey(), 'rooms_r_id' => $this->room->getKey(), 'rt_movein' => '2026-09-01', 'rt_status' => 'ACTIVE']);
+    $rental->contract()->create(['c_number' => 'BOUNDARY-REPLACEMENT', 'c_start' => '2026-09-01', 'c_end' => null, 'c_rent' => '3000.00', 'c_deposit' => '6000.00', 'c_status' => 'ACTIVE']);
+    $this->actingAs($this->admin)->deleteJson($this->url, $this->payload)->assertOk();
+    $input = ['rentals_rt_id' => $rental->getKey(), 'period_start' => '2026-09-01', 'period_end' => '2026-09-15'];
+    try {
+        app(IssueInvoice::class)->handle($this->admin, $input, persist: true);
+        $this->fail('Cancelled boundary accepted');
+    } catch (ValidationException $exception) {
+        expect($exception->errors())->toHaveKey('period_end');
+    }
+    expect(Invoice::count())->toBe(0);
+    $opening = Meter::whereDate('m_date', '2026-09-01')->sole();
+    $this->actingAs($this->admin)->getJson('/api/v1/rooms/'.$this->room->getKey().'/meter-usage?start_meter_id='.$opening->getKey().'&end_meter_id='.$this->meter->getKey())->assertNotFound();
+    app(RecordMeterReading::class)->handle($this->admin, $this->room, ['m_date' => '2026-09-15', 'm_water' => '22.00', 'm_elec' => '220.00']);
+    $snapshot = app(IssueInvoice::class)->handle($this->admin, $input, persist: true);
+    expect($snapshot['water_usage'])->toBe('12.00');
+    expect($snapshot['elec_usage'])->toBe('120.00');
+    $this->actingAs($this->admin)->patchJson($this->url, [...$this->payload, 'expected_event_id' => MeterMutationRules::latestEventId($this->meter)])->assertConflict();
 });
 
 test('correction requires csrf evidence and valid confirmation', function () {
@@ -71,12 +99,12 @@ test('meter UI renders correction form and guest cannot mutate', function () {
     $this->actingAs($this->admin)->get('/meters')->assertOk()->assertSee('meter-edit-form', false);
 });
 
-test('active rental opening locks but unbilled ending reading can correct', function () {
+test('active rental opening and unbilled ending reading can correct', function () {
     $tenant = Tenant::create(['t_Fname' => 'Meter', 't_Lname' => 'Tenant', 't_tel' => '0812345678']);
     $rental = Rental::create(['tenants_t_id' => $tenant->getKey(), 'rooms_r_id' => $this->room->getKey(), 'rt_movein' => '2026-09-01', 'rt_status' => 'ACTIVE']);
     $opening = Meter::whereDate('m_date', '2026-09-01')->sole();
     $openingUrl = '/api/v1/rooms/'.$this->room->getKey().'/meters/'.$opening->getKey();
-    $this->actingAs($this->admin)->patchJson($openingUrl, [...$this->payload, 'm_date' => '2026-09-01', 'm_water' => '11.00', 'm_elec' => '110.00', 'expected_event_id' => MeterMutationRules::latestEventId($opening)])->assertConflict();
+    $this->actingAs($this->admin)->patchJson($openingUrl, [...$this->payload, 'm_date' => '2026-09-01', 'm_water' => '11.00', 'm_elec' => '110.00', 'expected_event_id' => MeterMutationRules::latestEventId($opening)])->assertOk();
     $this->actingAs($this->admin)->deleteJson($openingUrl, [...$this->payload, 'expected_event_id' => MeterMutationRules::latestEventId($opening)])->assertConflict();
     $this->actingAs($this->admin)->patchJson($this->url, $this->payload)->assertOk();
     $rental->update(['rt_status' => 'ENDED', 'rt_moveout' => '2026-09-15']);
@@ -110,12 +138,12 @@ test('duplicate dates wrong room and permissions cannot mutate', function () {
     $this->actingAs($user)->deleteJson($this->url, $this->payload)->assertForbidden();
 });
 
-test('audit failure rolls back hard delete and action rechecks stale actor', function () {
+test('audit failure rolls back cancellation and action rechecks stale actor', function () {
     $eventName = 'eloquent.creating: '.AuditEvent::class;
     $dispatcher = AuditEvent::getEventDispatcher();
     $listeners = $dispatcher->getRawListeners()[$eventName] ?? [];
     $dispatcher->listen($eventName, function (AuditEvent $audit) {
-        if ($audit->action === 'meter_reading_deleted') {
+        if ($audit->action === 'meter_reading_cancelled') {
             throw new RuntimeException('Audit failed');
         }
     });

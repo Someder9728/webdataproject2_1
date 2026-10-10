@@ -37,10 +37,12 @@ class MeterController extends Controller
         $input = $request->validate([
             'page' => ['sometimes', 'integer', 'min:1'],
             'per_page' => ['sometimes', 'integer', 'between:1,100'],
+            'include_cancelled' => ['sometimes', 'boolean'],
         ]);
 
         $meters = Meter::query()
             ->where('rooms_r_id', $room->getKey())
+            ->when($request->boolean('include_cancelled'), fn ($query) => $query->withTrashed())
             ->orderByDesc('m_date')
             ->orderByDesc('m_id')
             ->paginate((int) ($input['per_page'] ?? 20));
@@ -102,7 +104,7 @@ class MeterController extends Controller
     {
         $action->handle($request->user(), $room, $meter, $request->only(['reason', 'confirmed', 'expected_event_id']), delete: true);
 
-        return response()->json(['data' => ['m_id' => $meter->getKey()], 'message' => 'ลบรายการที่กรอกผิดแล้ว ประวัติการลบเก็บไว้ใน Audit']);
+        return response()->json(['data' => ['m_id' => $meter->getKey()], 'message' => 'ยกเลิกรายการแล้ว ยังดูได้ในประวัติมิเตอร์']);
     }
 
     /**
@@ -117,8 +119,10 @@ class MeterController extends Controller
             'm_water' => $meter->m_water,
             'm_elec' => $meter->m_elec,
             'latest_event_id' => MeterMutationRules::latestEventId($meter),
-            'can_edit' => ! MeterMutationRules::usedByInvoice($meter) && ! MeterMutationRules::activeOpening($meter),
-            'can_delete' => ! MeterMutationRules::usedByInvoice($meter) && ! MeterMutationRules::rentalBoundary($meter),
+            'status' => $meter->trashed() ? 'CANCELLED' : 'ACTIVE',
+            'cancelled_at' => $meter->deleted_at?->toISOString(),
+            'can_edit' => ! $meter->trashed() && ! MeterMutationRules::usedByInvoice($meter),
+            'can_delete' => ! $meter->trashed() && ! MeterMutationRules::usedByInvoice($meter) && ! MeterMutationRules::rentalBoundary($meter),
             'date_locked' => MeterMutationRules::rentalBoundary($meter),
         ];
     }

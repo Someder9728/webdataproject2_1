@@ -6,6 +6,7 @@ use App\Models\AuditEvent;
 use App\Models\Meter;
 use App\Models\Room;
 use App\Models\User;
+use App\Support\MeterMutationRules;
 use App\Support\SqliteTransaction;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
@@ -48,17 +49,24 @@ class RecordMeterReading
 
             $date = $validated['m_date'];
 
-            // รวมรายการที่ soft delete เพราะ unique index ยังครอบคลุมอยู่
-            $duplicate = Meter::withTrashed()
+            // Reuse a cancelled room/date slot; previous values remain in audit history.
+            $existing = Meter::withTrashed()
                 ->where('rooms_r_id', $room->getKey())
                 ->whereDate('m_date', $date)
-                ->exists();
+                ->first();
 
             abort_if(
-                $duplicate,
+                $existing && ! $existing->trashed(),
                 409,
                 'ห้องนี้มีรายการมิเตอร์ในวันที่เลือกแล้ว'
             );
+
+            if ($existing && $existing->trashed()) {
+                $lastAction = AuditEvent::where('entity_type', 'meters')->where('entity_id', $existing->getKey())
+                    ->orderByDesc('ae_id')->value('action');
+                abort_if($lastAction !== 'meter_reading_cancelled' || MeterMutationRules::usedByInvoice($existing)
+                    || MeterMutationRules::rentalBoundary($existing), 409, 'รายการเดิมถูกล็อก ไม่สามารถบันทึกทดแทนได้');
+            }
 
             $previous = Meter::query()
                 ->where('rooms_r_id', $room->getKey())
@@ -100,19 +108,27 @@ class RecordMeterReading
                 throw ValidationException::withMessages($errors);
             }
 
-            $meter = Meter::create([
+            $before = $existing ? ['rooms_r_id' => $existing->rooms_r_id, 'm_date' => $existing->m_date->toDateString(), 'm_water' => $existing->m_water, 'm_elec' => $existing->m_elec, 'status' => 'CANCELLED'] : null;
+            $meter = $existing ?? new Meter;
+            $meter->fill([
                 'rooms_r_id' => $room->getKey(),
                 'm_date' => $date,
                 'm_water' => $validated['m_water'],
                 'm_elec' => $validated['m_elec'],
             ]);
 
+            if ($meter->trashed()) {
+                $meter->restore();
+            } else {
+                $meter->save();
+            }
+
             AuditEvent::create([
                 'actor_user_id' => $actor->getKey(),
                 'entity_type' => 'meters',
                 'entity_id' => $meter->getKey(),
-                'action' => 'meter_reading_recorded',
-                'old_values' => null,
+                'action' => $existing ? 'meter_reading_replaced' : 'meter_reading_recorded',
+                'old_values' => $before,
                 'new_values' => [
                     'rooms_r_id' => $room->getKey(),
                     'm_date' => $date,

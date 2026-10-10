@@ -2,7 +2,7 @@
     @include('maintenance.style')
     <main class="maintenance" data-maintenance="meters">
         <h1>มิเตอร์และการใช้งาน</h1>
-        <p class="muted">บันทึกเลขน้ำและไฟได้วันละหนึ่งรายการต่อห้อง รวมถึงก่อนรับผู้เช่าเข้าพัก ปลายงวดแก้ได้ก่อนออกบิล ส่วนต้นงวดของการเช่าที่ดำเนินอยู่และมิเตอร์ที่ใช้ในบิลแล้วจะล็อกไว้</p>
+        <p class="muted">บันทึกเลขน้ำและไฟได้วันละหนึ่งรายการต่อห้อง รวมถึงก่อนรับผู้เช่าเข้าพัก แก้ตัวเลขได้ทั้งต้นและปลายช่วงก่อนใช้ในบิล รายการยกเลิกยังอยู่ในประวัติแต่ใช้คำนวณไม่ได้ ต้องมีค่าตรงวันเริ่มและวันสิ้นสุดก่อนออกบิล</p>
         <p role="alert" id="work-error"></p><p role="status" id="work-status" aria-live="polite"></p>
         <label>ห้อง<select id="meter-room"><option value="">เลือกห้อง</option>@foreach($rooms as $room)<option value="{{ $room->r_id }}">{{ $room->r_name }}</option>@endforeach</select></label>
         <section><h2>บันทึกมิเตอร์</h2>

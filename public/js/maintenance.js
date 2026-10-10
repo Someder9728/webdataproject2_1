@@ -50,13 +50,15 @@
         if (root.dataset.maintenance === 'meters') {
             const room = $('meter-room').value;
             if (!room) { $('meter-rows').replaceChildren(); empty($('meter-rows'), 4); return; }
-            const result = await api(`/rooms/${room}/meters?page=${page}`);
+            const result = await api(`/rooms/${room}/meters?include_cancelled=1&page=${page}`);
             const tbody = $('meter-rows'); tbody.replaceChildren();
             result.data.forEach(meter => {
-                const row = tbody.insertRow(); cell(row, meter.m_date); cell(row, meter.m_water); cell(row, meter.m_elec);
+                const row = tbody.insertRow(); cell(row, `${meter.m_date}${meter.status === 'CANCELLED' ? ' · ยกเลิก' : ''}`); cell(row, meter.m_water); cell(row, meter.m_elec);
                 const actions = cell(row, '');
+                if (meter.status !== 'CANCELLED') {
                 button(actions, 'ต้นช่วง', () => { if (!busy) { start = meter; selection(); } });
                 button(actions, 'ปลายช่วง', () => { if (!busy) { end = meter; selection(); } });
+                }
                 if (meter.can_edit) button(actions, 'แก้ไข', () => {
                     if (busy) return;
                     editing = { meter, room };
@@ -69,18 +71,18 @@
                     $('meter-edit-reason').value = '';
                     $('meter-edit-water').focus();
                 });
-                if (meter.can_delete) button(actions, 'ลบ', () => {
+                if (meter.can_delete) button(actions, 'ยกเลิกรายการ', () => {
                     if (busy) return;
-                    const reason = window.prompt('ระบุเหตุผลที่ต้องการลบมิเตอร์ที่กรอกผิด');
+                    const reason = window.prompt('ระบุเหตุผลที่ต้องการยกเลิกรายการมิเตอร์');
                     if (reason === null) return;
                     if (!reason.trim()) { $('work-error').textContent = 'กรุณาระบุเหตุผล'; return; }
-                    if (!window.confirm(`ยืนยันลบมิเตอร์ห้อง ${$('meter-room').selectedOptions[0].textContent}\nวันที่ ${meter.m_date} · น้ำ ${meter.m_water} · ไฟ ${meter.m_elec}\nเหตุผล: ${reason.trim()}\nระบบจะเก็บรายละเอียดการลบใน Audit และสามารถบันทึกใหม่วันเดิมได้`)) return;
+                    if (!window.confirm(`ยืนยันยกเลิกรายการมิเตอร์ห้อง ${$('meter-room').selectedOptions[0].textContent}\nวันที่ ${meter.m_date} · น้ำ ${meter.m_water} · ไฟ ${meter.m_elec}\nเหตุผล: ${reason.trim()}\nรายการยังอยู่ในประวัติ แต่ใช้คำนวณไม่ได้ สามารถบันทึกค่าทดแทนวันเดิมได้`)) return;
                     run(async () => {
                         await api(`/rooms/${room}/meters/${meter.m_id}`, 'DELETE', { reason: reason.trim(), confirmed: true, expected_event_id: meter.latest_event_id ?? null });
                         start = end = editing = null; $('meter-edit-section').hidden = true; selection(); page = 1; await load();
                     });
                 });
-                if (!meter.can_edit) { const note = document.createElement('span'); note.textContent = ' ล็อก: ใช้ในบิลหรือต้นงวด Rental แล้ว'; actions.append(note); }
+                if (!meter.can_edit) { const note = document.createElement('span'); note.textContent = ' ล็อก: ใช้ในบิลแล้วหรือรายการยกเลิก'; actions.append(note); }
             });
             empty(tbody, 4); pagination(result.meta);
         } else {

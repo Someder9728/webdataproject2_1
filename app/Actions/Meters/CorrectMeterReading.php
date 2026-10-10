@@ -39,14 +39,12 @@ class CorrectMeterReading
             abort_unless(($latest === null && $data['expected_event_id'] === null)
                 || ($latest !== null && $data['expected_event_id'] !== null && (string) $latest === (string) $data['expected_event_id']), 409, 'รายการมิเตอร์เปลี่ยนแล้ว กรุณาโหลดข้อมูลใหม่');
             abort_if(MeterMutationRules::usedByInvoice($meter), 409, 'มิเตอร์นี้ถูกใช้ในใบแจ้งหนี้แล้ว จึงแก้ไขหรือลบไม่ได้');
-            abort_if(MeterMutationRules::activeOpening($meter), 409, 'มิเตอร์ต้นงวดของการเช่าที่ดำเนินอยู่แก้ไขหรือลบไม่ได้');
             $before = $this->snapshot($meter);
             $boundary = MeterMutationRules::rentalBoundary($meter);
             if ($delete) {
                 abort_if($boundary, 409, 'มิเตอร์นี้เป็นวันเข้าหรือย้ายออกของการเช่า จึงลบไม่ได้');
-                // Only unreferenced mistakes are removed. Audit retains the original reading,
-                // and the unique room/date slot becomes available for a replacement.
-                $meter->forceDelete();
+                // Keep cancelled readings visible in history, excluded from billing.
+                $meter->delete();
             } else {
                 abort_if($boundary && $data['m_date'] !== $meter->m_date->toDateString(), 409, 'มิเตอร์วันเข้า/ย้ายออกแก้เลขได้ก่อนออกบิล แต่เปลี่ยนวันที่ไม่ได้');
                 abort_if(Meter::withTrashed()->where('rooms_r_id', $room->getKey())->where('m_id', '<>', $meter->getKey())
@@ -67,7 +65,7 @@ class CorrectMeterReading
             }
             AuditEvent::create([
                 'actor_user_id' => $actor->getKey(), 'entity_type' => 'meters', 'entity_id' => $meter->getKey(),
-                'action' => $delete ? 'meter_reading_deleted' : 'meter_reading_corrected',
+                'action' => $delete ? 'meter_reading_cancelled' : 'meter_reading_corrected',
                 'old_values' => $before, 'new_values' => $delete ? null : $this->snapshot($meter), 'reason' => $data['reason'],
             ]);
 

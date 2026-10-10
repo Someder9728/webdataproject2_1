@@ -9,13 +9,6 @@ use App\Models\Rental;
 
 class MeterMutationRules
 {
-    public static function activeOpening(Meter $meter): bool
-    {
-        return Rental::withTrashed()->where('rooms_r_id', $meter->rooms_r_id)
-            ->where('rt_status', 'ACTIVE')->whereNull('rt_moveout')
-            ->whereDate('rt_movein', $meter->m_date->toDateString())->exists();
-    }
-
     public static function usedByInvoice(Meter $meter): bool
     {
         return Invoice::withTrashed()->where(function ($query) use ($meter) {
