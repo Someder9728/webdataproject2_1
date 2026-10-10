@@ -85,6 +85,9 @@ new #[Title('เปลี่ยนรหัสผ่าน')] class extends Comp
 ?>
 
 <section class="w-full">
+    @if(auth()->user()?->u_role === 'tenant')
+        @include('tenant.security-form')
+    @else
     @include('partials.settings-heading')
 
     <x-pages::settings.layout
@@ -139,4 +142,5 @@ new #[Title('เปลี่ยนรหัสผ่าน')] class extends Comp
             </flux:button>
         </form>
     </x-pages::settings.layout>
+    @endif
 </section>

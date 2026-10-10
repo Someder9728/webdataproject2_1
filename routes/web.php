@@ -34,6 +34,7 @@ Route::middleware(['auth', 'password.changed', 'role:tenant'])
             ->name('my.rentals');
         Route::get('/my/contracts', [RentalPageController::class, 'myContracts'])
             ->name('my.contracts');
+        Route::view('/my/profile', 'tenant.profile')->name('my.profile');
     });
 
 // ใบแจ้งหนี้ / การชำระเงิน — Admin และ Tenant ใช้หน้าเดียวกัน แยกสิทธิ์ที่ API

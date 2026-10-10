@@ -543,50 +543,12 @@ $initials = $user?->initials() ?? 'U';
 
                 @else
 
-                {{-- Dashboard --}}
-                <a href="{{ route('my.contracts') }}" class="sidebar-menu-item">สัญญาของฉัน</a>
-                <a href="{{ route('invoices.index') }}" class="sidebar-menu-item">ค่าเช่าและการชำระเงิน</a>
-                <a href="{{ route('repairs.index') }}" class="sidebar-menu-item {{ request()->routeIs('repairs.*') ? 'active' : '' }}">แจ้งซ่อม</a>
-                <a href="{{ route('user.dashboard') }}" class="sidebar-menu-item active">
-                    <i class="bi bi-house-door"></i>
-                    <span>Dashboard ของฉัน</span>
-                </a>
-
-                {{-- การเช่าของฉัน --}}
-                <a href="#" class="sidebar-menu-item">
-                    <i class="bi bi-key"></i>
-                    <span>การเช่าของฉัน</span>
-                </a>
-
-                {{-- สัญญาของฉัน --}}
-                <a href="#" class="sidebar-menu-item">
-                    <i class="bi bi-file-earmark-text"></i>
-                    <span>สัญญาของฉัน</span>
-                </a>
-
-                {{-- ค่าน้ำ-ค่าไฟของฉัน --}}
-                <a href="#" class="sidebar-menu-item">
-                    <i class="bi bi-lightning-charge"></i>
-                    <span>ค่าน้ำ-ค่าไฟของฉัน</span>
-                </a>
-
-                {{-- ค่าเช่าและการชำระเงิน --}}
-                <a href="#" class="sidebar-menu-item">
-                    <i class="bi bi-credit-card"></i>
-                    <span>ค่าเช่าและการชำระเงิน</span>
-                </a>
-
-                {{-- แจ้งซ่อม --}}
-                <a href="#" class="sidebar-menu-item">
-                    <i class="bi bi-gear"></i>
-                    <span>แจ้งซ่อม</span>
-                </a>
-
-                {{-- ข้อมูลส่วนตัว --}}
-                <a href="#" class="sidebar-menu-item">
-                    <i class="bi bi-person"></i>
-                    <span>ข้อมูลส่วนตัว</span>
-                </a>
+                <a href="{{ route('my.rentals') }}" class="sidebar-menu-item {{ request()->routeIs('my.rentals', 'rentals.show', 'user.dashboard') ? 'active' : '' }}"><i class="bi bi-key"></i><span>การเช่าของฉัน</span></a>
+                <a href="{{ route('my.contracts') }}" class="sidebar-menu-item {{ request()->routeIs('my.contracts') ? 'active' : '' }}"><i class="bi bi-file-earmark-text"></i><span>สัญญาของฉัน</span></a>
+                <a href="{{ route('invoices.index') }}" class="sidebar-menu-item {{ request()->routeIs('invoices.index', 'invoices.show') ? 'active' : '' }}"><i class="bi bi-receipt"></i><span>ใบแจ้งหนี้ / ค่าน้ำค่าไฟ</span></a>
+                <a href="{{ route('invoices.history') }}" class="sidebar-menu-item {{ request()->routeIs('invoices.history') ? 'active' : '' }}"><i class="bi bi-clock-history"></i><span>ประวัติการชำระเงิน</span></a>
+                <a href="{{ route('repairs.index') }}" class="sidebar-menu-item {{ request()->routeIs('repairs.*') ? 'active' : '' }}"><i class="bi bi-gear"></i><span>แจ้งซ่อม</span></a>
+                <a href="{{ route('my.profile') }}" class="sidebar-menu-item {{ request()->routeIs('my.profile', 'profile.edit', 'security.edit') ? 'active' : '' }}"><i class="bi bi-person"></i><span>ข้อมูลส่วนตัว</span></a>
 
                 @endif
 
@@ -601,7 +563,7 @@ $initials = $user?->initials() ?? 'U';
             @if ($isAdmin)
             <a href="{{ route('admin.accounts') }}" class="sidebar-user sidebar-user-link" aria-label="เปิดหน้าจัดการบัญชีผู้เช่า">
             @else
-            <div class="sidebar-user">
+            <a href="{{ route('my.profile') }}" class="sidebar-user sidebar-user-link" aria-label="เปิดข้อมูลส่วนตัว">
             @endif
 
                 <div class="sidebar-avatar">
@@ -623,7 +585,7 @@ $initials = $user?->initials() ?? 'U';
             @if ($isAdmin)
             </a>
             @else
-            </div>
+            </a>
             @endif
 
 
