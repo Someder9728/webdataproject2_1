@@ -1,11 +1,3 @@
-{{-- resources/views/rentals/contract.blade.php --}}
-{{-- การ์ดสัญญาเช่า (R3) + ฟอร์มแก้ไข/ต่อสัญญา (R4) --}}
-{{-- ใช้งาน: @include('rentals.contract', ['rentalId' => $rentalId]) ภายในหน้า R3 --}}
-{{-- ส่ง event ให้หน้า R3: 'rental:contract-loaded' / 'rental:contract-updated' (detail = ข้อมูลสัญญา) เพื่อให้ไทม์ไลน์อัปเดต --}}
-{{-- ฟัง event จากหน้า R3: 'rental:loaded' (detail = ข้อมูลการเช่า) เพื่อรู้ว่าย้ายออกแล้วหรือยัง --}}
-{{-- API: GET / PATCH /api/v1/rentals/{id}/contract (PATCH ส่งแค่ c_end + reason — backend ห้ามแก้ค่าเช่า/เงินประกัน)
-     แก้ได้เฉพาะเมื่อการเช่ายัง ACTIVE, ยังไม่มีวันย้ายออก และสัญญาเป็น ACTIVE หรือ EXPIRED ไม่งั้น backend ตอบ 409 --}}
-
 @include('rentals._styles')
 
 @php($canEditContract = auth()->user()?->u_role === 'admin')
@@ -49,7 +41,6 @@
         @endif
     </div>
 
-    {{-- R4: ฟอร์มแก้สัญญา — ซ่อนไว้ก่อน เปิดเมื่อกด "แก้ไข / ต่อสัญญา" --}}
     @if ($canEditContract)
         <form id="contract-edit-form" novalidate hidden style="margin-top:16px;padding-top:16px;border-top:1px solid var(--rt-border);">
             <h3 class="rt-card-title rt-card-title--lg" style="margin-bottom:12px;">แก้ไข / ต่อสัญญา</h3>
@@ -93,7 +84,6 @@
     const API_URL = `/api/v1/rentals/${rentalId}/contract`;
     const fetchOpts = { headers: { Accept: 'application/json' }, credentials: 'same-origin' };
 
-    // ค่า c_status ยืนยันกับ backend แล้ว: ACTIVE / EXPIRED / ENDED
     const STATUS_LABEL = {
         ACTIVE:  { text: 'มีผล', cls: 'rt-badge--ok' },
         EXPIRED: { text: 'หมดอายุ (ยังพักอยู่)', cls: 'rt-badge--warn' },
@@ -105,17 +95,15 @@
      'contract-view', 'c-number', 'c-start', 'c-end', 'c-rent', 'c-deposit', 'c-status', 'c-expired-note',
      'contract-saved-note', 'contract-btn-edit', 'contract-edit-form', 'f-c-end', 'f-reason', 'err-c-end',
      'err-reason', 'contract-btn-save', 'contract-btn-cancel', 'contract-form-error', 'extend-chips',
-     'extend-hint', 'reason-count', 'c-price-locked', 'contract-locked-note', 'c-end-min-hint'].forEach((id) => { el[id] = document.getElementById(id); }); // ปุ่ม/ฟอร์มแก้ไขมีเฉพาะ admin
+     'extend-hint', 'reason-count', 'c-price-locked', 'contract-locked-note', 'c-end-min-hint'].forEach((id) => { el[id] = document.getElementById(id); });
 
     let currentContract = null;
-    let saving = false; // กันกดบันทึกซ้ำ
-    let rentalInfo = window.__rentalInfo || null; // ข้อมูลการเช่าจากหน้า R3 (อาจมาทีหลัง)
-    let conflictMessage = ''; // ข้อความจาก 409 ล่าสุด (แสดงหลังโหลดสัญญาใหม่)
+    let saving = false;
+    let rentalInfo = window.__rentalInfo || null;
+    let conflictMessage = '';
 
-    // ภาษาไทยไหม — backend บางจุดตอบ 409 โดยไม่มีข้อความ (Laravel จะใส่ "Conflict" ภาษาอังกฤษ)
     const hasThai = (t) => typeof t === 'string' && /[\u0E00-\u0E7F]/.test(t);
 
-    // เหตุผลที่แก้สัญญาไม่ได้ ('' = แก้ได้) — ตรงกับเงื่อนไขของ UpdateContract ฝั่ง backend
     function lockReason(c) {
         if (!c) return '';
         if (c.c_status === 'ENDED') return 'สัญญานี้สิ้นสุดแล้ว — แก้ไขหรือต่อสัญญาไม่ได้';
@@ -153,7 +141,7 @@
     }
 
     function announce(type, contract) {
-        window.__rentalContract = contract; // เผื่อหน้า R3 ยังไม่ทันฟัง event
+        window.__rentalContract = contract;
         document.dispatchEvent(new CustomEvent(type, { detail: contract }));
     }
 
@@ -187,20 +175,16 @@
 
         el['c-expired-note'].hidden = c.c_status !== 'EXPIRED';
 
-        // price_locked = มีใบแจ้งหนี้แล้ว (ค่าเช่า/เงินประกันแก้ไม่ได้ — endpoint นี้แก้ได้แค่วันสิ้นสุด)
         el['c-price-locked'].hidden = !c.price_locked;
 
         showState('view');
-        applyLock(); // แก้/ต่อสัญญาได้เฉพาะสัญญาที่ยังไม่สิ้นสุด และการเช่ายังไม่ย้ายออก
+        applyLock();
     }
 
-    // ---------- R4: แก้ไข / ต่อสัญญา ----------
     function todayStr() {
         return new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Bangkok' });
     }
 
-    // บวกเดือนกับวันที่ YYYY-MM-DD (ถ้าวันเกินเดือนปลายทาง เช่น 31 → ใช้วันสุดท้ายของเดือนนั้น)
-    // (days = บวกวันเพิ่มหลังบวกเดือน ใช้หา "วันถัดจาก c_start")
     function addMonths(dateStr, months, days = 0) {
         const [y, m, d] = dateStr.split('-').map(Number);
         const target = new Date(Date.UTC(y, m - 1 + months, 1));
@@ -210,7 +194,6 @@
     }
 
     function extendBase() {
-        // ต่อจากวันสิ้นสุดเดิม ถ้าสัญญาหมดไปแล้วให้นับจากวันนี้
         const end = currentContract.c_end;
         const today = todayStr();
         return end && end >= today ? end : today;
@@ -219,7 +202,6 @@
     function openEditForm() {
         if (lockReason(currentContract)) { applyLock(); return; }
         el['f-c-end'].value = currentContract.c_end ?? '';
-        // backend: c_end ต้อง "หลัง" c_start
         const minEnd = currentContract.c_start ? addMonths(currentContract.c_start, 0, 1) : '';
         el['f-c-end'].min = minEnd;
         el['c-end-min-hint'].textContent = minEnd ? `เลือกได้ตั้งแต่ ${minEnd} (หลังวันเริ่มสัญญา)` : '';
@@ -228,7 +210,6 @@
         el['contract-saved-note'].hidden = true;
         clearFieldErrors();
 
-        // ปุ่มต่อเพิ่มแสดงเฉพาะสัญญาที่มีวันสิ้นสุด
         const hasEnd = !!currentContract.c_end;
         el['extend-chips'].hidden = !hasEnd;
         el['extend-hint'].hidden = !hasEnd;
@@ -250,7 +231,6 @@
         if (saving) return;
         clearFieldErrors();
 
-        // ตรวจฝั่งหน้าเว็บก่อน (backend ตรวจซ้ำเสมอ)
         const newEnd = el['f-c-end'].value || null;
         const reasonText = el['f-reason'].value.trim();
         let ok = true;
@@ -296,8 +276,6 @@
                 return;
             }
             if (res.status === 409) {
-                // สถานะเปลี่ยนไปแล้ว (เช่น เพิ่งย้ายออก) → โหลดสัญญาใหม่ แล้วแสดงเหตุผลที่การ์ด (ฟอร์มจะถูกปิด)
-                // backend ตอบ 409 ด้วยข้อความกลางเสมอ จึงบอกสาเหตุที่เป็นไปได้เอง
                 conflictMessage = 'แก้ไขสัญญาไม่ได้: การเช่านี้ย้ายออกแล้ว หรือสัญญาสิ้นสุดแล้ว — กรุณาโหลดหน้าใหม่เพื่อดูข้อมูลล่าสุด';
                 await loadContract();
                 return;

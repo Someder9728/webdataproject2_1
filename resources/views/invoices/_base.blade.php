@@ -1,14 +1,9 @@
-{{-- resources/views/invoices/_base.blade.php --}}
-{{-- ฐานร่วมของหน้าใบแจ้งหนี้/การชำระ: สไตล์ (.iv-*) + ตัวช่วย JS (window.IV) --}}
-{{-- ใช้สไตล์กลาง .rt-* ร่วมกับหน้า "การเช่า" และไม่ใส่ข้อมูลจาก API ลง innerHTML (สร้าง DOM ด้วย IV.el / textContent) --}}
 @include('rentals._styles')
 
 @once
 <style>
-    /* ---------- ป้ายสถานะเพิ่มเติม ---------- */
     .rt-badge--err { background: var(--rt-err-bg); color: var(--rt-err-fg); border-color: var(--rt-err-bd); }
 
-    /* ---------- การ์ดสรุปยอด ---------- */
     .iv-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-bottom: 20px; }
     @media (max-width: 900px) { .iv-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
     @media (max-width: 480px) { .iv-stats { grid-template-columns: minmax(0, 1fr); } }
@@ -23,12 +18,10 @@
     .iv-stat-value { font-size: 1.5rem; font-weight: 700; line-height: 1.2; word-break: break-word; }
     .iv-stat-sub { font-size: 0.72rem; color: var(--rt-muted); margin-top: 2px; }
 
-    /* ---------- แถบค้นหา/กรอง ---------- */
     .iv-toolbar { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; padding: 16px 20px; border-bottom: 1px solid var(--rt-border); }
     .iv-toolbar .rt-search { flex: 1 1 240px; max-width: 360px; }
     .iv-toolbar .rt-input { width: auto; min-width: 150px; }
 
-    /* ---------- ตาราง ---------- */
     .iv-table { min-width: 980px; }
     .iv-table td.num, .iv-table th.num { text-align: right; white-space: nowrap; }
     .iv-room { font-weight: 700; }
@@ -39,7 +32,6 @@
     .rt-btn--pay { background: var(--rt-ok-bg); color: var(--rt-ok-fg); border-color: var(--rt-ok-bd); }
     .rt-btn--pay:hover:not(:disabled) { background: var(--rt-ok-bg); filter: brightness(1.15); }
 
-    /* ---------- รายละเอียดใบแจ้งหนี้ ---------- */
     .iv-bill { border: 1px solid var(--rt-border); border-radius: 12px; overflow: hidden; margin-top: 18px; }
     .iv-bill-head { padding: 10px 16px; font-size: 0.8rem; font-weight: 600; color: var(--rt-muted); background: var(--rt-card-soft); border-bottom: 1px solid var(--rt-border); }
     .iv-bill-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--rt-border); font-size: 0.9rem; }
@@ -50,7 +42,6 @@
     .iv-grid { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); }
     @media (max-width: 900px) { .iv-grid { grid-template-columns: minmax(0, 1fr); } }
 
-    /* ---------- กล่องโต้ตอบ (dialog) ---------- */
     .iv-dialog { width: min(540px, 94vw); max-height: 92vh; padding: 0; border: 1px solid var(--rt-border); border-radius: 16px; background: var(--rt-card); color: var(--rt-text); box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45); overflow: auto; }
     .iv-dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
     .iv-dialog-body { padding: 22px 24px; }
@@ -74,7 +65,6 @@
     .iv-mode input { margin-top: 3px; flex: none; }
     .iv-mode small { display: block; color: var(--rt-muted); font-size: 0.75rem; margin-top: 2px; }
 
-    /* ---------- toast ---------- */
     .iv-toast-wrap { position: fixed; right: 16px; bottom: 16px; display: flex; flex-direction: column; gap: 8px; z-index: 9999; max-width: min(420px, calc(100vw - 32px)); }
     .iv-toast-wrap .rt-notice { margin: 0; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3); }
 </style>
@@ -85,7 +75,6 @@ window.IV = (function () {
 
     const $ = (id) => document.getElementById(id);
 
-    /* ---------- สร้าง DOM แบบปลอดภัย (ข้อความทั้งหมดเข้าทาง textContent) ---------- */
     function el(tag, attrs, ...kids) {
         const n = document.createElement(tag);
         if (attrs) {
@@ -108,7 +97,6 @@ window.IV = (function () {
         return n;
     }
 
-    /* ไอคอน: ค่าคงที่ในโค้ดเท่านั้น ไม่มีข้อมูลจากผู้ใช้/API */
     const ICONS = {
         card: '<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/>',
         check: '<circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/>',
@@ -122,7 +110,6 @@ window.IV = (function () {
         return holder.firstChild;
     }
 
-    /* ---------- รูปแบบแสดงผล ---------- */
     const day = (s) => String(s ?? '').slice(0, 10);
     const today = () => new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Bangkok' });
 
@@ -139,7 +126,7 @@ window.IV = (function () {
         if (n === null || n === undefined || n === '' || Number.isNaN(v)) return '-';
         return v.toLocaleString('th-TH', { maximumFractionDigits: 2 });
     }
-    function thaiMonth(key) { // '2026-07' → 'กรกฎาคม 2569'
+    function thaiMonth(key) {
         const m = /^(\d{4})-(\d{2})$/.exec(String(key ?? ''));
         if (!m) return '';
         return new Date(Number(m[1]), Number(m[2]) - 1, 1)
@@ -151,7 +138,6 @@ window.IV = (function () {
         return d.toLocaleString('sv-SE', { timeZone: 'Asia/Bangkok' }).slice(0, 16);
     }
 
-    /* เลขใบแจ้งหนี้สำหรับแสดงผล: backend ยังไม่มีเลขเอกสาร จึงประกอบจากปีที่ออกบิลกับ i_id (ไม่ได้เก็บในฐานข้อมูล) */
     function invNo(inv) {
         const year = day(inv?.i_date || inv?.period_start).slice(0, 4) || '----';
         return 'INV-' + year + '-' + String(inv?.i_id ?? '').padStart(4, '0');
@@ -160,7 +146,6 @@ window.IV = (function () {
     const roomName = (inv) => inv?.room?.r_name ?? '-';
     const monthKey = (inv) => day(inv?.period_start).slice(0, 7);
 
-    /* ---------- สถานะ ---------- */
     const STATUS = {
         paid: { label: 'ชำระแล้ว', cls: 'rt-badge--ok' },
         pending: { label: 'รอตรวจสอบ', cls: 'rt-badge--info' },
@@ -184,7 +169,6 @@ window.IV = (function () {
         const s = STATUS[statusKey(inv)];
         return el('span', { class: 'rt-badge ' + s.cls, text: s.label });
     }
-    /* แบ่งยอดเป็น 3 กลุ่มที่รวมกันได้ยอดทั้งหมดพอดี: ชำระแล้ว / ค้างชำระ (UNPAID เกินกำหนด) / รอชำระ (ที่เหลือ) */
     function bucket(inv) {
         const k = statusKey(inv);
         if (k === 'paid') return 'paid';
@@ -194,7 +178,6 @@ window.IV = (function () {
     const METHOD = { TRANSFER: 'โอนเงิน', CASH: 'เงินสด' };
     const methodLabel = (m) => METHOD[m] ?? (m || '-');
 
-    /* ใบนี้ "ยังไม่มีการดำเนินการชำระ" ใช่ไหม (ตรงกับเงื่อนไขที่ backend อนุญาตให้แก้ใบแจ้งหนี้) */
     function isEditable(inv) {
         return inv?.payment?.p_status === 'UNPAID' && (inv.payment.latest_event_id ?? null) === null;
     }
@@ -203,7 +186,6 @@ window.IV = (function () {
         return s === 'UNPAID' || s === 'REJECTED';
     }
 
-    /* ---------- เรียก API ---------- */
     function csrf() { return document.querySelector('meta[name="csrf-token"]')?.content ?? ''; }
 
     async function api(method, url, opts = {}) {
@@ -214,7 +196,7 @@ window.IV = (function () {
             headers['Content-Type'] = 'application/json';
             body = JSON.stringify(opts.json);
         } else if (opts.form) {
-            body = opts.form; // FormData: ให้เบราว์เซอร์ตั้ง Content-Type (multipart) เอง
+            body = opts.form;
         }
         let res;
         try {
@@ -227,7 +209,7 @@ window.IV = (function () {
             return { ok: false, status: 401, body: {} };
         }
         let data = {};
-        try { data = await res.json(); } catch (_) { /* ไม่ใช่ JSON */ }
+        try { data = await res.json(); } catch (_) {  }
         return { ok: res.ok, status: res.status, body: data };
     }
 
@@ -243,7 +225,6 @@ window.IV = (function () {
         return Array.isArray(v) && v[0] ? String(v[0]) : '';
     }
 
-    /* โหลดทุกหน้า (สูงสุด cap หน้า × 100 รายการ) */
     async function fetchAll(path, params = {}, cap = 5) {
         const rows = [];
         let page = 1;
@@ -262,7 +243,6 @@ window.IV = (function () {
         return { ok: true, rows, truncated: last > cap };
     }
 
-    /* ---------- ไฟล์หลักฐาน ---------- */
     async function loadBlob(url) {
         try {
             const res = await fetch(url, { credentials: 'same-origin', headers: { Accept: '*/*' } });
@@ -287,7 +267,6 @@ window.IV = (function () {
         setTimeout(() => URL.revokeObjectURL(f.url), 10000);
     }
 
-    /* ---------- ข้อความแจ้งเตือน ---------- */
     function toast(message, kind = 'ok', ms = 5000) {
         const host = document.querySelector('.rt') || document.body;
         let wrap = host.querySelector(':scope > .iv-toast-wrap');

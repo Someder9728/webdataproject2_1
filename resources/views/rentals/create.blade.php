@@ -1,6 +1,3 @@
-{{-- resources/views/rentals/create.blade.php --}}
-{{-- R2: บันทึกการเช่าใหม่ (Move-in + Contract ฟอร์มเดียว) — หน้าตาแบบ modal ตาม Figma แต่ยังเป็นหน้าแยก (route /rentals/create) --}}
-
 <x-layouts::app :title="__('บันทึกการเช่าใหม่')">
 @include('rentals._styles')
 
@@ -100,7 +97,7 @@
     const API_TENANTS = '/api/v1/tenants?per_page=100';
     const API_ROOMS   = '/api/v1/rooms?r_status=VACANT&per_page=100';
     const RENTALS_INDEX_URL = "{{ route('rentals.index') }}";
-    const TODAY_STR = "{{ now('Asia/Bangkok')->format('Y-m-d') }}"; // ใช้เทียบวันที่มิเตอร์ล่าสุดกับวันนี้
+    const TODAY_STR = "{{ now('Asia/Bangkok')->format('Y-m-d') }}";
     const fetchOpts = { headers: { Accept: 'application/json' }, credentials: 'same-origin' };
 
     const $ = (id) => document.getElementById(id);
@@ -113,9 +110,9 @@
      'meter-warning', 'room-empty-hint', 'af-tenant', 'af-tenant-sub', 'af-room', 'af-room-sub'
     ].forEach((id) => { el[id] = $(id); });
 
-    let tenants = new Map(); // t_id -> tenant
-    let rooms = new Map();   // r_id -> room
-    let submitting = false;  // กันกดซ้ำ
+    let tenants = new Map();
+    let rooms = new Map();
+    let submitting = false;
 
     function csrfToken() {
         return document.querySelector('meta[name="csrf-token"]')?.content ?? '';
@@ -156,7 +153,6 @@
         }
     }
 
-    // id ผู้เช่าที่มีการเช่า ACTIVE อยู่แล้ว (backend ห้ามเช่าซ้อน) — โหลดไม่ได้ก็ไม่เป็นไร backend ยังตรวจอีกชั้น
     async function loadBusyTenantIds() {
         try {
             const res = await fetch('/api/v1/rentals?per_page=100', fetchOpts);
@@ -200,7 +196,6 @@
         el['room-empty-hint'].hidden = list.length > 0;
     }
 
-    // อัปเดตกล่อง Auto Fill + ปุ่มบันทึก (กดได้เมื่อเลือกครบทั้งผู้เช่าและห้อง)
     function refreshAutofill() {
         const tenant = tenants.get(el['f-tenant'].value);
         const room = rooms.get(el['f-room'].value);
@@ -229,20 +224,18 @@
         checkMeterBaseline(room?.r_id);
     });
 
-    // เช็คจาก GET /rooms/{room}/meters (รายการล่าสุด) ว่ามีมิเตอร์ของวันนี้หรือยัง — เป็นแค่คำเตือนล่วงหน้า
     async function checkMeterBaseline(roomId) {
         el['meter-warning'].hidden = true;
         if (!roomId) return;
 
         try {
             const res = await fetch(`/api/v1/rooms/${roomId}/meters?per_page=1`, fetchOpts);
-            if (!res.ok) return; // เช็คไม่ได้ก็ปล่อยผ่าน ให้ backend เป็นคนฟันธงตอน submit
+            if (!res.ok) return;
 
             const body = await res.json();
             const hasBaseline = body.data?.[0]?.m_date === TODAY_STR;
             el['meter-warning'].hidden = hasBaseline;
         } catch (_) {
-            // เงียบไว้ — ไม่ใช่ validation หลัก
         }
     }
 
@@ -266,7 +259,6 @@
         submitting = true;
         el['btn-submit'].disabled = true;
 
-        // body แบบ flat ให้ตรงกับ CreateRental Action ของเกลือ
         const payload = {
             tenants_t_id: tenant.t_id,
             rooms_r_id: room.r_id,
@@ -299,10 +291,9 @@
             }
 
             if (res.status === 409) {
-                // 409 ของจริงไม่มี message ติดมา ต้องใส่ข้อความ generic เอง
                 el['form-error'].textContent = 'ห้องนี้ไม่ว่าง หรือผู้เช่า/ห้องนี้มีรายการ Active อยู่แล้ว — กำลังโหลดข้อมูลล่าสุด';
                 el['form-error'].hidden = false;
-                await loadFormData(); // ห้อง/ผู้เช่าอาจถูกใช้ไปแล้ว โหลดรายการใหม่
+                await loadFormData();
                 return;
             }
 
@@ -310,7 +301,6 @@
                 throw new Error(body.message || 'สร้างการเช่าไม่สำเร็จ');
             }
 
-            // สำเร็จ — พาไปหน้ารายละเอียด (R3)
             window.location.href = RENTALS_INDEX_URL + '/' + body.data.rt_id;
         } catch (err) {
             el['form-error'].textContent = err.message;

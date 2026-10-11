@@ -1,11 +1,7 @@
-{{-- resources/views/invoices/index.blade.php --}}
-{{-- ใบแจ้งหนี้ / การชำระเงิน (รายการ) — Admin เห็นทั้งหมด, Tenant เห็นเฉพาะของตัวเอง (กรองที่ API)
-     เรียก GET /api/v1/invoices (month ส่งไปกรองที่ API, ค้นหา/สถานะกรองในหน้า) --}}
 <x-layouts::app :title="__('ใบแจ้งหนี้ / การชำระ')">
 @include('invoices._base')
 
 <div class="rt rt-page" id="iv-root" data-admin="{{ auth()->user()?->u_role === 'admin' ? '1' : '0' }}">
-    {{-- กล่องโต้ตอบต้องอยู่ "ภายใน" .rt เพื่อให้ได้ตัวแปรสี (--rt-*) ของธีม --}}
     @include('invoices._pay-modals')
     @if (auth()->user()?->u_role === 'admin')
         @include('invoices._issue-modal')
@@ -25,7 +21,6 @@
         </div>
     </div>
 
-    {{-- ผู้เช่า: แถบเตือนยอดค้าง (ตาม Figma "ค่าเช่าและการชำระเงินของฉัน") --}}
     @if (auth()->user()?->u_role !== 'admin')
         <div id="iv-due-banner" class="rt-notice rt-notice--warn" role="status" hidden>
             <strong>มีรายการที่ยังไม่ได้ชำระ</strong><br>
@@ -108,11 +103,10 @@
     let loadSeq = 0;
     let searchTimer = null;
 
-    // ไอคอนของการ์ดสรุป
     [['ic-total', 'card'], ['ic-paid', 'check'], ['ic-waiting', 'clock'], ['ic-overdue', 'alert']]
         .forEach(([id, name]) => $(id).appendChild(IV.icon(name)));
 
-    function showState(which) { // 'loading' | 'error' | 'ready'
+    function showState(which) {
         $('iv-state-loading').hidden = which !== 'loading';
         $('iv-state-error').hidden = which !== 'error';
         $('iv-card').hidden = which !== 'ready';
@@ -124,7 +118,7 @@
         if (!silent) showState('loading');
         const month = $('iv-month').value;
         const res = await IV.fetchAll('/api/v1/invoices', /^\d{4}-\d{2}$/.test(month) ? { month } : {}, 5);
-        if (my !== loadSeq) return; // มีคำขอใหม่กว่าแล้ว
+        if (my !== loadSeq) return;
         if (!res.ok) {
             if (silent) { IV.toast(res.message, 'err'); return; }
             IV.setText('iv-error-message', res.message);
@@ -160,10 +154,9 @@
         $('iv-month-clear').hidden = !/^\d{4}-\d{2}$/.test(month);
     }
 
-    // ผู้เช่า: ยอดที่ยังต้องจ่าย = รอชำระ + ค้างชำระ + ถูกปฏิเสธ (รอตรวจสอบนับแยก เพราะส่งหลักฐานแล้ว)
     function renderDueBanner() {
         const banner = $('iv-due-banner');
-        if (!banner) return; // admin ไม่มีแถบนี้
+        if (!banner) return;
         const due = all.filter((i) => ['unpaid', 'overdue', 'rejected'].includes(IV.statusKey(i)));
         const pending = all.filter((i) => IV.statusKey(i) === 'pending').length;
         banner.hidden = due.length === 0;

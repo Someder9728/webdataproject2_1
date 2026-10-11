@@ -1,9 +1,5 @@
-{{-- resources/views/rentals/show.blade.php --}}
-{{-- R3: รายละเอียดการเช่า — การ์ดผู้เช่า/ห้อง/การเช่า/สัญญา (R4 อยู่ในการ์ดสัญญา) + ไทม์ไลน์ประวัติการเช่า --}}
-
 <x-layouts::app :title="__('รายละเอียดการเช่า')">
 @include('rentals._styles')
-{{-- ผู้เช่าเปิดหน้านี้ได้ด้วย (เห็นเฉพาะการเช่าของตัวเอง) → ลิงก์ย้อนกลับไปหน้าการเช่าของฉัน --}}
 @php($backUrl = auth()->user()?->u_role === 'admin' ? route('rentals.index') : route('my.rentals'))
 @php($backLabel = auth()->user()?->u_role === 'admin' ? 'การเช่า' : 'การเช่าของฉัน')
 
@@ -22,7 +18,6 @@
                 <h1 class="rt-title" id="detail-title">การเช่า</h1>
             </div>
             <div class="rt-head-actions">
-                {{-- ปุ่มย้ายออก: แสดงเฉพาะเมื่อ ACTIVE และเป็น admin — กดแล้วเปิด modal (_move-out-modal) --}}
                 @if (auth()->user()?->u_role === 'admin')
                     <button type="button" id="btn-move-out" class="rt-btn rt-btn--danger" data-action="move-out"
                             data-rental-id="{{ $rentalId }}" hidden>ย้ายออก</button>
@@ -32,7 +27,6 @@
         </div>
 
         <div class="rt-grid">
-            {{-- คอลัมน์ซ้าย: ผู้เช่า + ห้อง --}}
             <div class="rt-col">
                 <section class="rt-card" aria-labelledby="tenant-card-title">
                     <div class="rt-card-head"><h2 class="rt-card-title" id="tenant-card-title">ข้อมูลผู้เช่า</h2></div>
@@ -61,7 +55,6 @@
                 </section>
             </div>
 
-            {{-- คอลัมน์ขวา: การเช่า + สัญญา + ไทม์ไลน์ --}}
             <div class="rt-col">
                 <section class="rt-card" aria-labelledby="rental-card-title">
                     <div class="rt-card-head">
@@ -75,14 +68,12 @@
                     </div>
                 </section>
 
-                {{-- R4: การ์ดสัญญา + ฟอร์มแก้ไข/ต่อสัญญา --}}
                 @include('rentals.contract', ['rentalId' => $rentalId])
 
                 <section class="rt-card rt-card--flush" aria-labelledby="timeline-title">
                     <div class="rt-card-head"><h2 class="rt-card-title rt-card-title--lg" id="timeline-title">ประวัติการเช่า</h2></div>
                     <div style="padding:16px 20px;">
                         <ul class="rt-timeline" id="timeline-list"></ul>
-                        {{-- สถานะการโหลดประวัติแก้/ต่อสัญญา (เฉพาะ admin) --}}
                         <div class="rt-tl-note" id="history-note" hidden>
                             <span id="history-note-text"></span>
                             <button type="button" id="history-retry" class="rt-btn rt-btn--sm" hidden>ลองใหม่</button>
@@ -93,7 +84,6 @@
         </div>
     </div>
 
-    {{-- Modal ย้ายออก (Move-out) — เฉพาะ admin --}}
     @if (auth()->user()?->u_role === 'admin')
         @include('rentals._move-out-modal')
     @endif
@@ -104,14 +94,12 @@
     const page = document.getElementById('rental-detail-page');
     const rentalId = page.dataset.rentalId;
     const API_URL = `/api/v1/rentals/${rentalId}`;
-    // ประวัติแก้/ต่อสัญญา — API เป็น admin-only (ผู้เช่าได้ 403) จึงเรียกเฉพาะเมื่อเป็น admin
     const IS_ADMIN = @json(auth()->user()?->u_role === 'admin');
     const HISTORY_URL = `/api/v1/rentals/${rentalId}/history`;
     const HISTORY_PER_PAGE = 100;
-    const HISTORY_MAX_PAGES = 10; // อ่านได้สูงสุด 1,000 รายการ เกินนี้แจ้งว่าแสดงไม่ครบ
+    const HISTORY_MAX_PAGES = 10;
     const fetchOpts = { headers: { Accept: 'application/json' }, credentials: 'same-origin' };
 
-    // ค่าสถานะยืนยันกับ backend แล้ว
     const STATUS_LABEL = {
         ACTIVE: { text: 'กำลังเช่า', long: 'กำลังเช่าอยู่', cls: 'rt-badge--ok' },
         ENDED:  { text: 'สิ้นสุดแล้ว', long: 'สิ้นสุดแล้ว', cls: 'rt-badge--off' },
@@ -126,7 +114,6 @@
     const money = (n) => '฿' + Number(n).toLocaleString('th-TH', { maximumFractionDigits: 2 });
     const escapeHtml = (s) => { const d = document.createElement('div'); d.textContent = s ?? ''; return d.innerHTML; };
 
-    // ข้อมูลที่ใช้สร้างไทม์ไลน์ — ค่อย ๆ เติมเมื่อแต่ละส่วนโหลดเสร็จ
     const tl = { rental: null, contract: null, history: [], historyComplete: false };
 
     async function loadDetail() {
@@ -159,14 +146,12 @@
         $('detail-title').textContent = `การเช่า · ${tenantName}`;
         set('d-crumb', tenantName);
 
-        // การ์ดผู้เช่า (ข้อมูลที่ API รายการเช่ามีให้ก่อน — อีเมลโหลดเพิ่มทีหลัง)
         set('d-avatar', tenantName !== '-' ? tenantName.charAt(0) : '?');
         set('d-tenant', tenantName);
         set('d-tenant-code', r.tenant ? 'TN-' + String(r.tenant.t_id).padStart(3, '0') : '-');
         set('d-tel', r.tenant?.t_tel);
         set('d-mail', '-');
 
-        // การ์ดห้อง
         set('d-room', roomName);
         set('d-floor', r.room?.r_floor != null ? `ชั้น ${r.room.r_floor}` : '-');
         set('d-type', r.room?.r_type);
@@ -176,7 +161,6 @@
             ? `<span class="rt-badge ${rs.cls}">${rs.text}</span>`
             : escapeHtml(r.room?.r_status ?? '-');
 
-        // การ์ดการเช่า
         const st = STATUS_LABEL[r.rt_status] || { text: r.rt_status, long: r.rt_status, cls: 'rt-badge--off' };
         set('d-movein', r.rt_movein);
         set('d-moveout', r.rt_moveout);
@@ -184,7 +168,7 @@
         $('d-status').textContent = st.text;
         $('d-status').className = 'rt-badge ' + st.cls;
 
-        const moveOutBtn = $('btn-move-out'); // มีเฉพาะ admin
+        const moveOutBtn = $('btn-move-out');
         if (moveOutBtn) {
             moveOutBtn.hidden = r.rt_status !== 'ACTIVE';
             moveOutBtn.onclick = () => window.RentalMoveOut.open({
@@ -193,7 +177,7 @@
                 roomName,
                 roomId: r.room?.r_id ?? null,
                 moveIn: r.rt_movein,
-                onDone: () => window.location.reload(), // ข้อมูลหลายส่วน (สัญญา/ไทม์ไลน์/ห้อง) เปลี่ยนพร้อมกัน จึงโหลดหน้าใหม่
+                onDone: () => window.location.reload(),
             });
         }
 
@@ -202,16 +186,13 @@
 
         renderTimeline();
 
-        // บอกการ์ดสัญญาว่าการเช่านี้สถานะอะไร (ย้ายออกแล้ว → แก้สัญญาไม่ได้)
-        window.__rentalInfo = r; // เผื่อการ์ดสัญญายังไม่ทันฟัง event
+        window.__rentalInfo = r;
         document.dispatchEvent(new CustomEvent('rental:loaded', { detail: r }));
 
-        // โหลดส่วนเสริมแบบไม่บล็อกหน้า — พลาดก็แค่แสดง "-"
         if (r.tenant?.t_id) loadTenantExtra(r.tenant.t_id);
         if (r.room?.r_id) loadRoomExtra(r.room.r_id);
         if (IS_ADMIN) loadHistory();
 
-        // สัญญาอาจโหลดเสร็จก่อนแล้ว
         if (window.__rentalContract) onContract(window.__rentalContract);
     }
 
@@ -221,7 +202,7 @@
             if (!res.ok) return;
             const body = await res.json();
             set('d-mail', body.data?.t_mail);
-        } catch (_) { /* เงียบไว้ */ }
+        } catch (_) {  }
     }
 
     async function loadRoomExtra(roomId) {
@@ -230,12 +211,9 @@
             if (!res.ok) return;
             const body = await res.json();
             if (body.data?.r_rent != null) set('d-room-rent', money(body.data.r_rent) + '/เดือน');
-        } catch (_) { /* เงียบไว้ */ }
+        } catch (_) {  }
     }
 
-    // ---------- ไทม์ไลน์ ----------
-    // ย้ายเข้า / สร้างสัญญา / ย้ายออก / สัญญาสิ้นสุด มาจากข้อมูลการเช่า + สัญญา
-    // แก้/ต่อสัญญา มาจาก GET /api/v1/rentals/{id}/history (admin เท่านั้น)
     function onContract(c) {
         tl.contract = c;
         renderTimeline();
@@ -243,7 +221,6 @@
     document.addEventListener('rental:contract-loaded', (e) => onContract(e.detail));
     document.addEventListener('rental:contract-updated', (e) => {
         onContract(e.detail);
-        // audit ใหม่ถูกบันทึกพร้อมการแก้ไขแล้ว → โหลดประวัติใหม่จาก API (ไม่เติมรายการเอง กันซ้ำ)
         if (IS_ADMIN) loadHistory();
     });
 
@@ -255,7 +232,6 @@
         $('history-retry').hidden = !canRetry;
     }
 
-    // อ่านทุกหน้าตาม meta.last_page (ไม่ถือว่าหน้าแรกคือประวัติทั้งหมด)
     async function loadHistory() {
         const mySeq = ++historySeq;
         showHistoryNote('กำลังโหลดประวัติการแก้ไขสัญญา...', false);
@@ -267,7 +243,7 @@
                 const res = await fetch(`${HISTORY_URL}?page=${page}&per_page=${HISTORY_PER_PAGE}`, fetchOpts);
                 if (mySeq !== historySeq) return;
                 if (res.status === 401) { window.location.href = '/login'; return; }
-                if (res.status === 403) { showHistoryNote('', false); return; } // ไม่มีสิทธิ์ดูประวัติ → แสดงเฉพาะไทม์ไลน์พื้นฐาน
+                if (res.status === 403) { showHistoryNote('', false); return; }
                 if (!res.ok) throw new Error(String(res.status));
                 const body = await res.json();
                 events.push(...(body.data ?? []));
@@ -292,8 +268,6 @@
     const CONTRACT_STATUS_TEXT = { ACTIVE: 'มีผล', EXPIRED: 'หมดอายุ', ENDED: 'สิ้นสุด' };
     const endText = (d) => d || 'ไม่กำหนด';
 
-    // แปลง audit 1 รายการ → รายการไทม์ไลน์
-    // created_at เป็นเวลาไทยอยู่แล้ว (+07:00) จึงตัดสตริงตรง ๆ ไม่แปลงเขตเวลาซ้ำ
     function historyItem(ev) {
         const oldV = ev.old_values || {};
         const newV = ev.new_values || {};
@@ -329,7 +303,6 @@
             kind: 'edit',
             title,
             desc: parts.join(' · '),
-            // ไม่เดาชื่อผู้แก้จาก admin ที่ล็อกอินอยู่ — ไม่มีข้อมูลก็บอกตรง ๆ
             by: ev.actor?.u_username ? `โดย ${ev.actor.u_username}` : 'ไม่พบข้อมูลผู้ดำเนินการ',
             reason: ev.reason ?? 'ไม่ได้ระบุ',
         };
@@ -345,7 +318,6 @@
             items.push({ date: r.rt_movein, order: 0, title: 'ย้ายเข้า', desc: `ห้อง ${roomName}`, kind: '' });
         }
         if (tl.contract?.c_start) {
-            // ถ้ามีประวัติแก้ไขครบ วันสิ้นสุดตอนทำสัญญา = ค่าเดิมของการแก้ไขครั้งแรก (ไม่ใช่ค่าปัจจุบัน)
             const oldest = tl.historyComplete ? tl.history[tl.history.length - 1] : null;
             const firstEnd = oldest && 'c_end' in (oldest.old_values || {}) ? oldest.old_values.c_end : tl.contract.c_end;
             const end = firstEnd ? `สิ้นสุด ${firstEnd}` : 'ไม่กำหนดวันสิ้นสุด';
@@ -355,7 +327,6 @@
         if (r.rt_moveout) {
             items.push({ date: r.rt_moveout, order: 3, kind: 'end', title: 'ย้ายออก', desc: `ห้อง ${roomName}` });
         }
-        // สัญญาสิ้นสุด — backend ตั้ง c_status = ENDED ตอนย้ายออก (ไม่ได้แก้ c_end) จึงใช้วันย้ายออกเป็นหลัก
         if (tl.contract?.c_status === 'ENDED') {
             const endDate = r.rt_moveout || tl.contract.c_end;
             if (endDate) items.push({ date: endDate, order: 4, kind: 'end', title: 'สัญญาสิ้นสุด', desc: tl.contract.c_number || '' });
@@ -363,7 +334,6 @@
 
         tl.history.forEach((ev) => items.push(historyItem(ev)));
 
-        // เรียงตามวันที่ → ลำดับเหตุการณ์ในวันเดียวกัน → เวลา/ae_id ของการแก้ไข
         items.sort((a, b) => {
             if (a.date !== b.date) return a.date < b.date ? -1 : 1;
             if (a.order !== b.order) return a.order - b.order;

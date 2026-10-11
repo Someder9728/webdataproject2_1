@@ -1,6 +1,3 @@
-{{-- resources/views/rentals/index.blade.php --}}
-{{-- R1: รายการการเช่า (Admin) — เรียก GET /api/v1/rentals แล้วแยกแสดง "การเช่าปัจจุบัน" / "ประวัติการเช่า" ฝั่งหน้าเว็บ --}}
-
 <x-layouts::app :title="__('การเช่า')">
 @include('rentals._styles')
 
@@ -38,7 +35,6 @@
     <div id="rental-state-empty" class="rt-card rt-state" hidden>ยังไม่มีรายการการเช่า</div>
 
     <div id="rental-lists" class="rt-stack" hidden>
-        {{-- การเช่าปัจจุบัน (rt_status = ACTIVE) --}}
         <section class="rt-card rt-card--flush" aria-labelledby="active-title">
             <div class="rt-card-head">
                 <h2 class="rt-card-title rt-card-title--lg" id="active-title">การเช่าปัจจุบัน</h2>
@@ -60,7 +56,6 @@
             </div>
         </section>
 
-        {{-- ประวัติการเช่า (rt_status = ENDED) --}}
         <section class="rt-card rt-card--flush" aria-labelledby="history-title">
             <div class="rt-card-head">
                 <h2 class="rt-card-title rt-card-title--lg" id="history-title">ประวัติการเช่า</h2>
@@ -89,17 +84,14 @@
         <button type="button" id="btn-next-page" class="rt-btn rt-btn--sm">ถัดไป</button>
     </div>
 
-    {{-- Modal ย้ายออก (Move-out) --}}
     @include('rentals._move-out-modal')
 </div>
 
 <script>
 (function () {
-    // ดึงทีละ 100 (สูงสุดที่ API อนุญาต) เพื่อให้แยกกำลังเช่า/สิ้นสุดแล้วฝั่งหน้าเว็บได้ครบในหน้าเดียวเท่าที่ทำได้
     const API_BASE = '/api/v1/rentals';
     const PER_PAGE = 100;
 
-    // ค่า rt_status ยืนยันกับ backend แล้ว: ACTIVE / ENDED
     const STATUS_LABEL = {
         ACTIVE: { text: 'กำลังเช่า', cls: 'rt-badge--ok' },
         ENDED:  { text: 'สิ้นสุดแล้ว', cls: 'rt-badge--off' },
@@ -125,11 +117,10 @@
     };
 
     let state = { page: 1, search: '' };
-    let rowsById = new Map(); // rt_id -> ข้อมูลแถว (ใช้ส่งให้ modal ย้ายออก)
+    let rowsById = new Map();
     let searchDebounce = null;
-    let loadSeq = 0; // เลขลำดับคำขอ — ใช้ทิ้งคำตอบเก่าที่มาช้า (เช่น พิมพ์ค้นหาต่อระหว่างที่ยังโหลดอยู่)
+    let loadSeq = 0;
 
-    // แสดง banner หลังสร้างการเช่าสำเร็จ (?created=1)
     if (new URLSearchParams(window.location.search).get('created') === '1') {
         el.banner.textContent = 'สร้างการเช่าสำเร็จ';
         el.banner.hidden = false;
@@ -168,7 +159,7 @@
             }
 
             const body = await res.json();
-            if (mySeq !== loadSeq) return; // มีคำขอใหม่กว่าแล้ว
+            if (mySeq !== loadSeq) return;
             render(body.data, body.meta);
         } catch (err) {
             if (mySeq !== loadSeq) return;
@@ -196,7 +187,6 @@
             ? ended.map(historyRowHtml).join('')
             : emptyRowHtml('ยังไม่มีประวัติการเช่า');
 
-        // นับเฉพาะรายการที่โหลดมาในหน้านี้ (ถ้าทั้งหมดเกิน 100 รายการจะมีปุ่มเปลี่ยนหน้า)
         const lastPage = Math.max(1, Math.ceil(meta.total / meta.per_page));
         el.summary.textContent = lastPage > 1
             ? `หน้านี้: กำลังเช่า ${active.length} รายการ · สิ้นสุดแล้ว ${ended.length} รายการ (ทั้งหมด ${meta.total} รายการ)`
@@ -228,7 +218,6 @@
         const initial = name !== '-' ? name.charAt(0) : '?';
         const room = r.room ? r.room.r_name : '-';
 
-        // ปุ่ม "ย้ายออก" เปิด modal (ดู _move-out-modal.blade.php) ผ่าน event delegation ด้านล่าง
         return `
             <tr>
                 <td><div class="rt-person"><span class="rt-avatar">${escapeHtml(initial)}</span>${escapeHtml(name)}</div></td>
@@ -277,7 +266,6 @@
         }, 300);
     });
 
-    // กด "ย้ายออก" → เปิด modal แล้วรีเฟรชรายการเมื่อย้ายออกสำเร็จ
     el.activeBody.addEventListener('click', (e) => {
         const btn = e.target.closest('[data-action="move-out"]');
         if (!btn) return;

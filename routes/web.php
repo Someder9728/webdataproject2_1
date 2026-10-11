@@ -20,7 +20,6 @@ Route::middleware(['auth', 'password.changed', 'role:admin'])
             ->name('rentals.create');
     });
 
-// รายละเอียดการเช่า — Admin ดูได้ทุกการเช่า, Tenant ดูได้เฉพาะของตัวเอง (API ตรวจสิทธิ์ แล้วตอบ 404 ถ้าไม่ใช่ของตน)
 Route::middleware(['auth', 'password.changed', 'role:admin,tenant'])
     ->group(function () {
         Route::get('/rentals/{rental}', [RentalPageController::class, 'show'])
@@ -28,7 +27,6 @@ Route::middleware(['auth', 'password.changed', 'role:admin,tenant'])
             ->name('rentals.show');
     });
 
-// ฝั่งผู้เช่า — แสดงเฉพาะข้อมูลของผู้ที่ล็อกอิน (API กรองตาม tenants_t_id ให้แล้ว)
 Route::middleware(['auth', 'password.changed', 'role:tenant'])
     ->group(function () {
         Route::get('/my/rentals', [RentalPageController::class, 'mine'])
@@ -38,8 +36,6 @@ Route::middleware(['auth', 'password.changed', 'role:tenant'])
         Route::view('/my/profile', 'tenant.profile')->name('my.profile');
     });
 
-// ใบแจ้งหนี้ / การชำระเงิน — Admin และ Tenant ใช้หน้าเดียวกัน แยกสิทธิ์ที่ API
-// (/history ต้องประกาศก่อน /{invoice} เพื่อไม่ให้ถูกมองเป็นเลขที่ใบแจ้งหนี้)
 Route::middleware(['auth', 'password.changed', 'role:admin,tenant'])
     ->group(function () {
         Route::get('/invoices', [InvoicePageController::class, 'index'])
