@@ -107,7 +107,10 @@
                     if (contractResponse.ok) {
                         const contract = (await contractResponse.json()).data;
                         byId('tenant-contract-end').textContent = `สิ้นสุด ${date(contract.c_end)}`;
-                        if (contract.c_rent) byId('tenant-rent').textContent = `${money(contract.c_rent)}/เดือน`;
+                        byId('tenant-rent').textContent =
+                            contract.c_rent != null
+                                ? `${money(contract.c_rent)}/เดือน`
+                                : 'ไม่พบค่าเช่าในสัญญา';
                     }
                 }
             } else {
@@ -123,7 +126,6 @@
             byId('tenant-outstanding-count').textContent = `${openInvoices.length} รายการยังไม่ชำระ`;
             const latest = invoices[0];
             if (latest) {
-                if (latest.i_rent) byId('tenant-rent').textContent = `${money(latest.i_rent)}/เดือน`;
                 const utility = Number(latest.i_water ?? 0) + Number(latest.i_elec ?? 0);
                 byId('tenant-latest-utilities').textContent = money(utility);
                 byId('tenant-latest-usage').textContent = `น้ำ ${latest.water_usage ?? '—'} + ไฟ ${latest.elec_usage ?? '—'} หน่วย`;
