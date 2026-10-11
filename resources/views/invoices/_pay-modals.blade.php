@@ -1,15 +1,8 @@
-{{-- resources/views/invoices/_pay-modals.blade.php --}}
-{{-- กล่องโต้ตอบเกี่ยวกับการชำระเงิน — ใช้ภายใน <div class="rt ..."> ของหน้า index / show
-     window.InvoicePay.walkIn(invoiceId, onDone)      Admin: บันทึกรับชำระหน้าเคาน์เตอร์  POST /api/v1/invoices/{id}/payment/walk-in
-     window.InvoicePay.review(invoiceId, onDone)      Admin: อนุมัติ/ปฏิเสธหลักฐาน        POST /api/v1/invoices/{id}/payment/review
-     window.InvoicePay.submitProof(invoiceId, onDone) Tenant: ส่งหลักฐานการโอน            POST /api/v1/invoices/{id}/payment/submit
-     ทุกครั้งที่เปิด จะโหลดใบแจ้งหนี้ล่าสุดจาก API ก่อน (ใช้ latest_event_id กันการกดซ้อนกัน) --}}
 @include('invoices._base')
 
 @php($payIsAdmin = auth()->user()?->u_role === 'admin')
 
 @if ($payIsAdmin)
-{{-- ================= Admin: บันทึกการรับชำระ (Walk-in) ================= --}}
 <dialog class="iv-dialog" id="wi-dialog" aria-labelledby="wi-title">
     <div class="iv-dialog-body">
         <div class="rt-modal-head">
@@ -64,7 +57,6 @@
     </div>
 </dialog>
 
-{{-- ================= Admin: ตรวจหลักฐานการโอน (อนุมัติ / ปฏิเสธ) ================= --}}
 <dialog class="iv-dialog" id="rv-dialog" aria-labelledby="rv-title">
     <div class="iv-dialog-body">
         <div class="rt-modal-head">
@@ -115,7 +107,6 @@
 @endif
 
 @if (! $payIsAdmin)
-{{-- ================= Tenant: ส่งหลักฐานการโอนเงิน ================= --}}
 <dialog class="iv-dialog" id="sp-dialog" aria-labelledby="sp-title">
     <div class="iv-dialog-body">
         <div class="rt-modal-head">
@@ -163,7 +154,7 @@
 <script>
 (function () {
     const { $, el } = IV;
-    const MAX_BYTES = 5 * 1024 * 1024; // backend: max 5120 KB
+    const MAX_BYTES = 5 * 1024 * 1024;
     const FILE_EXT = ['jpg', 'jpeg', 'png', 'pdf'];
 
     async function freshInvoice(id) {
@@ -184,7 +175,6 @@
 
     const STALE_MSG = 'สถานะของใบแจ้งหนี้เปลี่ยนไปแล้ว (อาจมีผู้อื่นทำรายการก่อน) กรุณาปิดหน้าต่างนี้ — ระบบจะโหลดข้อมูลใหม่ให้';
 
-    /* ====================== Walk-in (Admin) ====================== */
     const wiDlg = $('wi-dialog');
     if (wiDlg) {
         let cur = null, busy = false, finished = false, stale = false, opening = false;
@@ -194,7 +184,7 @@
         };
 
         async function openWalkIn(invoiceId, onDone) {
-            if (cur || opening) return; // กันกดซ้ำระหว่างโหลด/เปิดอยู่แล้ว
+            if (cur || opening) return;
             opening = true;
             let inv;
             try { inv = await freshInvoice(invoiceId); } finally { opening = false; }
@@ -293,7 +283,6 @@
         window.__ivWalkIn = openWalkIn;
     }
 
-    /* ====================== ตรวจหลักฐาน (Admin) ====================== */
     const rvDlg = $('rv-dialog');
     if (rvDlg) {
         let cur = null, busy = false, finished = false, stale = false, opening = false, blobUrl = null, seq = 0;
@@ -334,7 +323,7 @@
                 box.replaceChildren(el('p', { class: 'rt-notice rt-notice--err', style: 'margin:0', text: 'ชนิดไฟล์หลักฐานไม่รองรับ' }));
                 return;
             }
-            $('rv-approve').disabled = false; // อนุมัติได้เมื่อเห็นหลักฐานแล้วเท่านั้น
+            $('rv-approve').disabled = false;
         }
 
         async function openReview(invoiceId, onDone) {
@@ -428,7 +417,6 @@
         window.__ivReview = openReview;
     }
 
-    /* ====================== ส่งหลักฐาน (Tenant) ====================== */
     const spDlg = $('sp-dialog');
     if (spDlg) {
         let cur = null, busy = false, finished = false, stale = false, opening = false;

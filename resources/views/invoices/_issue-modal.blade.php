@@ -1,11 +1,3 @@
-{{-- resources/views/invoices/_issue-modal.blade.php --}}
-{{-- Admin: ออกใบแจ้งหนี้ใหม่ — 2 ขั้น: คำนวณ/ตรวจยอด (POST /api/v1/invoices/preview) แล้วค่อยออกจริง (POST /api/v1/invoices)
-     มี 2 โหมด:
-       - auto   : ส่งแค่ rentals_rt_id ให้ backend หารอบที่ยังไม่ออกบิล (เติมช่องว่างแรก) แล้วคืนช่วงมาให้ดู
-       - manual : เลือก period_start / period_end เอง (แบบเดิม)
-     ตอนยืนยัน ส่ง period_start / period_end "ที่ได้จากผลพรีวิว" เสมอ เพื่อให้ออกบิลตรงช่วงที่ผู้ใช้เห็น
-     รายการการเช่ามีทั้งที่กำลังเช่า และที่ย้ายออกแล้ว (ไว้ออกบิลช่วงที่ยังขาด เช่น หลังแก้ช่วงบิลเก่า — backend คิดได้ไม่เกินวันย้ายออก)
-     เรียก: window.InvoiceIssue.open(onDone) --}}
 @include('invoices._base')
 
 <dialog class="iv-dialog" id="is-dialog" aria-labelledby="is-title">
@@ -17,7 +9,6 @@
         <p class="iv-steps-line" id="is-step-line">ขั้นที่ 1 จาก 2 — เลือกการเช่าและช่วงคิดเงิน</p>
         <p id="is-banner" class="rt-notice rt-notice--err" hidden></p>
 
-        {{-- ขั้น 1 --}}
         <form id="is-form" novalidate>
             <div class="rt-form-field">
                 <label for="is-rental">การเช่า <span class="rt-req">*</span></label>
@@ -65,7 +56,6 @@
             </div>
         </form>
 
-        {{-- ขั้น 2 --}}
         <div id="is-step2" hidden>
             <div class="iv-summary">
                 <dl>
@@ -129,7 +119,6 @@
         }
         const byRoom = (a, b) => String(a.room?.r_name ?? '').localeCompare(String(b.room?.r_name ?? ''), 'th', { numeric: true });
         const active = res.rows.filter((r) => r.rt_status === 'ACTIVE').sort(byRoom);
-        // ย้ายออกแล้ว: ล่าสุดขึ้นก่อน
         const ended = res.rows
             .filter((r) => r.rt_status === 'ENDED' && r.rt_moveout)
             .sort((a, b) => (a.rt_moveout < b.rt_moveout ? 1 : a.rt_moveout > b.rt_moveout ? -1 : 0));
@@ -137,7 +126,6 @@
             sel.replaceChildren(el('option', { value: '', text: 'ยังไม่มีการเช่า' }));
             return;
         }
-        // เก็บวันเข้า/ย้ายออกไว้ที่ option เพื่อจำกัดช่วงวันที่ในโหมดกำหนดเอง
         const option = (r, label) => el('option', {
             value: String(r.rt_id),
             text: label,
@@ -154,13 +142,11 @@
         applyRentalRange();
     }
 
-    // วันเข้า/ย้ายออกของการเช่าที่เลือก (ไม่ได้เลือก → null)
     function selectedRange() {
         const opt = $('is-rental').selectedOptions[0];
         if (!opt || !opt.value) return null;
         return { movein: opt.dataset.movein || '', moveout: opt.dataset.moveout || '' };
     }
-    // จำกัดช่องวันที่ในโหมดกำหนดเอง: ไม่ก่อนวันเข้า ไม่เกินวันนี้หรือวันย้ายออก
     function applyRentalRange() {
         const r = selectedRange();
         const today = IV.today();
@@ -217,7 +203,6 @@
     function readForm() {
         const f = { rentals_rt_id: Number($('is-rental').value) || null };
         if (!isAuto()) {
-            // โหมด auto ต้อง "ไม่ส่ง" ทั้งสองวัน (backend จะหารอบให้) — ส่งแค่วันเดียวจะได้ 422
             f.period_start = $('is-start').value;
             f.period_end = $('is-end').value;
         }
@@ -227,7 +212,7 @@
     function mapErrors(r) {
         let shown = false;
         const fields = isAuto()
-            ? [['rentals_rt_id', 'is-err-rental']]   // ช่องวันที่ซ่อนอยู่ → error ของช่วงไปแสดงที่ banner แทน
+            ? [['rentals_rt_id', 'is-err-rental']]
             : [['rentals_rt_id', 'is-err-rental'], ['period_start', 'is-err-start'], ['period_end', 'is-err-end']];
         for (const [field, id] of fields) {
             const m = IV.fieldError(r, field);
@@ -235,14 +220,12 @@
         }
         return shown;
     }
-    // ข้อความ error ของช่วงคิดเงินในโหมด auto (แสดงที่ banner พร้อมคำแนะนำ)
     function autoPeriodMessage(r) {
         const msgs = ['period_start', 'period_end', 'rental'].map((k) => IV.fieldError(r, k)).filter(Boolean);
         if (!msgs.length) return '';
         return 'รอบถัดไปที่ระบบหาให้: ' + msgs.join(' / ')
             + ' — ถ้าต้องการคิดบางช่วง ให้เลือก "กำหนดวันเอง"';
     }
-    // backend ตอบ 409 ด้วยข้อความกลางเสมอ ("ข้อมูลมีการเปลี่ยนแปลงหรือขัดแย้ง...") จึงอธิบายเองตามโหมดและการเช่าที่เลือก
     function conflictMessage(r) {
         if (r.status !== 409) return IV.errMsg(r, 'ทำรายการไม่สำเร็จ (' + r.status + ')');
         if (isAuto()) {
@@ -255,7 +238,6 @@
         return 'ออกใบแจ้งหนี้ไม่ได้: ช่วงเวลานี้ทับซ้อนกับใบแจ้งหนี้ที่มีอยู่แล้วของการเช่านี้ (หรือสถานะข้อมูลเปลี่ยนไป)';
     }
 
-    /* ขั้น 1 → คำนวณ */
     $('is-form').addEventListener('submit', async (e) => {
         e.preventDefault();
         if (busy) return;
@@ -264,7 +246,7 @@
         const today = IV.today();
         let ok = true;
         if (!f.rentals_rt_id) { IV.setText('is-err-rental', 'กรุณาเลือกการเช่า'); ok = false; }
-        if (!isAuto()) { // โหมด auto ไม่ต้องตรวจวันที่ — backend หาให้และตรวจเอง
+        if (!isAuto()) {
             if (!f.period_start) { IV.setText('is-err-start', 'กรุณาเลือกวันเริ่ม'); ok = false; }
             if (!f.period_end) { IV.setText('is-err-end', 'กรุณาเลือกวันสิ้นสุด'); ok = false; }
             else if (f.period_start && f.period_end <= f.period_start) { IV.setText('is-err-end', 'วันสิ้นสุดต้องอยู่หลังวันเริ่ม'); ok = false; }
@@ -297,7 +279,6 @@
             return;
         }
         const d = r.body.data ?? {};
-        // ยืนยันด้วยช่วงที่ backend คืนมาในพรีวิว (โหมด auto ไม่มีวันในฟอร์ม)
         snapshot = { rentals_rt_id: f.rentals_rt_id, period_start: d.period_start, period_end: d.period_end };
         const opt = $('is-rental').selectedOptions[0];
         IV.setText('is-p-who', opt ? opt.textContent.replace(/^ห้อง\s*/, 'ห้อง ').replace(' — ', ' / ') : '-');
@@ -313,7 +294,6 @@
         showStep(2);
     });
 
-    /* ขั้น 2 → ออกจริง */
     $('is-issue-btn').addEventListener('click', async () => {
         if (busy || !snapshot) return;
         clear();
@@ -333,7 +313,6 @@
             return;
         }
         if (r.status === 422) {
-            // ข้อมูลเปลี่ยนไประหว่างพรีวิวกับยืนยัน (เช่น มิเตอร์ถูกแก้) → กลับไปขั้น 1 พร้อมข้อความ
             showStep(1);
             const shown = mapErrors(r);
             const autoMsg = isAuto() ? autoPeriodMessage(r) : '';

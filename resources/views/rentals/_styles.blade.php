@@ -1,6 +1,3 @@
-{{-- resources/views/rentals/_styles.blade.php --}}
-{{-- สไตล์กลางของหน้า R1-R4 (ใช้ prefix .rt- เพื่อไม่ชนกับ class ของ Flux/หน้าอื่น) --}}
-{{-- ใช้ใน index / show / contract / create ด้วย @include('rentals._styles') — include ซ้ำได้ ไม่เสียหาย --}}
 @once
 <style>
     .rt {
@@ -23,7 +20,7 @@
         color: var(--rt-text);
     }
     .rt, .rt *, .rt *::before, .rt *::after { box-sizing: border-box; }
-    .rt [hidden] { display: none !important; } /* กัน class ที่ตั้ง display ทับ attribute hidden */
+    .rt [hidden] { display: none !important; }
     html:not(.dark) .rt {
         --rt-card: #ffffff;
         --rt-card-soft: #f9fafb;
@@ -39,7 +36,6 @@
         --rt-err-bg: #fef2f2;  --rt-err-fg: #b91c1c;  --rt-err-bd: #fecaca;
     }
 
-    /* ---------- โครงหน้า ---------- */
     .rt-page { max-width: 1500px; margin: 0 auto; padding: 24px 16px 48px; }
     .rt-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
     .rt-crumb { font-size: 0.75rem; color: var(--rt-muted); margin-bottom: 4px; }
@@ -49,7 +45,6 @@
     .rt-subtitle { color: var(--rt-muted); font-size: 0.9rem; margin-top: 4px; }
     .rt-head-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 
-    /* ---------- การ์ด ---------- */
     .rt-card { background: var(--rt-card); border: 1px solid var(--rt-border); border-radius: 12px; padding: 16px 20px; }
     .rt-stack { display: flex; flex-direction: column; gap: 16px; }
     .rt-card--flush { padding: 0; overflow: hidden; }
@@ -58,7 +53,6 @@
     .rt-card-title--lg { font-size: 1rem; color: var(--rt-text); }
     .rt-card--flush .rt-card-head { padding: 16px 20px; margin: 0; border-bottom: 1px solid var(--rt-border); }
 
-    /* ---------- ปุ่ม ---------- */
     .rt-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 16px; border-radius: 8px; font-size: 0.875rem; font-weight: 500; line-height: 1.2; text-decoration: none; cursor: pointer; border: 1px solid var(--rt-border); background: transparent; color: var(--rt-text); transition: background .15s, border-color .15s; }
     .rt-btn:hover:not(:disabled) { background: var(--rt-row-hover); }
     .rt-btn:disabled, .rt-btn[aria-disabled="true"] { opacity: 0.45; cursor: not-allowed; }
@@ -69,14 +63,12 @@
     .rt-btn--sm { padding: 4px 10px; font-size: 0.75rem; border-radius: 6px; }
     .rt-btn--soft { background: var(--rt-row-hover); }
 
-    /* ---------- ป้าย (badge / chip) ---------- */
     .rt-badge { display: inline-block; padding: 2px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 500; border: 1px solid transparent; white-space: nowrap; }
     .rt-badge--ok   { background: var(--rt-ok-bg);   color: var(--rt-ok-fg);   border-color: var(--rt-ok-bd); }
     .rt-badge--off  { background: var(--rt-off-bg);  color: var(--rt-off-fg);  border-color: var(--rt-off-bd); }
     .rt-badge--warn { background: var(--rt-warn-bg); color: var(--rt-warn-fg); border-color: var(--rt-warn-bd); }
     .rt-badge--info { background: var(--rt-info-bg); color: var(--rt-info-fg); border-color: var(--rt-info-bd); }
 
-    /* ---------- กล่องสถานะ / แจ้งเตือน ---------- */
     .rt-state { padding: 28px 16px; text-align: center; color: var(--rt-muted); font-size: 0.9rem; }
     .rt-state--error { color: var(--rt-err-fg); background: var(--rt-err-bg); border: 1px solid var(--rt-err-bd); border-radius: 12px; }
     .rt-state--error .rt-btn { margin-left: 8px; }
@@ -86,7 +78,6 @@
     .rt-notice--info { background: var(--rt-info-bg); color: var(--rt-info-fg); border-color: var(--rt-info-bd); }
     .rt-notice--err  { background: var(--rt-err-bg);  color: var(--rt-err-fg);  border-color: var(--rt-err-bd); }
 
-    /* ---------- ตาราง ---------- */
     .rt-table-wrap { overflow-x: auto; }
     .rt-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; min-width: 760px; }
     .rt-table th { text-align: left; font-size: 0.75rem; font-weight: 500; color: var(--rt-muted); padding: 10px 20px; border-bottom: 1px solid var(--rt-border); white-space: nowrap; }
@@ -102,13 +93,11 @@
     .rt-link { color: var(--rt-primary-text); text-decoration: none; }
     .rt-link:hover { text-decoration: underline; }
 
-    /* ---------- ช่องค้นหา ---------- */
     .rt-search { width: 100%; max-width: 360px; padding: 8px 12px; border: 1px solid var(--rt-border); border-radius: 8px; background: var(--rt-card); color: var(--rt-text); font-size: 0.875rem; }
     .rt-search:focus { outline: 2px solid var(--rt-primary); outline-offset: -1px; }
     .rt-toolbar { margin-bottom: 16px; }
     .rt-pagination { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 16px; font-size: 0.875rem; color: var(--rt-muted); }
 
-    /* ---------- รายการ label/ค่า ---------- */
     .rt-kv { display: grid; gap: 10px; margin: 0; }
     .rt-kv > div { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font-size: 0.875rem; }
     .rt-kv dt { color: var(--rt-muted); font-size: 0.8rem; margin: 0; }
@@ -121,7 +110,6 @@
     .rt-money { color: var(--rt-primary-text); font-weight: 600; }
     .rt-big { font-size: 2rem; font-weight: 700; line-height: 1.1; margin: 0 0 12px; }
 
-    /* ---------- เลย์เอาต์ 2 คอลัมน์ (R3) ---------- */
     .rt-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.7fr); gap: 16px; align-items: start; }
     .rt-col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
     @media (max-width: 900px) {
@@ -132,7 +120,6 @@
         .rt-fields, .rt-fields--3 { grid-template-columns: minmax(0, 1fr); }
     }
 
-    /* ---------- ฟอร์ม ---------- */
     .rt-form-field { margin-bottom: 16px; }
     .rt-form-field label, .rt-label { display: block; margin-bottom: 6px; font-size: 0.875rem; font-weight: 500; }
     .rt-req { color: var(--rt-err-fg); }
@@ -149,7 +136,6 @@
     .rt-chip { padding: 3px 10px; font-size: 0.78rem; border-radius: 999px; border: 1px solid var(--rt-border); background: transparent; color: var(--rt-text); cursor: pointer; }
     .rt-chip:hover { background: var(--rt-row-hover); }
 
-    /* ---------- ไทม์ไลน์ (R3) ---------- */
     .rt-timeline { list-style: none; margin: 0; padding: 4px 0 0; }
     .rt-timeline > li { position: relative; display: flex; gap: 14px; padding-bottom: 18px; }
     .rt-timeline > li:last-child { padding-bottom: 0; }
@@ -165,7 +151,6 @@
     .rt-dot--edit::after { background: var(--rt-warn-fg); }
     .rt-tl-note { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 14px; font-size: 0.8rem; color: var(--rt-muted); }
 
-    /* ---------- กล่องฟอร์มสร้างการเช่า (R2) ---------- */
     .rt-modal { max-width: 520px; margin: 16px auto 0; background: var(--rt-card); border: 1px solid var(--rt-border); border-radius: 16px; padding: 24px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25); }
     .rt-modal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
     .rt-modal-title { font-size: 1.15rem; font-weight: 700; margin: 0; }

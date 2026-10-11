@@ -1,8 +1,3 @@
-{{-- resources/views/rentals/_move-out-modal.blade.php --}}
-{{-- Modal "ย้ายออก" (Move-out) — เรียก POST /api/v1/rentals/{rental}/move-out --}}
-{{-- ใช้: @include('rentals._move-out-modal') ภายใน <div class="rt ..."> ของหน้า R1 / R3 แล้วเรียก
-     window.RentalMoveOut.open({ rentalId, tenantName, roomName, roomId, moveIn, onDone }) --}}
-
 @include('rentals._styles')
 
 @once
@@ -47,7 +42,6 @@
             </dl>
         </div>
 
-        {{-- ขั้น 1: กรอกข้อมูล --}}
         <form id="mo-form" novalidate>
             <div class="rt-form-field">
                 <label for="mo-date">วันที่ย้ายออก <span class="rt-req">*</span></label>
@@ -70,7 +64,6 @@
             </div>
         </form>
 
-        {{-- ขั้น 2: ยืนยัน --}}
         <div id="mo-confirm" hidden>
             <div class="rt-summary">
                 <dl>
@@ -93,7 +86,6 @@
             </div>
         </div>
 
-        {{-- ขั้น 3: ผลลัพธ์ --}}
         <div id="mo-done" hidden>
             <p class="rt-notice rt-notice--ok" style="margin-bottom:12px;">✓ บันทึกการย้ายออกเรียบร้อย</p>
             <div id="mo-invoices"></div>
@@ -115,12 +107,12 @@
     const todayStr = () => new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Bangkok' });
     const escapeHtml = (s) => { const d = document.createElement('div'); d.textContent = s ?? ''; return d.innerHTML; };
 
-    let ctx = null;          // ข้อมูลการเช่าที่กำลังย้ายออก
+    let ctx = null;
     let step = 1;
     let submitting = false;
-    let finished = false;    // ย้ายออกสำเร็จแล้ว (ใช้ตัดสินใจว่าต้องรีเฟรชหน้าหลังปิดไหม)
-    let meterDates = null;   // Set ของวันที่ที่มีมิเตอร์ของห้องนี้ (null = ตรวจไม่ได้)
-    let meterSeq = 0;        // กัน response เก่าทับของใหม่
+    let finished = false;
+    let meterDates = null;
+    let meterSeq = 0;
 
     function csrf() { return document.querySelector('meta[name="csrf-token"]')?.content ?? ''; }
 
@@ -148,12 +140,12 @@
         if (!roomId) return;
         try {
             const res = await fetch(`/api/v1/rooms/${roomId}/meters?per_page=100`, fetchOpts);
-            if (!res.ok) return; // ตรวจไม่ได้ก็ไม่เตือน ให้ backend ตัดสินตอนส่ง
+            if (!res.ok) return;
             const body = await res.json();
             if (seq !== meterSeq) return;
             meterDates = new Set((body.data ?? []).map((m) => String(m.m_date).slice(0, 10)));
             updateMeterWarn();
-        } catch (_) { /* เงียบไว้ */ }
+        } catch (_) {  }
     }
 
     function updateMeterWarn() {
@@ -189,14 +181,12 @@
         if (dlg.open) dlg.close();
     }
 
-    // ปิด dialog ได้หลายทาง (Esc, ปุ่ม X) — ถ้าย้ายออกสำเร็จแล้วให้หน้าหลักรีเฟรชข้อมูล
     dlg.addEventListener('close', () => {
         const done = finished && ctx && typeof ctx.onDone === 'function';
         const cb = done ? ctx.onDone : null;
         finished = false;
         if (cb) cb();
     });
-    // กด Esc ระหว่างกำลังบันทึก → ไม่ให้ปิด (ไม่งั้นหน้าไม่รีเฟรชทั้งที่ย้ายออกสำเร็จ)
     dlg.addEventListener('cancel', (e) => { if (submitting) e.preventDefault(); });
     dlg.addEventListener('click', (e) => { if (e.target === dlg && step !== 2 && !submitting) close(); });
 
@@ -208,7 +198,6 @@
         $('mo-reason-count').textContent = `${$('mo-reason').value.length} / 2000`;
     });
 
-    // ขั้น 1 → 2 (ตรวจเบื้องต้นฝั่งหน้าจอ แล้วให้ backend ตัดสินจริงตอนยืนยัน)
     $('mo-form').addEventListener('submit', (e) => {
         e.preventDefault();
         clearErrors();
@@ -251,11 +240,9 @@
             if (res.status === 401) { window.location.href = '/login'; return; }
 
             if (res.status === 422) {
-                // ข้อผิดพลาดของช่องกรอก → กลับไปขั้น 1 แล้วแสดงใต้ช่อง
                 if (body.errors?.rt_moveout) $('mo-err-date').textContent = body.errors.rt_moveout[0];
                 if (body.errors?.reason) $('mo-err-reason').textContent = body.errors.reason[0];
                 if (!body.errors?.rt_moveout && !body.errors?.reason) {
-                    // error จากการออกบิลสุดท้าย (เช่น period_start / period_end) ไม่ใช่ช่องในฟอร์ม → บอกสาเหตุจริง
                     const other = Object.values(body.errors || {}).flat()[0];
                     $('mo-err-date').textContent = other
                         ? 'ออกบิลสุดท้ายไม่ได้: ' + other + ' — บันทึกมิเตอร์ให้ครบก่อนแล้วลองใหม่'

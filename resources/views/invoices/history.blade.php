@@ -1,6 +1,3 @@
-{{-- resources/views/invoices/history.blade.php --}}
-{{-- ประวัติการชำระเงิน = ใบแจ้งหนี้ที่ชำระแล้ว (GET /api/v1/invoices?status=PAID) — backend ยังไม่มี endpoint รวมประวัติการชำระทั้งระบบ
-     ประวัติรายละเอียดของแต่ละใบ (ส่งหลักฐาน/อนุมัติ/ปฏิเสธ) ดูได้ที่หน้ารายละเอียดใบแจ้งหนี้ --}}
 <x-layouts::app :title="__('ประวัติการชำระเงิน')">
 @include('invoices._base')
 
@@ -79,7 +76,6 @@
             showState('error');
             return;
         }
-        // ใหม่สุดก่อน: วันที่ชำระ แล้วตามด้วยเลขใบแจ้งหนี้
         all = res.rows
             .filter((i) => i.payment?.p_status === 'PAID')
             .sort((a, b) => IV.day(b.payment.p_date).localeCompare(IV.day(a.payment.p_date)) || Number(b.i_id) - Number(a.i_id));

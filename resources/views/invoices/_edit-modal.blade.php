@@ -1,9 +1,3 @@
-{{-- resources/views/invoices/_edit-modal.blade.php --}}
-{{-- Admin: แก้ไขใบแจ้งหนี้ (ช่วงคิดเงิน / วันครบกำหนด + เหตุผล) — PATCH /api/v1/invoices/{id}
-     เรียก: window.InvoiceEdit.open(invoiceId, onDone)
-     backend อนุญาตเฉพาะบิลที่ยัง UNPAID และยังไม่มีประวัติการชำระ (ตรวจซ้ำที่ฝั่งเซิร์ฟเวอร์เสมอ)
-     ช่วงคิดเงินต้องอยู่ในวันเข้าพัก–วันย้ายออก (การเช่าที่ย้ายออกแล้วยังแก้ช่วงได้ แต่ห้ามเกินวันย้ายออก)
-     → โหลด GET /api/v1/rentals/{id} มาตั้ง min/max ของช่องวันที่ (ถ้าโหลดไม่ได้ก็ยังแก้ได้ backend ตรวจให้) --}}
 @include('invoices._base')
 
 <dialog class="iv-dialog" id="ie-dialog" aria-labelledby="ie-title">
@@ -64,7 +58,6 @@
     const dlg = $('ie-dialog');
     let cur = null, busy = false, finished = false, stale = false, opening = false;
 
-    // วันเข้าพัก / วันย้ายออก ของการเช่า — ใช้จำกัดช่วงคิดเงิน (null = ไม่รู้ ให้ backend ตรวจ)
     async function loadRentalRange(rentalId) {
         if (!rentalId) return null;
         const r = await IV.api('GET', `/api/v1/rentals/${encodeURIComponent(rentalId)}`);

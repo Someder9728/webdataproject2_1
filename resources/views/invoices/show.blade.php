@@ -1,14 +1,9 @@
-{{-- resources/views/invoices/show.blade.php --}}
-{{-- รายละเอียดใบแจ้งหนี้ + สถานะการชำระ + ประวัติการดำเนินการ
-     ข้อมูลจาก GET /api/v1/invoices/{id} และ GET /api/v1/invoices/{id}/payment/events
-     Admin: แก้ไขใบแจ้งหนี้ / บันทึกรับชำระ / ตรวจหลักฐาน — Tenant: ส่งหลักฐานการโอน --}}
 <x-layouts::app :title="__('ใบแจ้งหนี้')">
 @include('invoices._base')
 
 <div class="rt rt-page" id="iv-root"
      data-admin="{{ auth()->user()?->u_role === 'admin' ? '1' : '0' }}"
      data-id="{{ $invoiceId }}">
-    {{-- กล่องโต้ตอบต้องอยู่ "ภายใน" .rt เพื่อให้ได้ตัวแปรสี (--rt-*) ของธีม --}}
     @include('invoices._pay-modals')
     @if (auth()->user()?->u_role === 'admin')
         @include('invoices._edit-modal')
@@ -35,7 +30,6 @@
     </div>
 
     <div class="rt-grid iv-grid" id="sh-content" hidden>
-        {{-- ซ้าย: ตัวใบแจ้งหนี้ --}}
         <div class="rt-col">
             <section class="rt-card" aria-labelledby="sh-no-label">
                 <div class="rt-card-head" style="align-items:flex-start;">
@@ -64,7 +58,6 @@
             </section>
         </div>
 
-        {{-- ขวา: สถานะการชำระ + ประวัติ --}}
         <div class="rt-col">
             <section class="rt-card" aria-labelledby="sh-pay-title">
                 <div class="rt-card-head"><h2 class="rt-card-title rt-card-title--lg" id="sh-pay-title">การชำระเงิน</h2></div>
@@ -95,7 +88,7 @@
         WALK_IN_RECORDED: { title: 'บันทึกรับชำระหน้าเคาน์เตอร์', dot: 'rt-dot--ok' },
     };
 
-    function showState(which) { // loading | error | ready
+    function showState(which) {
         $('sh-loading').hidden = which !== 'loading';
         $('sh-error').hidden = which !== 'error';
         $('sh-content').hidden = which !== 'ready';
@@ -107,7 +100,6 @@
         return Math.round((Date.UTC(y2, m2 - 1, d2) - Date.UTC(y1, m1 - 1, d1)) / 86400000);
     }
 
-    /* ---------- ตัวใบแจ้งหนี้ ---------- */
     function renderInvoice() {
         const no = IV.invNo(inv);
         document.title = no;
@@ -141,7 +133,6 @@
         IV.setText('sh-total', IV.money(inv.i_total));
     }
 
-    /* ---------- กล่องสถานะการชำระ ---------- */
     function notice(kind, ...kids) { return el('div', { class: 'rt-notice rt-notice--' + kind, style: 'margin:0;' }, ...kids); }
 
     function renderPaybox() {
@@ -172,7 +163,7 @@
                 p.p_reject_reason ? el('div', { style: 'margin-top:4px;', text: 'เหตุผล: ' + p.p_reject_reason }) : null,
                 el('div', { style: 'margin-top:4px;font-size:0.8rem;', text: IS_ADMIN ? 'รอผู้เช่าส่งหลักฐานใหม่ หรือบันทึกรับชำระหน้าเคาน์เตอร์ได้' : 'กรุณาส่งหลักฐานใหม่' })
             ));
-        } else { // UNPAID
+        } else {
             const late = IV.statusKey(inv) === 'overdue';
             const n = late ? daysLate(IV.day(inv.i_due)) : 0;
             parts.push(notice(late ? 'err' : 'warn',
@@ -185,7 +176,6 @@
         box.replaceChildren(...parts);
     }
 
-    /* ---------- ประวัติ ---------- */
     function whoLabel(ev) {
         if (IS_ADMIN) return ev.actor?.u_username ? 'โดย ' + ev.actor.u_username : 'โดยผู้ใช้ที่ถูกลบ';
         return ev.actor?.is_self ? 'โดยคุณ' : 'โดยผู้ดูแลระบบ';
@@ -238,7 +228,6 @@
         renderHistory(res);
     }
 
-    /* ---------- ปุ่มการทำงานด้านบน ---------- */
     function renderActions() {
         $('btn-edit').hidden = !(IS_ADMIN && IV.isEditable(inv));
         $('btn-walkin').hidden = !(IS_ADMIN && IV.canRecordPayment(inv));
