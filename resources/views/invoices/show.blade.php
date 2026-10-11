@@ -1,59 +1,76 @@
-<x-layouts::app :title="__('ใบแจ้งหนี้')">
+<x-layouts::app :title="$invoice->number()">
 @include('invoices._base')
+@php
+    $payment = $invoice->payment;
+    $status = $invoice->statusKey();
+    $due = $invoice->i_due->format('Y-m-d');
+    $eventMeta = [
+        'PROOF_SUBMITTED' => ['ผู้เช่าส่งหลักฐานการชำระ', ''],
+        'PAYMENT_APPROVED' => ['อนุมัติการชำระเงิน', 'rt-dot--ok'],
+        'PAYMENT_REJECTED' => ['ปฏิเสธหลักฐานการชำระ', 'rt-dot--end'],
+        'WALK_IN_RECORDED' => ['บันทึกรับชำระหน้าเคาน์เตอร์', 'rt-dot--ok'],
+    ];
+@endphp
 
-<div class="rt rt-page" id="iv-root"
-     data-admin="{{ auth()->user()?->u_role === 'admin' ? '1' : '0' }}"
-     data-id="{{ $invoiceId }}">
+<div class="rt rt-page" id="iv-root">
     @include('invoices._pay-modals')
-    @if (auth()->user()?->u_role === 'admin')
+    @if ($isAdmin)
         @include('invoices._edit-modal')
     @endif
 
     <div class="rt-head">
         <div>
-            <div class="rt-crumb"><a href="{{ route('invoices.index') }}">ใบแจ้งหนี้ / การชำระ</a> / <span id="sh-crumb">…</span></div>
-            <h1 class="rt-title" id="sh-title">ใบแจ้งหนี้</h1>
+            <div class="rt-crumb"><a href="{{ route('invoices.index') }}">ใบแจ้งหนี้ / การชำระ</a> / <span id="sh-crumb">{{ $invoice->number() }}</span></div>
+            <h1 class="rt-title" id="sh-title">ใบแจ้งหนี้ {{ $invoice->number() }}</h1>
         </div>
-        <div class="rt-head-actions">
-            <button type="button" class="rt-btn" id="btn-edit" hidden>แก้ไขใบแจ้งหนี้</button>
-            <button type="button" class="rt-btn rt-btn--pay" id="btn-walkin" hidden>บันทึกการชำระเงิน</button>
-            <button type="button" class="rt-btn rt-btn--primary" id="btn-review" hidden>ตรวจสอบหลักฐาน</button>
-            <button type="button" class="rt-btn rt-btn--primary" id="btn-submit" hidden>ส่งหลักฐานการชำระ</button>
+        <div class="rt-head-actions" id="sh-actions" data-id="{{ $invoice->getKey() }}">
+            @if ($isAdmin && $invoice->isEditable())
+                <button type="button" class="rt-btn" id="btn-edit" data-open="edit">แก้ไขใบแจ้งหนี้</button>
+            @endif
+            @if ($isAdmin && $invoice->canRecordPayment())
+                <button type="button" class="rt-btn rt-btn--pay" id="btn-walkin" data-open="walkIn">บันทึกการชำระเงิน</button>
+            @endif
+            @if ($isAdmin && $payment?->p_status === 'PENDING')
+                <button type="button" class="rt-btn rt-btn--primary" id="btn-review" data-open="review">ตรวจสอบหลักฐาน</button>
+            @endif
+            @if (! $isAdmin && $invoice->canRecordPayment())
+                <button type="button" class="rt-btn rt-btn--primary" id="btn-submit" data-open="submitProof">ส่งหลักฐานการชำระ</button>
+            @endif
             <a href="{{ route('invoices.index') }}" class="rt-btn">‹ ย้อนกลับ</a>
         </div>
     </div>
 
-    <div id="sh-loading" class="rt-card rt-state">กำลังโหลดข้อมูล...</div>
-    <div id="sh-error" class="rt-state rt-state--error" hidden>
-        <span id="sh-error-message">โหลดข้อมูลไม่สำเร็จ</span>
-        <button type="button" id="sh-retry" class="rt-btn rt-btn--sm">ลองใหม่</button>
-    </div>
-
-    <div class="rt-grid iv-grid" id="sh-content" hidden>
+    <div class="rt-grid iv-grid" id="sh-content">
         <div class="rt-col">
             <section class="rt-card" aria-labelledby="sh-no-label">
                 <div class="rt-card-head" style="align-items:flex-start;">
                     <div>
                         <div class="rt-field-label" id="sh-no-label">เลขที่ใบแจ้งหนี้</div>
-                        <div class="rt-field-value rt-mono" id="sh-no" style="font-size:1.1rem;">-</div>
+                        <div class="rt-field-value rt-mono" id="sh-no" style="font-size:1.1rem;">{{ $invoice->number() }}</div>
                     </div>
-                    <span id="sh-badge"></span>
+                    <span id="sh-badge">@include('invoices._status-badge')</span>
                 </div>
                 <dl class="rt-fields">
-                    <div><dt class="rt-field-label">ผู้เช่า</dt><dd class="rt-field-value" style="margin:0;" id="sh-tenant">-</dd></div>
-                    <div><dt class="rt-field-label">ห้อง</dt><dd class="rt-field-value" style="margin:0;" id="sh-room">-</dd></div>
-                    <div><dt class="rt-field-label">รอบบิล</dt><dd class="rt-field-value" style="margin:0;" id="sh-month">-</dd></div>
-                    <div><dt class="rt-field-label">วันครบกำหนด</dt><dd class="rt-field-value" style="margin:0;" id="sh-due">-</dd></div>
-                    <div><dt class="rt-field-label">ช่วงคิดเงิน</dt><dd class="rt-field-value" style="margin:0;" id="sh-period">-</dd></div>
-                    <div><dt class="rt-field-label">วันที่ออกใบแจ้งหนี้</dt><dd class="rt-field-value" style="margin:0;" id="sh-issued">-</dd></div>
+                    <div><dt class="rt-field-label">ผู้เช่า</dt><dd class="rt-field-value" style="margin:0;" id="sh-tenant">{{ trim($invoice->rental?->tenant?->t_Fname.' '.$invoice->rental?->tenant?->t_Lname) ?: '-' }}</dd></div>
+                    <div><dt class="rt-field-label">ห้อง</dt><dd class="rt-field-value" style="margin:0;" id="sh-room">
+                        @if ($isAdmin && $invoice->rentals_rt_id)
+                            <a class="rt-link" href="{{ route('rentals.show', $invoice->rentals_rt_id) }}">ห้อง {{ $invoice->rental?->room?->r_name ?? '-' }}</a>
+                        @else
+                            ห้อง {{ $invoice->rental?->room?->r_name ?? '-' }}
+                        @endif
+                    </dd></div>
+                    <div><dt class="rt-field-label">รอบบิล</dt><dd class="rt-field-value" style="margin:0;" id="sh-month">{{ $invoice->period_start?->format('Y-m') ?? '-' }}</dd></div>
+                    <div><dt class="rt-field-label">วันครบกำหนด</dt><dd class="rt-field-value {{ $status === 'overdue' ? 'iv-due--late' : '' }}" style="margin:0;" id="sh-due">{{ $due }}</dd></div>
+                    <div><dt class="rt-field-label">ช่วงคิดเงิน</dt><dd class="rt-field-value" style="margin:0;" id="sh-period">{{ $invoice->period_start?->format('Y-m-d') }} → {{ $invoice->period_end?->format('Y-m-d') }}</dd></div>
+                    <div><dt class="rt-field-label">วันที่ออกใบแจ้งหนี้</dt><dd class="rt-field-value" style="margin:0;" id="sh-issued">{{ $invoice->i_date->format('Y-m-d') }}</dd></div>
                 </dl>
 
                 <div class="iv-bill">
                     <div class="iv-bill-head">รายละเอียดค่าใช้จ่าย</div>
-                    <div class="iv-bill-row"><span>ค่าเช่ารายเดือน<small id="sh-rent-sub"></small></span><b id="sh-rent">-</b></div>
-                    <div class="iv-bill-row"><span>ค่าน้ำ<small id="sh-water-sub"></small></span><b id="sh-water">-</b></div>
-                    <div class="iv-bill-row"><span>ค่าไฟ<small id="sh-elec-sub"></small></span><b id="sh-elec">-</b></div>
-                    <div class="iv-bill-total"><span>ยอดรวม</span><b id="sh-total">-</b></div>
+                    <div class="iv-bill-row"><span>ค่าเช่ารายเดือน<small>อัตรา {{ \App\Support\Format::money($invoice->rent_rate) }} / เดือน (คิดตามจำนวนวันในช่วง)</small></span><b id="sh-rent">{{ \App\Support\Format::money($invoice->i_rent) }}</b></div>
+                    <div class="iv-bill-row"><span>ค่าน้ำ<small>{{ \App\Support\Format::num($invoice->water_usage) }} หน่วย × {{ \App\Support\Format::money($invoice->water_rate) }}</small></span><b id="sh-water">{{ \App\Support\Format::money($invoice->i_water) }}</b></div>
+                    <div class="iv-bill-row"><span>ค่าไฟ<small>{{ \App\Support\Format::num($invoice->elec_usage) }} หน่วย × {{ \App\Support\Format::money($invoice->elec_rate) }}</small></span><b id="sh-elec">{{ \App\Support\Format::money($invoice->i_elec) }}</b></div>
+                    <div class="iv-bill-total"><span>ยอดรวม</span><b id="sh-total">{{ \App\Support\Format::money($invoice->i_total) }}</b></div>
                 </div>
             </section>
         </div>
@@ -61,12 +78,93 @@
         <div class="rt-col">
             <section class="rt-card" aria-labelledby="sh-pay-title">
                 <div class="rt-card-head"><h2 class="rt-card-title rt-card-title--lg" id="sh-pay-title">การชำระเงิน</h2></div>
-                <div id="sh-paybox"></div>
+                <div id="sh-paybox">
+                    @if (! $payment)
+                        <div class="rt-notice rt-notice--warn" style="margin:0;">ไม่พบข้อมูลการชำระเงินของใบแจ้งหนี้นี้</div>
+                    @elseif ($payment->p_status === 'PAID')
+                        <div class="rt-notice rt-notice--ok" style="margin:0;">
+                            ✓ ชำระแล้วเมื่อวันที่ {{ $payment->p_date?->format('Y-m-d') ?? '-' }} ผ่าน{{ \App\Support\Format::method($payment->p_type) }}
+                            <div style="margin-top:4px;font-size:0.8rem;">ยอดที่ชำระ {{ \App\Support\Format::money($payment->p_amount) }}</div>
+                        </div>
+                    @elseif ($payment->p_status === 'PENDING')
+                        <div class="rt-notice rt-notice--info" style="margin:0;">
+                            ส่งหลักฐานแล้ว (วันที่โอน {{ $payment->p_date?->format('Y-m-d') ?? '-' }}, ยอด {{ \App\Support\Format::money($payment->p_amount) }}) — รอผู้ดูแลตรวจสอบ
+                        </div>
+                    @elseif ($payment->p_status === 'REJECTED')
+                        <div class="rt-notice rt-notice--err" style="margin:0;">
+                            หลักฐานการชำระถูกปฏิเสธ
+                            @if ($payment->p_reject_reason)
+                                <div style="margin-top:4px;">เหตุผล: {{ $payment->p_reject_reason }}</div>
+                            @endif
+                            <div style="margin-top:4px;font-size:0.8rem;">{{ $isAdmin ? 'รอผู้เช่าส่งหลักฐานใหม่ หรือบันทึกรับชำระหน้าเคาน์เตอร์ได้' : 'กรุณาส่งหลักฐานใหม่' }}</div>
+                        </div>
+                    @elseif ($status === 'overdue')
+                        <div class="rt-notice rt-notice--err" style="margin:0;">
+                            ค้างชำระ — เกินกำหนด {{ $invoice->daysLate() }} วัน (ครบกำหนด {{ $due }})
+                        </div>
+                    @else
+                        <div class="rt-notice rt-notice--warn" style="margin:0;">ยังไม่ชำระ — ครบกำหนด {{ $due }}</div>
+                    @endif
+
+                    @if (in_array($payment?->p_status, ['PAID', 'PENDING'], true) && filled($payment->p_proof))
+                        <a class="rt-btn rt-btn--sm" style="margin-top:10px;" href="{{ route('api.v1.invoices.payment.proof', $invoice) }}">
+                            {{ $payment->p_status === 'PAID' ? 'ดาวน์โหลดหลักฐานการโอน' : 'ดาวน์โหลดหลักฐานที่ส่ง' }}
+                        </a>
+                    @endif
+                    @if ($isAdmin && $payment?->p_status === 'UNPAID' && ! $invoice->isEditable())
+                        <p class="rt-hint" style="margin-top:8px;">ใบนี้มีประวัติการชำระแล้ว จึงแก้ไขใบแจ้งหนี้ไม่ได้</p>
+                    @endif
+                </div>
             </section>
 
             <section class="rt-card" aria-labelledby="sh-hist-title">
                 <div class="rt-card-head"><h2 class="rt-card-title rt-card-title--lg" id="sh-hist-title">ประวัติการดำเนินการ</h2></div>
-                <div id="sh-hist"></div>
+                <div id="sh-hist">
+                    @if ($events->isEmpty())
+                        <p class="rt-muted" style="margin:0;font-size:0.875rem;">ยังไม่มีประวัติการชำระ</p>
+                    @else
+                        <ul class="rt-timeline">
+                            @foreach ($events as $event)
+                                @php
+                                    [$title, $dot] = $eventMeta[$event->event_type] ?? [$event->event_type, ''];
+                                    $bits = array_filter([
+                                        $event->amount !== null ? \App\Support\Format::money($event->amount) : null,
+                                        $event->method ? \App\Support\Format::method($event->method) : null,
+                                        $event->payment_date ? 'วันที่ชำระ '.$event->payment_date->format('Y-m-d') : null,
+                                    ]);
+                                @endphp
+                                <li>
+                                    <span class="rt-dot {{ $dot }}"></span>
+                                    <div>
+                                        <div>
+                                            <span class="rt-tl-date">{{ $event->created_at?->timezone('Asia/Bangkok')->format('Y-m-d H:i') ?? '-' }}</span>
+                                            <span class="rt-tl-title">{{ $title }}</span>
+                                        </div>
+                                        @if ($bits)
+                                            <div class="rt-tl-desc">{{ implode(' · ', $bits) }}</div>
+                                        @endif
+                                        <div class="rt-tl-desc">
+                                            @if ($isAdmin)
+                                                {{ $event->actor?->u_username ? 'โดย '.$event->actor->u_username : 'โดยผู้ใช้ที่ถูกลบ' }}
+                                            @else
+                                                {{ (string) $event->actor_user_id === (string) auth()->id() ? 'โดยคุณ' : 'โดยผู้ดูแลระบบ' }}
+                                            @endif
+                                        </div>
+                                        @if ($event->reason)
+                                            <div class="rt-tl-reason">เหตุผล: {{ $event->reason }}</div>
+                                        @endif
+                                        @if ($event->note)
+                                            <div class="rt-tl-reason">หมายเหตุ: {{ $event->note }}</div>
+                                        @endif
+                                        @if (filled($event->proof_path))
+                                            <a class="rt-btn rt-btn--sm" style="margin-top:6px;" href="{{ route('api.v1.payment-events.proof', $event) }}">ดาวน์โหลดหลักฐาน</a>
+                                        @endif
+                                    </div>
+                                </li>
+                            @endforeach
+                        </ul>
+                    @endif
+                </div>
             </section>
         </div>
     </div>
@@ -74,199 +172,15 @@
 
 <script>
 (function () {
-    const { $, el } = IV;
-    const root = $('iv-root');
-    const IS_ADMIN = root.dataset.admin === '1';
-    const ID = root.dataset.id;
-    let inv = null;
-    let seq = 0;
-
-    const EVENT = {
-        PROOF_SUBMITTED: { title: 'ผู้เช่าส่งหลักฐานการชำระ', dot: '' },
-        PAYMENT_APPROVED: { title: 'อนุมัติการชำระเงิน', dot: 'rt-dot--ok' },
-        PAYMENT_REJECTED: { title: 'ปฏิเสธหลักฐานการชำระ', dot: 'rt-dot--end' },
-        WALK_IN_RECORDED: { title: 'บันทึกรับชำระหน้าเคาน์เตอร์', dot: 'rt-dot--ok' },
-    };
-
-    function showState(which) {
-        $('sh-loading').hidden = which !== 'loading';
-        $('sh-error').hidden = which !== 'error';
-        $('sh-content').hidden = which !== 'ready';
-    }
-
-    function daysLate(dueStr) {
-        const [y1, m1, d1] = dueStr.split('-').map(Number);
-        const [y2, m2, d2] = IV.today().split('-').map(Number);
-        return Math.round((Date.UTC(y2, m2 - 1, d2) - Date.UTC(y1, m1 - 1, d1)) / 86400000);
-    }
-
-    function renderInvoice() {
-        const no = IV.invNo(inv);
-        document.title = no;
-        IV.setText('sh-crumb', no);
-        IV.setText('sh-title', 'ใบแจ้งหนี้ ' + no);
-        IV.setText('sh-no', no);
-        $('sh-badge').replaceChildren(IV.badge(inv));
-        IV.setText('sh-tenant', IV.tenantName(inv));
-
-        const roomCell = $('sh-room');
-        const label = 'ห้อง ' + IV.roomName(inv);
-        if (IS_ADMIN && inv.rentals_rt_id) {
-            roomCell.replaceChildren(el('a', { class: 'rt-link', href: `/rentals/${inv.rentals_rt_id}`, text: label }));
-        } else {
-            roomCell.textContent = label;
-        }
-
-        IV.setText('sh-month', IV.monthKey(inv) || '-');
-        const dueCell = $('sh-due');
-        dueCell.textContent = IV.day(inv.i_due) || '-';
-        dueCell.className = 'rt-field-value' + (IV.statusKey(inv) === 'overdue' ? ' iv-due--late' : '');
-        IV.setText('sh-period', `${IV.day(inv.period_start)} → ${IV.day(inv.period_end)}`);
-        IV.setText('sh-issued', IV.day(inv.i_date) || '-');
-
-        IV.setText('sh-rent', IV.money(inv.i_rent));
-        IV.setText('sh-rent-sub', `อัตรา ${IV.money(inv.rent_rate)} / เดือน (คิดตามจำนวนวันในช่วง)`);
-        IV.setText('sh-water', IV.money(inv.i_water));
-        IV.setText('sh-water-sub', `${IV.num(inv.water_usage)} หน่วย × ${IV.money(inv.water_rate)}`);
-        IV.setText('sh-elec', IV.money(inv.i_elec));
-        IV.setText('sh-elec-sub', `${IV.num(inv.elec_usage)} หน่วย × ${IV.money(inv.elec_rate)}`);
-        IV.setText('sh-total', IV.money(inv.i_total));
-    }
-
-    function notice(kind, ...kids) { return el('div', { class: 'rt-notice rt-notice--' + kind, style: 'margin:0;' }, ...kids); }
-
-    function renderPaybox() {
-        const p = inv.payment;
-        const box = $('sh-paybox');
-        const proofBtn = (label) => el('button', {
-            type: 'button', class: 'rt-btn rt-btn--sm', style: 'margin-top:10px;', text: label,
-            onclick: () => IV.downloadProof(`/api/v1/invoices/${inv.i_id}/payment/proof`, `payment-proof-${inv.i_id}`),
-        });
-        const parts = [];
-
-        if (!p) {
-            parts.push(notice('warn', 'ไม่พบข้อมูลการชำระเงินของใบแจ้งหนี้นี้'));
-        } else if (p.p_status === 'PAID') {
-            parts.push(notice('ok',
-                `✓ ชำระแล้วเมื่อวันที่ ${IV.day(p.p_date) || '-'} ผ่าน${IV.methodLabel(p.p_type)}`,
-                el('div', { style: 'margin-top:4px;font-size:0.8rem;', text: 'ยอดที่ชำระ ' + IV.money(p.p_amount) })
-            ));
-            if (p.has_proof) parts.push(proofBtn('ดาวน์โหลดหลักฐานการโอน'));
-        } else if (p.p_status === 'PENDING') {
-            parts.push(notice('info',
-                `ส่งหลักฐานแล้ว (วันที่โอน ${IV.day(p.p_date) || '-'}, ยอด ${IV.money(p.p_amount)}) — รอผู้ดูแลตรวจสอบ`
-            ));
-            if (p.has_proof) parts.push(proofBtn('ดาวน์โหลดหลักฐานที่ส่ง'));
-        } else if (p.p_status === 'REJECTED') {
-            parts.push(notice('err',
-                'หลักฐานการชำระถูกปฏิเสธ',
-                p.p_reject_reason ? el('div', { style: 'margin-top:4px;', text: 'เหตุผล: ' + p.p_reject_reason }) : null,
-                el('div', { style: 'margin-top:4px;font-size:0.8rem;', text: IS_ADMIN ? 'รอผู้เช่าส่งหลักฐานใหม่ หรือบันทึกรับชำระหน้าเคาน์เตอร์ได้' : 'กรุณาส่งหลักฐานใหม่' })
-            ));
-        } else {
-            const late = IV.statusKey(inv) === 'overdue';
-            const n = late ? daysLate(IV.day(inv.i_due)) : 0;
-            parts.push(notice(late ? 'err' : 'warn',
-                late ? `ค้างชำระ — เกินกำหนด ${n} วัน (ครบกำหนด ${IV.day(inv.i_due)})` : `ยังไม่ชำระ — ครบกำหนด ${IV.day(inv.i_due)}`
-            ));
-            if (IS_ADMIN && !IV.isEditable(inv)) {
-                parts.push(el('p', { class: 'rt-hint', style: 'margin-top:8px;', text: 'ใบนี้มีประวัติการชำระแล้ว จึงแก้ไขใบแจ้งหนี้ไม่ได้' }));
-            }
-        }
-        box.replaceChildren(...parts);
-    }
-
-    function whoLabel(ev) {
-        if (IS_ADMIN) return ev.actor?.u_username ? 'โดย ' + ev.actor.u_username : 'โดยผู้ใช้ที่ถูกลบ';
-        return ev.actor?.is_self ? 'โดยคุณ' : 'โดยผู้ดูแลระบบ';
-    }
-
-    function renderHistory(res) {
-        const box = $('sh-hist');
-        if (!res.ok) {
-            box.replaceChildren(el('div', { class: 'rt-state rt-state--error' },
-                el('span', { text: IV.errMsg(res, 'โหลดประวัติไม่สำเร็จ') }),
-                el('button', { type: 'button', class: 'rt-btn rt-btn--sm', text: 'ลองใหม่', onclick: () => loadHistory() })));
-            return;
-        }
-        const events = res.body.data ?? [];
-        if (!events.length) {
-            box.replaceChildren(el('p', { class: 'rt-muted', style: 'margin:0;font-size:0.875rem;', text: 'ยังไม่มีประวัติการชำระ' }));
-            return;
-        }
-        const items = events.map((ev) => {
-            const meta = EVENT[ev.event_type] ?? { title: ev.event_type, dot: '' };
-            const lines = [];
-            const bits = [];
-            if (ev.amount !== null && ev.amount !== undefined) bits.push(IV.money(ev.amount));
-            if (ev.method) bits.push(IV.methodLabel(ev.method));
-            if (ev.payment_date) bits.push('วันที่ชำระ ' + IV.day(ev.payment_date));
-            if (bits.length) lines.push(el('div', { class: 'rt-tl-desc', text: bits.join(' · ') }));
-            lines.push(el('div', { class: 'rt-tl-desc', text: whoLabel(ev) }));
-            if (ev.reason) lines.push(el('div', { class: 'rt-tl-reason', text: 'เหตุผล: ' + ev.reason }));
-            if (ev.note) lines.push(el('div', { class: 'rt-tl-reason', text: 'หมายเหตุ: ' + ev.note }));
-            if (ev.has_proof) {
-                lines.push(el('button', {
-                    type: 'button', class: 'rt-btn rt-btn--sm', style: 'margin-top:6px;', text: 'ดาวน์โหลดหลักฐาน',
-                    onclick: () => IV.downloadProof(`/api/v1/payment-events/${ev.pe_id}/proof`, `payment-event-${ev.pe_id}`),
-                }));
-            }
-            return el('li', null,
-                el('span', { class: 'rt-dot ' + meta.dot }),
-                el('div', null,
-                    el('div', null,
-                        el('span', { class: 'rt-tl-date', text: IV.dateTime(ev.created_at) }),
-                        el('span', { class: 'rt-tl-title', text: meta.title })),
-                    ...lines)
-            );
-        });
-        box.replaceChildren(el('ul', { class: 'rt-timeline' }, ...items));
-    }
-
-    async function loadHistory() {
-        const res = await IV.api('GET', `/api/v1/invoices/${encodeURIComponent(ID)}/payment/events?per_page=100`);
-        renderHistory(res);
-    }
-
-    function renderActions() {
-        $('btn-edit').hidden = !(IS_ADMIN && IV.isEditable(inv));
-        $('btn-walkin').hidden = !(IS_ADMIN && IV.canRecordPayment(inv));
-        $('btn-review').hidden = !(IS_ADMIN && inv.payment?.p_status === 'PENDING');
-        $('btn-submit').hidden = !(!IS_ADMIN && IV.canRecordPayment(inv));
-    }
-
-    async function load(silent = false) {
-        const my = ++seq;
-        if (!silent) showState('loading');
-        const [r, ev] = await Promise.all([
-            IV.api('GET', `/api/v1/invoices/${encodeURIComponent(ID)}`),
-            IV.api('GET', `/api/v1/invoices/${encodeURIComponent(ID)}/payment/events?per_page=100`),
-        ]);
-        if (my !== seq) return;
-        if (!r.ok) {
-            if (silent) { IV.toast(IV.errMsg(r, 'โหลดข้อมูลไม่สำเร็จ'), 'err'); return; }
-            const msg = r.status === 404 ? 'ไม่พบใบแจ้งหนี้นี้' : IV.errMsg(r, 'โหลดข้อมูลไม่สำเร็จ');
-            IV.setText('sh-error-message', msg);
-            $('sh-retry').hidden = r.status === 404;
-            showState('error');
-            return;
-        }
-        inv = r.body.data;
-        renderInvoice();
-        renderPaybox();
-        renderActions();
-        renderHistory(ev);
-        showState('ready');
-    }
-
-    const refresh = () => load(true);
-    $('btn-walkin').addEventListener('click', () => window.InvoicePay.walkIn(inv.i_id, refresh));
-    $('btn-review').addEventListener('click', () => window.InvoicePay.review(inv.i_id, refresh));
-    $('btn-submit').addEventListener('click', () => window.InvoicePay.submitProof(inv.i_id, refresh));
-    $('btn-edit').addEventListener('click', () => { if (window.InvoiceEdit) window.InvoiceEdit.open(inv.i_id, refresh); });
-    $('sh-retry').addEventListener('click', () => load());
-
-    load();
+    const box = document.getElementById('sh-actions');
+    const id = box.dataset.id;
+    const reload = () => window.location.reload();
+    box.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-open]');
+        if (!btn) return;
+        if (btn.dataset.open === 'edit') window.InvoiceEdit?.open(id, reload);
+        else window.InvoicePay[btn.dataset.open](id, reload);
+    });
 })();
 </script>
 </x-layouts::app>

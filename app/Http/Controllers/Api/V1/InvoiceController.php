@@ -7,7 +7,6 @@ use App\Actions\Billing\UpdateInvoice;
 use App\Http\Controllers\Controller;
 use App\Models\Invoice;
 use App\Models\Payment;
-use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -97,59 +96,12 @@ class InvoiceController extends Controller
             'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
         ]);
 
-        $query = Invoice::query()->with([
-            'rental.tenant',
-            'rental.room',
-            'payment',
-        ]);
-
-        $user = $request->user();
-
-        // จำกัดเจ้าของก่อนเพิ่มเงื่อนไขค้นหา
-        if ($user->u_role === 'tenant') {
-            if ($user->tenants_t_id === null) {
-                $query->whereRaw('1 = 0');
-            } else {
-                $query->whereHas('rental', function ($rental) use ($user) {
-                    $rental->where('tenants_t_id', $user->tenants_t_id);
-                });
-            }
-        }
-
-        $search = trim($validated['search'] ?? '');
-
-        if ($search !== '') {
-            $query->where(function ($filter) use ($search) {
-                $filter->whereHas('rental.tenant', function ($tenant) use ($search) {
-                    $tenant->where(function ($names) use ($search) {
-                        $names->whereRaw('instr(t_Fname, ?) > 0', [$search])
-                            ->orWhereRaw('instr(t_Lname, ?) > 0', [$search])
-                            ->orWhereRaw(
-                                "instr(t_Fname || ' ' || t_Lname, ?) > 0",
-                                [$search]
-                            );
-                    });
-                })->orWhereHas('rental.room', function ($room) use ($search) {
-                    $room->whereRaw('instr(r_name, ?) > 0', [$search]);
-                });
-            });
-        }
-
-        if (! empty($validated['month'])) {
-            $month = CarbonImmutable::createFromFormat(
-                '!Y-m',
-                $validated['month'],
-                'Asia/Bangkok'
-            );
-
-            // เดือนรอบบิลอ้างอิง period_start ไม่ใช่วันออกบิล
-            $query->whereDate('period_start', '>=', $month->toDateString())
-                ->whereDate(
-                    'period_start',
-                    '<',
-                    $month->addMonth()->toDateString()
-                );
-        }
+        $query = Invoice::query()
+            ->with(['rental.tenant', 'rental.room', 'payment'])
+            // จำกัดเจ้าของก่อนเพิ่มเงื่อนไขค้นหา
+            ->visibleTo($request->user())
+            ->search($validated['search'] ?? null)
+            ->inMonth($validated['month'] ?? null);
 
         if (! empty($validated['status'])) {
             $query->whereHas('payment', function ($payment) use ($validated) {
