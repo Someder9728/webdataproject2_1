@@ -22,7 +22,7 @@
             <flux:menu.item :href="route('profile.edit')" icon="cog" wire:navigate>
                 {{ __('Settings') }}
             </flux:menu.item>
-            <form method="POST" action="{{ route('logout') }}" class="w-full">
+            <form method="POST" action="{{ route('logout') }}" onsubmit="return window.confirm('คุณแน่ใจหรือไม่ว่าต้องการออกจากระบบ?')" class="w-full">
                 @csrf
                 <flux:menu.item
                     as="button"

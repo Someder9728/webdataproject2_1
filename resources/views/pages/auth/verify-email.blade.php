@@ -18,7 +18,7 @@
                 </flux:button>
             </form>
 
-            <form method="POST" action="{{ route('logout') }}">
+            <form method="POST" action="{{ route('logout') }}" onsubmit="return window.confirm('คุณแน่ใจหรือไม่ว่าต้องการออกจากระบบ?')">
                 @csrf
                 <flux:button variant="ghost" type="submit" class="text-sm cursor-pointer" data-test="logout-button">
                     {{ __('Log out') }}

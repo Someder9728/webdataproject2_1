@@ -625,7 +625,7 @@ $initials = $user?->initials() ?? 'U';
 
 
             {{-- Logout --}}
-            <form method="POST" action="{{ route('logout') }}">
+            <form method="POST" action="{{ route('logout') }}" onsubmit="return window.confirm('คุณแน่ใจหรือไม่ว่าต้องการออกจากระบบ?')">
                 @csrf
 
                 <button type="submit" class="sidebar-logout">
