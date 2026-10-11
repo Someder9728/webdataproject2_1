@@ -17,15 +17,14 @@ class RentalTimeline
      */
     public static function build(Rental $rental, ?Contract $contract, Collection $events): array
     {
-        $room = $rental->room?->r_name ?? '-';
-        $items = [];
+        $room = $rental->room->r_name;
+        $items = [
+            ['date' => $rental->rt_movein->format('Y-m-d'), 'order' => 0, 'kind' => '', 'title' => 'ย้ายเข้า', 'desc' => "ห้อง {$room}"],
+        ];
 
-        if ($rental->rt_movein) {
-            $items[] = ['date' => $rental->rt_movein->format('Y-m-d'), 'order' => 0, 'kind' => '', 'title' => 'ย้ายเข้า', 'desc' => "ห้อง {$room}"];
-        }
-
-        if ($contract?->c_start) {
-            $oldestOld = $events->last()?->old_values ?? [];
+        if ($contract) {
+            $oldest = $events->last();
+            $oldestOld = $oldest === null ? [] : ($oldest->old_values ?? []);
             $firstEnd = array_key_exists('c_end', $oldestOld) ? $oldestOld['c_end'] : $contract->c_end?->format('Y-m-d');
             $items[] = [
                 'date' => $contract->c_start->format('Y-m-d'), 'order' => 1, 'kind' => '', 'title' => 'สร้างสัญญาเช่า',
