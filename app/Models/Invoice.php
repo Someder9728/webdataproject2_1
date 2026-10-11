@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
+use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
@@ -81,5 +83,99 @@ class Invoice extends Model
     public function endMeter(): BelongsTo
     {
         return $this->belongsTo(Meter::class, 'end_meter_id', 'm_id');
+    }
+
+    /**
+     * @param  Builder<Invoice>  $query
+     * @return Builder<Invoice>
+     */
+    public function scopeVisibleTo(Builder $query, User $user): Builder
+    {
+        if ($user->u_role !== 'tenant') {
+            return $query;
+        }
+
+        if ($user->tenants_t_id === null) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->whereHas('rental', fn ($rental) => $rental->where('tenants_t_id', $user->tenants_t_id));
+    }
+
+    /**
+     * @param  Builder<Invoice>  $query
+     * @return Builder<Invoice>
+     */
+    public function scopeSearch(Builder $query, ?string $term): Builder
+    {
+        $term = trim((string) $term);
+
+        if ($term === '') {
+            return $query;
+        }
+
+        return $query->where(function ($filter) use ($term) {
+            $filter->whereHas('rental.tenant', function ($tenant) use ($term) {
+                $tenant->whereRaw('instr(t_Fname, ?) > 0', [$term])
+                    ->orWhereRaw('instr(t_Lname, ?) > 0', [$term])
+                    ->orWhereRaw("instr(t_Fname || ' ' || t_Lname, ?) > 0", [$term]);
+            })->orWhereHas('rental.room', fn ($room) => $room->whereRaw('instr(r_name, ?) > 0', [$term]));
+        });
+    }
+
+    /**
+     * @param  Builder<Invoice>  $query
+     * @return Builder<Invoice>
+     */
+    public function scopeInMonth(Builder $query, ?string $month): Builder
+    {
+        if (empty($month)) {
+            return $query;
+        }
+
+        $start = CarbonImmutable::createFromFormat('!Y-m', $month, 'Asia/Bangkok');
+
+        return $query->whereDate('period_start', '>=', $start->toDateString())
+            ->whereDate('period_start', '<', $start->addMonth()->toDateString());
+    }
+
+    public function number(): string
+    {
+        $year = ($this->i_date ?? $this->period_start)?->format('Y') ?? '----';
+
+        return 'INV-'.$year.'-'.str_pad((string) $this->getKey(), 4, '0', STR_PAD_LEFT);
+    }
+
+    public function statusKey(): string
+    {
+        return match ($this->payment?->p_status) {
+            'PAID' => 'paid',
+            'PENDING' => 'pending',
+            'REJECTED' => 'rejected',
+            'UNPAID' => $this->isPastDue() ? 'overdue' : 'unpaid',
+            default => 'none',
+        };
+    }
+
+    public function isPastDue(): bool
+    {
+        return $this->i_due->toDateString() < now('Asia/Bangkok')->toDateString();
+    }
+
+    public function daysLate(): int
+    {
+        $today = CarbonImmutable::parse(now('Asia/Bangkok')->toDateString());
+
+        return (int) CarbonImmutable::parse($this->i_due->toDateString())->diffInDays($today);
+    }
+
+    public function canRecordPayment(): bool
+    {
+        return in_array($this->payment?->p_status, ['UNPAID', 'REJECTED'], true);
+    }
+
+    public function isEditable(): bool
+    {
+        return $this->payment?->p_status === 'UNPAID' && ! $this->payment->events()->exists();
     }
 }
