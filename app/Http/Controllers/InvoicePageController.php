@@ -10,9 +10,40 @@ use Illuminate\View\View;
 
 class InvoicePageController extends Controller
 {
-    public function index(): View
+    public function index(Request $request): View
     {
-        return view('invoices.index');
+        Gate::authorize('viewAny', Invoice::class);
+        $filters = $request->validate([
+            'q' => ['nullable', 'string', 'max:100'], 'month' => ['nullable', 'date_format:Y-m'],
+            'status' => ['nullable', 'in:all,unpaid,overdue,pending,rejected,paid'],
+            'page' => ['nullable', 'integer', 'min:1'],
+        ]);
+        $query = Invoice::visibleTo($request->user())->search($filters['q'] ?? null)->inMonth($filters['month'] ?? null);
+        $stats = [];
+        $stats['total'] = ['count' => (clone $query)->count(), 'amount' => (clone $query)->sum('i_total')];
+        foreach (['paid', 'waiting', 'overdue'] as $bucket) {
+            $group = clone $query;
+            if ($bucket === 'paid') {
+                $group->whereHas('payment', fn ($q) => $q->where('p_status', 'PAID'));
+            } elseif ($bucket === 'overdue') {
+                $group->whereHas('payment', fn ($q) => $q->where('p_status', 'UNPAID'))->whereDate('i_due', '<', now('Asia/Bangkok')->toDateString());
+            } else {
+                $group->whereHas('payment', fn ($q) => $q->whereIn('p_status', ['UNPAID', 'PENDING', 'REJECTED']))->where(fn ($q) => $q->whereDate('i_due', '>=', now('Asia/Bangkok')->toDateString())->orWhereHas('payment', fn ($p) => $p->whereIn('p_status', ['PENDING', 'REJECTED'])));
+            }
+            $stats[$bucket] = ['count' => (clone $group)->count(), 'amount' => $group->sum('i_total')];
+        }
+        $status = $filters['status'] ?? 'all';
+        if ($status !== 'all') {
+            $query->whereHas('payment', fn ($q) => $q->where('p_status', $status === 'overdue' ? 'UNPAID' : strtoupper($status)));
+            if (in_array($status, ['unpaid', 'overdue'], true)) {
+                $query->whereDate('i_due', $status === 'overdue' ? '<' : '>=', now('Asia/Bangkok')->toDateString());
+            }
+        }
+
+        return view('invoices.index', [
+            'invoices' => $query->with(['rental.tenant', 'rental.room', 'payment'])->orderByDesc('created_at')->orderByDesc('i_id')->paginate(20)->withQueryString(),
+            'stats' => $stats, 'filters' => $filters, 'isAdmin' => $request->user()->u_role === 'admin',
+        ]);
     }
 
     public function history(Request $request): View

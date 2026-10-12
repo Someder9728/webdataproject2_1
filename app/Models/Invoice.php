@@ -109,17 +109,19 @@ class Invoice extends Model
     public function scopeSearch(Builder $query, ?string $term): Builder
     {
         $term = trim((string) $term);
+        $numberId = preg_match('/^INV-([0-9]{4})-([0-9]+)$/i', $term, $numberParts) ? (int) $numberParts[2] : null;
 
         if ($term === '') {
             return $query;
         }
 
-        return $query->where(function ($filter) use ($term) {
-            $filter->whereHas('rental.tenant', function ($tenant) use ($term) {
-                $tenant->whereRaw('instr(t_Fname, ?) > 0', [$term])
-                    ->orWhereRaw('instr(t_Lname, ?) > 0', [$term])
-                    ->orWhereRaw("instr(t_Fname || ' ' || t_Lname, ?) > 0", [$term]);
-            })->orWhereHas('rental.room', fn ($room) => $room->whereRaw('instr(r_name, ?) > 0', [$term]));
+        return $query->where(function ($filter) use ($term, $numberId) {
+            $filter->where('i_id', $numberId ?? (ctype_digit($term) ? (int) $term : -1))
+                ->orWhereHas('rental.tenant', function ($tenant) use ($term) {
+                    $tenant->whereRaw('instr(t_Fname, ?) > 0', [$term])
+                        ->orWhereRaw('instr(t_Lname, ?) > 0', [$term])
+                        ->orWhereRaw("instr(t_Fname || ' ' || t_Lname, ?) > 0", [$term]);
+                })->orWhereHas('rental.room', fn ($room) => $room->whereRaw('instr(r_name, ?) > 0', [$term]));
         });
     }
 

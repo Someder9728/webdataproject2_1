@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\AuditEvent;
 use App\Models\Rental;
+use App\Models\Room;
+use App\Models\Tenant;
 use App\Support\RentalTimeline;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -29,7 +31,11 @@ class RentalPageController extends Controller
 
     public function create(): View
     {
-        return view('rentals.create');
+        Gate::authorize('create', Rental::class);
+        $tenants = Tenant::whereDoesntHave('rentals', fn ($q) => $q->where('rt_status', 'ACTIVE'))->orderBy('t_Fname')->get(['t_id', 't_Fname', 't_Lname', 't_tel']);
+        $rooms = Room::where('r_status', 'VACANT')->whereDoesntHave('rentals', fn ($q) => $q->where('rt_status', 'ACTIVE'))->orderBy('r_name')->get(['r_id', 'r_name', 'r_type', 'r_rent']);
+
+        return view('rentals.create', compact('tenants', 'rooms'));
     }
 
     public function show(Request $request, int $rental): View

@@ -38,82 +38,54 @@
         finally {
             controls.forEach(([el, disabled]) => el.disabled = disabled);
             busy = false;
-            $('previous-page').disabled = page <= 1;
-            $('next-page').disabled = page >= lastPage;
         }
     }
-    function cell(row, text) { const el = document.createElement('td'); el.textContent = text ?? '-'; row.append(el); return el; }
-    function button(parent, text, action) { const el = document.createElement('button'); el.type = 'button'; el.className = `btn btn-sm me-2 my-1 ${text === 'ยกเลิกรายการ' ? 'tenant-delete-btn' : 'tenant-edit-btn'}`; el.textContent = text; el.addEventListener('click', action); parent.append(el); }
-    function pagination(meta) { page = meta.current_page; lastPage = meta.last_page; $('page-label').textContent = `${page} / ${lastPage} (${meta.total} รายการ)`; }
-    function empty(tbody, count) { if (!tbody.children.length) { const row = tbody.insertRow(); const el = cell(row, 'ยังไม่มีรายการ'); el.className = 'tenant-state text-center'; el.colSpan = count; } }
-    async function load() {
-        if (root.dataset.maintenance === 'meters') {
+    const selectionKey = root.dataset.maintenance === 'meters' ? `meter-selection-${$('meter-room').value}` : null;
+    async function load() { if (selectionKey) sessionStorage.removeItem(selectionKey); window.location.reload(); }
+    const initial = document.getElementById('meter-initial');
+    const meters = initial ? JSON.parse(initial.textContent) : {};
+    if (selectionKey) {
+        try { const saved = JSON.parse(sessionStorage.getItem(selectionKey) || '{}'); start = saved.start ? (meters[saved.start.m_id] || saved.start) : null; end = saved.end ? (meters[saved.end.m_id] || saved.end) : null; }
+        catch (_) { sessionStorage.removeItem(selectionKey); }
+        selection();
+    }
+    root.addEventListener('click', event => {
+        const meterButton = event.target.closest('[data-meter-action]');
+        if (meterButton && !busy) {
+            const meter = meters[meterButton.dataset.meterId];
+            if (!meter) return;
             const room = $('meter-room').value;
-            if (!room) { $('meter-rows').replaceChildren(); empty($('meter-rows'), 4); return; }
-            const result = await api(`/rooms/${room}/meters?include_cancelled=1&page=${page}`);
-            const tbody = $('meter-rows'); tbody.replaceChildren();
-            result.data.forEach(meter => {
-                const row = tbody.insertRow(); cell(row, `${meter.m_date}${meter.status === 'CANCELLED' ? ' · ยกเลิก' : ''}`); if (meter.status === 'CANCELLED') row.className = 'text-secondary'; cell(row, meter.m_water); cell(row, meter.m_elec);
-                const actions = cell(row, '');
-                if (meter.status !== 'CANCELLED') {
-                button(actions, 'ต้นช่วง', () => { if (!busy) { start = meter; selection(); } });
-                button(actions, 'ปลายช่วง', () => { if (!busy) { end = meter; selection(); } });
-                }
-                if (meter.can_edit) button(actions, 'แก้ไข', () => {
-                    if (busy) return;
-                    editing = { meter, room };
-                    $('meter-edit-section').hidden = false;
-                    $('meter-edit-summary').textContent = `รายการ #${meter.m_id} วันที่ ${meter.m_date} · น้ำ ${meter.m_water} · ไฟ ${meter.m_elec}`;
-                    $('meter-edit-date').value = meter.m_date;
-                    $('meter-edit-date').readOnly = !!meter.date_locked;
-                    $('meter-edit-water').value = meter.m_water;
-                    $('meter-edit-elec').value = meter.m_elec;
-                    $('meter-edit-reason').value = '';
-                    $('meter-edit-water').focus();
-                });
-                if (meter.can_delete) button(actions, 'ยกเลิกรายการ', () => {
-                    if (busy) return;
-                    const reason = window.prompt('ระบุเหตุผลที่ต้องการยกเลิกรายการมิเตอร์');
-                    if (reason === null) return;
-                    if (!reason.trim()) { $('work-error').textContent = 'กรุณาระบุเหตุผล'; return; }
-                    if (!window.confirm(`ยืนยันยกเลิกรายการมิเตอร์ห้อง ${$('meter-room').selectedOptions[0].textContent}\nวันที่ ${meter.m_date} · น้ำ ${meter.m_water} · ไฟ ${meter.m_elec}\nเหตุผล: ${reason.trim()}\nรายการยังอยู่ในประวัติ แต่ใช้คำนวณไม่ได้ สามารถบันทึกค่าทดแทนวันเดิมได้`)) return;
-                    run(async () => {
-                        await api(`/rooms/${room}/meters/${meter.m_id}`, 'DELETE', { reason: reason.trim(), confirmed: true, expected_event_id: meter.latest_event_id ?? null });
-                        start = end = editing = null; $('meter-edit-section').hidden = true; selection(); page = 1; await load();
-                    });
-                });
-                if (!meter.can_edit) { const note = document.createElement('span'); note.className = 'd-block small text-secondary mt-1'; note.textContent = ' ล็อก: ใช้ในบิลแล้วหรือรายการยกเลิก'; actions.append(note); }
-            });
-            empty(tbody, 4); pagination(result.meta);
-        } else {
-            const status = $('repair-filter').value;
-            const result = await api(`/repairs?page=${page}${status ? `&rp_status=${status}` : ''}`);
-            const tbody = $('repair-rows'); tbody.replaceChildren();
-            result.data.forEach(repair => {
-                const row = tbody.insertRow();
-                    cell(row, repair.rp_name);
-                    cell(row, labels[repair.rp_type]);
-                    cell(
-                        row,
-                        repair.rp_type === 'ROOM'
-                            ? (repair.room?.r_name ?? 'ไม่พบข้อมูลห้อง')
-                            : 'พื้นที่ส่วนกลาง'
-                    );
-                const statusCell = cell(row, ''); const badge = document.createElement('span'); badge.className = `badge ${ { REPORTED: 'text-bg-warning', IN_PROGRESS: 'text-bg-primary', COMPLETED: 'text-bg-success' }[repair.rp_status] || 'text-bg-secondary' }`; badge.textContent = labels[repair.rp_status] || repair.rp_status; statusCell.append(badge);
-                const actions = cell(row, '');
-                button(actions, 'ประวัติ', () => run(() => detail(repair.rp_id)));
-                const next = { REPORTED: 'IN_PROGRESS', IN_PROGRESS: 'COMPLETED' }[repair.rp_status];
-                if (root.dataset.admin === '1' && next) button(actions, labels[next], () => run(async () => {
-                    await api(`/repairs/${repair.rp_id}/status`, 'PATCH', { expected_status: repair.rp_status, rp_status: next });
-                    await load(); await detail(repair.rp_id);
-                }));
-            });
-            empty(tbody, 4); pagination(result.meta);
+            const action = meterButton.dataset.meterAction;
+            if (action === 'start') { start = meter; selection(); }
+            if (action === 'end') { end = meter; selection(); }
+            if (action === 'edit') {
+                editing = {meter, room}; $('meter-edit-section').hidden = false;
+                $('meter-edit-summary').textContent = `รายการ #${meter.m_id} วันที่ ${meter.m_date} · น้ำ ${meter.m_water} · ไฟ ${meter.m_elec}`;
+                $('meter-edit-date').value = meter.m_date; $('meter-edit-date').readOnly = !!meter.date_locked;
+                $('meter-edit-water').value = meter.m_water; $('meter-edit-elec').value = meter.m_elec; $('meter-edit-reason').value = '';
+                $('meter-edit-water').focus();
+            }
+            if (action === 'cancel') {
+                const reason = window.prompt('ระบุเหตุผลที่ต้องการยกเลิกรายการมิเตอร์');
+                if (reason === null) return;
+                if (!reason.trim()) { $('work-error').textContent = 'กรุณาระบุเหตุผล'; return; }
+                if (!window.confirm(`ยืนยันยกเลิกมิเตอร์วันที่ ${meter.m_date} · น้ำ ${meter.m_water} · ไฟ ${meter.m_elec}\nเหตุผล: ${reason.trim()}`)) return;
+                run(async () => { await api(`/rooms/${room}/meters/${meter.m_id}`, 'DELETE', {reason: reason.trim(), confirmed: true, expected_event_id: meter.latest_event_id}); await load(); });
+            }
         }
-    }
+        const detailButton = event.target.closest('[data-repair-detail]');
+        if (detailButton) run(() => detail(Number(detailButton.dataset.repairDetail)));
+        const nextButton = event.target.closest('[data-repair-next]');
+        if (nextButton) run(async () => {
+            const next = {REPORTED:'IN_PROGRESS', IN_PROGRESS:'COMPLETED'}[nextButton.dataset.status];
+            await api(`/repairs/${nextButton.dataset.repairNext}/status`, 'PATCH', {expected_status:nextButton.dataset.status, rp_status:next});
+            await load();
+        });
+    });
     function selection() {
         $('usage-selection').textContent = `ต้นช่วง: ${start?.m_date || 'ยังไม่เลือก'} → ปลายช่วง: ${end?.m_date || 'ยังไม่เลือก'}`;
         $('usage-result').textContent = '';
+        if (selectionKey) sessionStorage.setItem(selectionKey, JSON.stringify({start, end}));
     }
     async function detail(id) {
         const { data } = await api(`/repairs/${id}`);
@@ -123,14 +95,12 @@
         $('repair-history').replaceChildren();
         data.histories.forEach(history => { const el = document.createElement('li'); el.textContent = `${labels[history.rph_status]} · ${new Date(history.created_at).toLocaleString('th-TH')} · ผู้ดำเนินการ #${history.changed_by_user_id}`; $('repair-history').append(el); });
     }
-    $('previous-page').onclick = () => run(async () => { page = Math.max(1, page - 1); await load(); });
-    $('next-page').onclick = () => run(async () => { page = Math.min(lastPage, page + 1); await load(); });
     $('reload').onclick = () => run(async () => {
         if (root.dataset.maintenance === 'meters') { editing = start = end = null; $('meter-edit-section').hidden = true; selection(); }
         await load();
     });
     if (root.dataset.maintenance === 'meters') {
-        $('meter-room').onchange = () => run(async () => { page = 1; lastPage = 1; start = end = editing = null; $('meter-edit-section').hidden = true; selection(); await load(); });
+        $('meter-room').onchange = () => { const url = new URL(window.location.href); url.searchParams.delete('page'); if ($('meter-room').value) url.searchParams.set('room', $('meter-room').value); else url.searchParams.delete('room'); window.location.assign(url); };
         $('meter-edit-cancel').onclick = () => { if (!busy) { editing = null; $('meter-edit-section').hidden = true; } };
         $('meter-edit-form').onsubmit = event => {
             event.preventDefault();
@@ -161,7 +131,7 @@
             $('usage-result').textContent = `น้ำ ${data.water_usage} หน่วย · ไฟ ${data.elec_usage} หน่วย`;
         });
     } else {
-        $('repair-filter').onchange = () => run(async () => { page = 1; await load(); });
+        $('repair-filter').onchange = () => { const url = new URL(window.location.href); url.searchParams.delete('page'); if ($('repair-filter').value) url.searchParams.set('rp_status', $('repair-filter').value); else url.searchParams.delete('rp_status'); window.location.assign(url); };
         if ($('repair-form')) {
             $('repair-type').onchange = () => {
                 const common = $('repair-type').value === 'COMMON';
@@ -174,5 +144,5 @@
             };
         }
     }
-    run(load);
+
 })();

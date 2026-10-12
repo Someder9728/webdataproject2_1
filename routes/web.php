@@ -1,12 +1,14 @@
 <?php
 
 use App\Http\Controllers\AccountManagementController;
+use App\Http\Controllers\ContractPageController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\InvoicePageController;
 use App\Http\Controllers\MaintenancePageController;
 use App\Http\Controllers\RentalPageController;
 use App\Http\Controllers\RoomController;
 use App\Http\Controllers\TenantController;
+use App\Http\Controllers\TenantDashboardController;
 use App\Http\Controllers\TenantMeterPageController;
 use Illuminate\Support\Facades\Route;
 
@@ -54,9 +56,10 @@ Route::middleware(['auth', 'password.changed'])->group(function () {
 });
 
 Route::middleware(['auth', 'password.changed', 'role:admin'])->group(function () {
+    Route::get('/rooms/{room}/history', [RoomController::class, 'history'])->whereNumber('room')->name('rooms.history');
     Route::resource('rooms', RoomController::class)->except(['show']);
     Route::resource('tenants', TenantController::class)->except(['show']);
-    Route::view('/contracts', 'contracts.index', ['mode' => 'contracts'])->name('contracts.index');
+    Route::get('/contracts', [ContractPageController::class, 'index'])->name('contracts.index');
     Route::livewire('admin/accounts', '⚡account-management')->name('admin.accounts');
     Route::post('admin/accounts/create', [AccountManagementController::class, 'create'])->name('admin.accounts.create');
     Route::post('admin/accounts/{userId}/password', [AccountManagementController::class, 'resetPassword'])->whereNumber('userId')->name('admin.accounts.reset-password');
@@ -64,7 +67,7 @@ Route::middleware(['auth', 'password.changed', 'role:admin'])->group(function ()
 });
 
 Route::middleware(['auth', 'password.changed', 'role:tenant'])->group(function () {
-    Route::view('user/dashboard', 'user.dashboard')->name('user.dashboard');
+    Route::get('user/dashboard', [TenantDashboardController::class, 'index'])->name('user.dashboard');
     Route::get('/my/meters', [TenantMeterPageController::class, 'index'])->name('my.meters');
 });
 

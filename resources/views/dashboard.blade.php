@@ -451,13 +451,9 @@
                                 ยังไม่ชำระ
                             </div>
 
-                            <div class="summary-value" id="dashboard-current-due-amount">
-                                กำลังโหลด...
-                            </div>
+                            <div class="summary-value" id="dashboard-current-due-amount">฿{{ number_format((float)$dashboard['payments']['outstanding_amount'] - (float)$dashboard['payments']['overdue_amount'], 2) }}</div>
 
-                            <div class="summary-unit" id="dashboard-current-due-count">
-                                —
-                            </div>
+                            <div class="summary-unit" id="dashboard-current-due-count">{{ $dashboard['payments']['outstanding_count'] - $dashboard['payments']['overdue_count'] }} รายการ · ยังไม่เกินกำหนด</div>
                         </div>
 
                     </div>
@@ -481,13 +477,9 @@
                                 เกินกำหนดชำระ
                             </div>
 
-                            <div class="summary-value" id="dashboard-overdue-amount">
-                                กำลังโหลด...
-                            </div>
+                            <div class="summary-value" id="dashboard-overdue-amount">฿{{ number_format((float)$dashboard['payments']['overdue_amount'], 2) }}</div>
 
-                            <div class="summary-unit" id="dashboard-overdue-count">
-                                —
-                            </div>
+                            <div class="summary-unit" id="dashboard-overdue-count">{{ $dashboard['payments']['overdue_count'] }} รายการ</div>
                         </div>
 
                     </div>
@@ -511,9 +503,7 @@
                                 แจ้งซ่อมค้าง
                             </div>
 
-                            <div class="summary-value" id="dashboard-repair-count">
-                                0
-                            </div>
+                            <div class="summary-value" id="dashboard-repair-count">{{ ($dashboard['repairs']['REPORTED'] ?? 0) + ($dashboard['repairs']['IN_PROGRESS'] ?? 0) }}</div>
 
                             <div class="summary-unit">
                                 รายการ
@@ -668,15 +658,7 @@
                                 </tr>
                             </thead>
 
-                            <tbody id="dashboard-invoice-rows">
-
-                                <tr>
-                                    <td colspan="5" class="empty-table" role="status" aria-live="polite">
-                                        กำลังโหลดรายการใบแจ้งหนี้...
-                                    </td>
-                                </tr>
-
-                            </tbody>
+                            <tbody id="dashboard-invoice-rows">@forelse($dueInvoices as $invoice)<tr><td>{{ $invoice->rental?->room?->r_name ?? '—' }}</td><td>{{ $invoice->rental?->tenant?->t_Fname }} {{ $invoice->rental?->tenant?->t_Lname }}</td><td>{{ $invoice->period_start?->format('Y-m-d') }}</td><td class="amount">฿{{ number_format((float)$invoice->i_total, 2) }}</td><td>@include('invoices._status-badge', ['invoice' => $invoice])</td></tr>@empty<tr><td colspan="5" class="empty-table">ยังไม่มีรายการค้างชำระ</td></tr>@endforelse</tbody>
 
                         </table>
 
@@ -728,15 +710,7 @@
                                 </tr>
                             </thead>
 
-                            <tbody id="dashboard-repair-rows">
-
-                                <tr>
-                                    <td colspan="5" class="empty-table" role="status" aria-live="polite">
-                                        กำลังโหลดรายการแจ้งซ่อม...
-                                    </td>
-                                </tr>
-
-                            </tbody>
+                            <tbody id="dashboard-repair-rows">@forelse($recentRepairs as $repair)<tr><td>{{ $repair->rp_id }}</td><td>{{ $repair->room?->r_name ?? 'ส่วนกลาง' }}</td><td>{{ $repair->rp_name }}</td><td>{{ $repair->created_at?->format('Y-m-d') }}</td><td><span class="status-badge status-repair">{{ ['REPORTED' => 'แจ้งใหม่', 'IN_PROGRESS' => 'กำลังดำเนินการ', 'COMPLETED' => 'เสร็จแล้ว'][$repair->rp_status] ?? $repair->rp_status }}</span></td></tr>@empty<tr><td colspan="5" class="empty-table">ยังไม่มีข้อมูลแจ้งซ่อม</td></tr>@endforelse</tbody>
 
                         </table>
 
@@ -750,171 +724,6 @@
 
     </div>
 
-    <script>
-    document.addEventListener('DOMContentLoaded', async () => {
-        if (!window.dashboardApi) {
-            ['dashboard-current-due-amount', 'dashboard-overdue-amount'].forEach(id => {
-                const element = document.getElementById(id);
-                if (element) {
-                    element.textContent = 'โหลดไม่ได้';
-                    element.classList.add('is-error');
-                }
-            });
-            ['dashboard-current-due-count', 'dashboard-overdue-count'].forEach(id => {
-                const element = document.getElementById(id);
-                if (element) element.textContent = 'ลองใหม่ภายหลัง';
-            });
-            return;
-        }
 
-        try {
-            const response = await window.dashboardApi.get();
-            const data = response.data;
-
-            const currentDueAmount = document.getElementById(
-                'dashboard-current-due-amount'
-            );
-
-            const currentDueCount = document.getElementById(
-                'dashboard-current-due-count'
-            );
-
-            const overdueAmount = document.getElementById(
-                'dashboard-overdue-amount'
-            );
-
-            const overdueCount = document.getElementById(
-                'dashboard-overdue-count'
-            );
-
-            const repairCount = document.getElementById(
-                'dashboard-repair-count'
-            );
-
-            const toCents = value => Math.round(Number(value ?? 0) * 100);
-            const formatBaht = cents => `฿${(cents / 100).toLocaleString('th-TH', {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2
-            })}`;
-            const currentDueAmountCents = Math.max(
-                0,
-                toCents(data.payments.outstanding_amount) -
-                toCents(data.payments.overdue_amount)
-            );
-            const currentDueCountValue = Math.max(
-                0,
-                Number(data.payments.outstanding_count ?? 0) -
-                Number(data.payments.overdue_count ?? 0)
-            );
-
-            if (currentDueAmount) currentDueAmount.textContent = formatBaht(currentDueAmountCents);
-            if (currentDueCount) currentDueCount.textContent =
-                `${currentDueCountValue} รายการ · ยังไม่เกินกำหนด`;
-            if (overdueAmount) overdueAmount.textContent = formatBaht(toCents(data.payments
-            .overdue_amount));
-            if (overdueCount) overdueCount.textContent =
-                `${Number(data.payments.overdue_count ?? 0)} รายการ`;
-
-            if (repairCount) {
-                const repairs = data.repairs ?? {};
-                const totalRepairs =
-                    Number(repairs.REPORTED ?? 0) +
-                    Number(repairs.IN_PROGRESS ?? 0);
-
-                repairCount.textContent = totalRepairs;
-            }
-        } catch (error) {
-            console.error('Dashboard API error:', error);
-            [
-                'dashboard-current-due-amount',
-                'dashboard-overdue-amount',
-            ].forEach(id => {
-                const element = document.getElementById(id);
-                if (element) {
-                    element.textContent = 'โหลดไม่ได้';
-                    element.classList.add('is-error');
-                }
-            });
-            [
-                'dashboard-current-due-count',
-                'dashboard-overdue-count',
-            ].forEach(id => {
-                const element = document.getElementById(id);
-                if (element) element.textContent = 'ลองใหม่ภายหลัง';
-            });
-        }
-
-        const escapeHtml = value => {
-            const node = document.createElement('span');
-            node.textContent = value ?? '';
-            return node.innerHTML;
-        };
-        const statusLabel = status => ({
-            UNPAID: 'ยังไม่ชำระ',
-            PENDING: 'รอตรวจสอบ',
-            REJECTED: 'ถูกปฏิเสธ',
-            PAID: 'ชำระแล้ว',
-            REPORTED: 'แจ้งใหม่',
-            IN_PROGRESS: 'กำลังดำเนินการ',
-            COMPLETED: 'เสร็จแล้ว',
-        })[status] ?? status ?? '—';
-        const apiGet = async path => {
-            const response = await fetch(path, {
-                credentials: 'same-origin',
-                headers: {
-                    Accept: 'application/json'
-                },
-            });
-            const body = await response.json().catch(() => ({}));
-            if (response.status === 401) {
-                window.location.assign('/login');
-                throw new Error('กรุณาเข้าสู่ระบบใหม่');
-            }
-            if (!response.ok) throw new Error(body.message || 'โหลดข้อมูลไม่สำเร็จ');
-            return body;
-        };
-
-        const invoiceRows = document.getElementById('dashboard-invoice-rows');
-        try {
-            const statusResults = await Promise.all(['UNPAID', 'PENDING', 'REJECTED'].map(status => {
-                const params = new URLSearchParams({
-                    status,
-                    per_page: 5
-                });
-                return apiGet(`/api/v1/invoices?${params}`);
-            }));
-            const invoices = statusResults.flatMap(result => result.data ?? [])
-                .sort((left, right) => String(left.i_due ?? '').localeCompare(String(right.i_due ?? '')))
-                .slice(0, 5);
-            invoiceRows.innerHTML = invoices.length ? invoices.map(invoice => {
-                const tenant = `${invoice.tenant?.t_Fname ?? ''} ${invoice.tenant?.t_Lname ?? ''}`
-                    .trim() || '—';
-                const status = invoice.payment?.p_status ?? 'UNPAID';
-                return `<tr><td>${escapeHtml(invoice.room?.r_name ?? '—')}</td><td>${escapeHtml(tenant)}</td><td>${escapeHtml(invoice.period_start ?? invoice.i_date ?? '—')}</td><td class="amount">฿${Number(invoice.i_total ?? 0).toLocaleString('th-TH', { minimumFractionDigits: 2 })}</td><td><span class="status-badge ${status === 'REJECTED' ? 'status-overdue' : 'status-waiting'}">${escapeHtml(statusLabel(status))}</span></td></tr>`;
-            }).join('') : '<tr><td colspan="5" class="empty-table">ยังไม่มีรายการค้างชำระ</td></tr>';
-        } catch (error) {
-            invoiceRows.innerHTML =
-                `<tr><td colspan="5" class="empty-table text-danger">${escapeHtml(error.message || 'โหลดรายการไม่สำเร็จ')} <button type="button" class="btn btn-sm btn-outline-primary ms-2" data-dashboard-retry="invoices">ลองใหม่</button></td></tr>`;
-        }
-
-        const repairRows = document.getElementById('dashboard-repair-rows');
-        try {
-            const result = await apiGet('/api/v1/repairs?per_page=5');
-            const repairs = result.data ?? [];
-            repairRows.innerHTML = repairs.length ? repairs.map(repair =>
-                `<tr><td>${escapeHtml(repair.rp_id ?? '—')}</td><td>${escapeHtml(repair.room?.r_name ?? repair.rooms_r_id ?? 'ส่วนกลาง')}</td><td>${escapeHtml(repair.rp_name ?? 'แจ้งซ่อม')}</td><td>${escapeHtml((repair.created_at ?? '—').toString().slice(0, 10))}</td><td><span class="status-badge status-repair">${escapeHtml(statusLabel(repair.rp_status))}</span></td></tr>`
-                ).join('') : '<tr><td colspan="5" class="empty-table">ยังไม่มีข้อมูลแจ้งซ่อม</td></tr>';
-        } catch (error) {
-            repairRows.innerHTML =
-                `<tr><td colspan="5" class="empty-table text-danger">${escapeHtml(error.message || 'โหลดรายการไม่สำเร็จ')} <button type="button" class="btn btn-sm btn-outline-primary ms-2" data-dashboard-retry="repairs">ลองใหม่</button></td></tr>`;
-        }
-
-        document.addEventListener('click', event => {
-            const retry = event.target.closest('[data-dashboard-retry]');
-            if (!retry) return;
-            window.location.reload();
-        });
-    });
-    </script>
 
 </x-layouts::app.sidebar>

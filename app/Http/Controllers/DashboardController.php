@@ -2,29 +2,37 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Rental;
+use App\Models\Invoice;
+use App\Models\Repair;
 use App\Models\Room;
 use App\Models\Tenant;
+use App\Support\DashboardSummary;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class DashboardController extends Controller
 {
-    public function index(): View|RedirectResponse
+    public function index(Request $request, DashboardSummary $summary): View|RedirectResponse
     {
         $user = request()->user();
 
         if ($user && $user->u_role === 'admin') {
-            $totalRooms = Room::count();
+            abort_unless($user->is_active && ! $user->must_change_password, 403);
+            $validated = $request->validate(['month' => ['nullable', 'date_format:Y-m']]);
+            $dashboard = $summary->read($validated['month'] ?? now('Asia/Bangkok')->format('Y-m'));
+            $dueInvoices = Invoice::with(['rental.tenant', 'rental.room', 'payment'])->whereHas('payment', fn ($q) => $q->whereIn('p_status', ['UNPAID', 'PENDING', 'REJECTED']))->orderBy('i_due')->orderBy('i_id')->limit(5)->get();
+            $recentRepairs = Repair::with('room')->orderByDesc('rp_id')->limit(5)->get();
+            $totalRooms = $dashboard['rooms']['total'];
 
             // รองรับแถวเก่าที่ยังเก็บสถานะภาษาไทยจาก seed/ข้อมูลเดิม
-            $availableRooms = Room::whereIn('r_status', ['VACANT', 'ว่าง'])->count();
+            $availableRooms = $dashboard['rooms']['vacant'];
 
-            $occupiedRooms = Room::whereIn('r_status', ['OCCUPIED', 'มีผู้พัก'])->count();
+            $occupiedRooms = $dashboard['rooms']['occupied'];
 
             $totalTenants = Tenant::count();
 
-            $currentTenants = Rental::where('rt_status', 'ACTIVE')->count();
+            $currentTenants = $dashboard['active_rentals'];
 
             $rooms = Room::orderBy('r_floor')
                 ->orderBy('r_name')
@@ -36,7 +44,10 @@ class DashboardController extends Controller
                 'occupiedRooms',
                 'totalTenants',
                 'currentTenants',
-                'rooms'
+                'rooms',
+                'dashboard',
+                'dueInvoices',
+                'recentRepairs'
             ));
         }
 

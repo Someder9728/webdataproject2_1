@@ -8,13 +8,9 @@
             <a href="{{ route('rentals.index') }}" class="rt-close" aria-label="ปิดและกลับไปรายการการเช่า">✕</a>
         </div>
 
-        <div id="page-state-loading" class="rt-state">กำลังโหลดข้อมูลผู้เช่า/ห้อง...</div>
-        <div id="page-state-error" class="rt-state rt-state--error" hidden>
-            <span id="page-error-message"></span>
-            <button type="button" id="btn-page-retry" class="rt-btn rt-btn--sm">ลองใหม่</button>
-        </div>
 
-        <form id="rental-create-form" hidden novalidate>
+
+        <form id="rental-create-form" novalidate>
             <div class="rt-notice rt-notice--info">
                 💡 เลือกผู้เช่าหรือห้อง ระบบจะ <strong>Auto Fill</strong> ข้อมูลที่เกี่ยวข้องให้อัตโนมัติ
             </div>
@@ -26,7 +22,7 @@
             <div class="rt-form-field">
                 <label for="f-tenant">ผู้เช่า <span class="rt-req">*</span></label>
                 <select id="f-tenant" name="tenant" class="rt-input" required>
-                    <option value="">-- เลือกผู้เช่า --</option>
+                    <option value="">-- เลือกผู้เช่า --</option>@foreach($tenants as $tenant)<option value="{{ $tenant->t_id }}">{{ $tenant->t_Fname }} {{ $tenant->t_Lname }}</option>@endforeach
                 </select>
                 <span class="rt-field-error" id="err-tenant"></span>
             </div>
@@ -34,9 +30,9 @@
             <div class="rt-form-field">
                 <label for="f-room">ห้องว่าง <span class="rt-req">*</span></label>
                 <select id="f-room" name="room" class="rt-input" required>
-                    <option value="">-- เลือกห้องว่าง --</option>
+                    <option value="">-- เลือกห้องว่าง --</option>@foreach($rooms as $room)<option value="{{ $room->r_id }}">ห้อง {{ $room->r_name }} · {{ $room->r_type }} · ฿{{ number_format((float)$room->r_rent, 2) }}/เดือน</option>@endforeach
                 </select>
-                <span class="rt-hint" id="room-empty-hint" hidden>ตอนนี้ไม่มีห้องว่าง</span>
+                <span class="rt-hint" id="room-empty-hint" @if($rooms->isNotEmpty()) hidden @endif>ตอนนี้ไม่มีห้องว่าง</span>
                 <span class="rt-field-error" id="err-room"></span>
             </div>
 
@@ -94,8 +90,6 @@
 <script>
 (function () {
     const API_RENTALS = '/api/v1/rentals';
-    const API_TENANTS = '/api/v1/tenants?per_page=100';
-    const API_ROOMS   = '/api/v1/rooms?r_status=VACANT&per_page=100';
     const RENTALS_INDEX_URL = "{{ route('rentals.index') }}";
     const TODAY_STR = "{{ now('Asia/Bangkok')->format('Y-m-d') }}";
     const fetchOpts = { headers: { Accept: 'application/json' }, credentials: 'same-origin' };
@@ -110,91 +104,15 @@
      'meter-warning', 'room-empty-hint', 'af-tenant', 'af-tenant-sub', 'af-room', 'af-room-sub'
     ].forEach((id) => { el[id] = $(id); });
 
-    let tenants = new Map();
-    let rooms = new Map();
+    const tenants = new Map({{ Illuminate\Support\Js::from($tenants) }}.map(t => [String(t.t_id), t]));
+    const rooms = new Map({{ Illuminate\Support\Js::from($rooms) }}.map(r => [String(r.r_id), r]));
     let submitting = false;
 
     function csrfToken() {
         return document.querySelector('meta[name="csrf-token"]')?.content ?? '';
     }
 
-    async function loadFormData() {
-        el['page-state-loading'].hidden = false;
-        el['page-state-error'].hidden = true;
-        el['rental-create-form'].hidden = true;
-
-        try {
-            const [tenantsRes, roomsRes] = await Promise.all([
-                fetch(API_TENANTS, fetchOpts),
-                fetch(API_ROOMS, fetchOpts),
-            ]);
-
-            if (tenantsRes.status === 401 || roomsRes.status === 401) {
-                window.location.href = '/login';
-                return;
-            }
-            if (!tenantsRes.ok) throw new Error('โหลดรายชื่อผู้เช่าไม่สำเร็จ (' + tenantsRes.status + ')');
-            if (!roomsRes.ok) throw new Error('โหลดรายชื่อห้องไม่สำเร็จ (' + roomsRes.status + ')');
-
-            const tenantsBody = await tenantsRes.json();
-            const roomsBody = await roomsRes.json();
-            const busy = await loadBusyTenantIds();
-
-            populateTenants(tenantsBody.data ?? [], busy);
-            populateRooms(roomsBody.data ?? []);
-            refreshAutofill();
-
-            el['page-state-loading'].hidden = true;
-            el['rental-create-form'].hidden = false;
-        } catch (err) {
-            el['page-error-message'].textContent = err.message || 'โหลดข้อมูลไม่สำเร็จ';
-            el['page-state-loading'].hidden = true;
-            el['page-state-error'].hidden = false;
-        }
-    }
-
-    async function loadBusyTenantIds() {
-        try {
-            const res = await fetch('/api/v1/rentals?per_page=100', fetchOpts);
-            if (!res.ok) return new Set();
-            const body = await res.json();
-            return new Set((body.data ?? []).filter((r) => r.rt_status === 'ACTIVE').map((r) => String(r.tenant?.t_id)));
-        } catch (_) {
-            return new Set();
-        }
-    }
-
-    function populateTenants(list, busy = new Set()) {
-        tenants = new Map(list.map((t) => [String(t.t_id), t]));
-        const select = el['f-tenant'];
-        select.innerHTML = '<option value="">-- เลือกผู้เช่า --</option>';
-
-        list.forEach((t) => {
-            const opt = document.createElement('option');
-            opt.value = String(t.t_id);
-            opt.textContent = `${t.t_Fname ?? ''} ${t.t_Lname ?? ''}`.trim();
-            if (busy.has(opt.value)) {
-                opt.disabled = true;
-                opt.textContent += ' (มีการเช่าอยู่แล้ว)';
-            }
-            select.appendChild(opt);
-        });
-    }
-
-    function populateRooms(list) {
-        rooms = new Map(list.map((r) => [String(r.r_id), r]));
-        const select = el['f-room'];
-        select.innerHTML = '<option value="">-- เลือกห้องว่าง --</option>';
-
-        list.forEach((r) => {
-            const opt = document.createElement('option');
-            opt.value = String(r.r_id);
-            opt.textContent = `ห้อง ${r.r_name} · ${r.r_type ?? '-'} · ${money(r.r_rent)}/เดือน`;
-            select.appendChild(opt);
-        });
-
-        el['room-empty-hint'].hidden = list.length > 0;
-    }
+    function loadFormData() { window.location.reload(); }
 
     function refreshAutofill() {
         const tenant = tenants.get(el['f-tenant'].value);
@@ -311,10 +229,9 @@
         }
     }
 
-    el['btn-page-retry'].addEventListener('click', loadFormData);
     el['rental-create-form'].addEventListener('submit', submitForm);
 
-    loadFormData();
+    refreshAutofill();
 })();
 </script>
 </x-layouts::app>

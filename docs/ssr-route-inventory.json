@@ -1,0 +1,1347 @@
+[
+  {
+    "domain": null,
+    "method": "GET|HEAD",
+    "uri": "/",
+    "name": "home",
+    "action": "Illuminate\\Routing\\ViewController",
+    "middleware": [
+      "web"
+    ],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "GET|HEAD",
+    "uri": "admin/accounts",
+    "name": "admin.accounts",
+    "action": "Livewire\\Mechanisms\\HandleRouting\\LivewirePageController",
+    "middleware": [
+      "web",
+      "Illuminate\\Auth\\Middleware\\Authenticate",
+      "App\\Http\\Middleware\\EnsurePasswordIsChanged",
+      "App\\Http\\Middleware\\EnsureRole:admin"
+    ],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "POST",
+    "uri": "admin/accounts/create",
+    "name": "admin.accounts.create",
+    "action": "App\\Http\\Controllers\\AccountManagementController@create",
+    "middleware": [
+      "web",
+      "Illuminate\\Auth\\Middleware\\Authenticate",
+      "App\\Http\\Middleware\\EnsurePasswordIsChanged",
+      "App\\Http\\Middleware\\EnsureRole:admin"
+    ],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "POST",
+    "uri": "admin/accounts/{userId}/password",
+    "name": "admin.accounts.reset-password",
+    "action": "App\\Http\\Controllers\\AccountManagementController@resetPassword",
+    "middleware": [
+      "web",
+      "Illuminate\\Auth\\Middleware\\Authenticate",
+      "App\\Http\\Middleware\\EnsurePasswordIsChanged",
+      "App\\Http\\Middleware\\EnsureRole:admin"
+    ],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "POST",
+    "uri": "admin/accounts/{userId}/suspend",
+    "name": "admin.accounts.suspend",
+    "action": "App\\Http\\Controllers\\AccountManagementController@suspend",
+    "middleware": [
+      "web",
+      "Illuminate\\Auth\\Middleware\\Authenticate",
+      "App\\Http\\Middleware\\EnsurePasswordIsChanged",
+      "App\\Http\\Middleware\\EnsureRole:admin"
+    ],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "POST",
+    "uri": "api/v1/accounts/{account}/reset-password",
+    "name": "api.v1.accounts.reset-password",
+    "action": "App\\Http\\Controllers\\Api\\V1\\AccountController@resetPassword",
+    "middleware": [
+      "web",
+      "Illuminate\\Auth\\Middleware\\Authenticate",
+      "App\\Http\\Middleware\\EnsurePasswordIsChanged",
+      "App\\Http\\Middleware\\EnsureRole:admin"
+    ],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "POST",
+    "uri": "api/v1/accounts/{account}/suspend",
+    "name": "api.v1.accounts.suspend",
+    "action": "App\\Http\\Controllers\\Api\\V1\\AccountController@suspend",
+    "middleware": [
+      "web",
+      "Illuminate\\Auth\\Middleware\\Authenticate",
+      "App\\Http\\Middleware\\EnsurePasswordIsChanged",
+      "App\\Http\\Middleware\\EnsureRole:admin"
+    ],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "GET|HEAD",
+    "uri": "api/v1/dashboard",
+    "name": "api.v1.dashboard",
+    "action": "App\\Http\\Controllers\\Api\\V1\\DashboardController@show",
+    "middleware": [
+      "web",
+      "Illuminate\\Auth\\Middleware\\Authenticate",
+      "App\\Http\\Middleware\\EnsurePasswordIsChanged",
+      "App\\Http\\Middleware\\EnsureRole:admin"
+    ],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "POST",
+    "uri": "api/v1/invoices",
+    "name": "api.v1.invoices.store",
+    "action": "App\\Http\\Controllers\\Api\\V1\\InvoiceController@store",
+    "middleware": [
+      "web",
+      "Illuminate\\Auth\\Middleware\\Authenticate",
+      "App\\Http\\Middleware\\EnsurePasswordIsChanged",
+      "App\\Http\\Middleware\\EnsureRole:admin"
+    ],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "GET|HEAD",
+    "uri": "api/v1/invoices",
+    "name": "api.v1.invoices.index",
+    "action": "App\\Http\\Controllers\\Api\\V1\\InvoiceController@index",
+    "middleware": [
+      "web",
+      "Illuminate\\Auth\\Middleware\\Authenticate",
+      "App\\Http\\Middleware\\EnsurePasswordIsChanged"
+    ],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "POST",
+    "uri": "api/v1/invoices/preview",
+    "name": "api.v1.invoices.preview",
+    "action": "App\\Http\\Controllers\\Api\\V1\\InvoiceController@preview",
+    "middleware": [
+      "web",
+      "Illuminate\\Auth\\Middleware\\Authenticate",
+      "App\\Http\\Middleware\\EnsurePasswordIsChanged",
+      "App\\Http\\Middleware\\EnsureRole:admin"
+    ],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "PATCH",
+    "uri": "api/v1/invoices/{invoice}",
+    "name": "api.v1.invoices.update",
+    "action": "App\\Http\\Controllers\\Api\\V1\\InvoiceController@update",
+    "middleware": [
+      "web",
+      "Illuminate\\Auth\\Middleware\\Authenticate",
+      "App\\Http\\Middleware\\EnsurePasswordIsChanged",
+      "App\\Http\\Middleware\\EnsureRole:admin"
+    ],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "GET|HEAD",
+    "uri": "api/v1/invoices/{invoice}",
+    "name": "api.v1.invoices.show",
+    "action": "App\\Http\\Controllers\\Api\\V1\\InvoiceController@show",
+    "middleware": [
+      "web",
+      "Illuminate\\Auth\\Middleware\\Authenticate",
+      "App\\Http\\Middleware\\EnsurePasswordIsChanged"
+    ],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "GET|HEAD",
+    "uri": "api/v1/invoices/{invoice}/payment",
+    "name": "api.v1.invoices.payment.show",
+    "action": "App\\Http\\Controllers\\Api\\V1\\InvoiceController@payment",
+    "middleware": [
+      "web",
+      "Illuminate\\Auth\\Middleware\\Authenticate",
+      "App\\Http\\Middleware\\EnsurePasswordIsChanged"
+    ],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "GET|HEAD",
+    "uri": "api/v1/invoices/{invoice}/payment/events",
+    "name": "api.v1.invoices.payment.events",
+    "action": "App\\Http\\Controllers\\Api\\V1\\PaymentHistoryController@index",
+    "middleware": [
+      "web",
+      "Illuminate\\Auth\\Middleware\\Authenticate",
+      "App\\Http\\Middleware\\EnsurePasswordIsChanged"
+    ],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "GET|HEAD",
+    "uri": "api/v1/invoices/{invoice}/payment/proof",
+    "name": "api.v1.invoices.payment.proof",
+    "action": "App\\Http\\Controllers\\Api\\V1\\PaymentProofController@show",
+    "middleware": [
+      "web",
+      "Illuminate\\Auth\\Middleware\\Authenticate",
+      "App\\Http\\Middleware\\EnsurePasswordIsChanged"
+    ],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "POST",
+    "uri": "api/v1/invoices/{invoice}/payment/review",
+    "name": "api.v1.invoices.payment.review",
+    "action": "App\\Http\\Controllers\\Api\\V1\\PaymentReviewController@store",
+    "middleware": [
+      "web",
+      "Illuminate\\Auth\\Middleware\\Authenticate",
+      "App\\Http\\Middleware\\EnsurePasswordIsChanged",
+      "App\\Http\\Middleware\\EnsureRole:admin"
+    ],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "POST",
+    "uri": "api/v1/invoices/{invoice}/payment/submit",
+    "name": "api.v1.invoices.payment.submit",
+    "action": "App\\Http\\Controllers\\Api\\V1\\PaymentProofController@store",
+    "middleware": [
+      "web",
+      "Illuminate\\Auth\\Middleware\\Authenticate",
+      "App\\Http\\Middleware\\EnsurePasswordIsChanged",
+      "App\\Http\\Middleware\\EnsureRole:tenant"
+    ],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "POST",
+    "uri": "api/v1/invoices/{invoice}/payment/walk-in",
+    "name": "api.v1.invoices.payment.walk-in",
+    "action": "App\\Http\\Controllers\\Api\\V1\\WalkInPaymentController@store",
+    "middleware": [
+      "web",
+      "Illuminate\\Auth\\Middleware\\Authenticate",
+      "App\\Http\\Middleware\\EnsurePasswordIsChanged",
+      "App\\Http\\Middleware\\EnsureRole:admin"
+    ],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "GET|HEAD",
+    "uri": "api/v1/me",
+    "name": "api.v1.me",
+    "action": "Closure",
+    "middleware": [
+      "web",
+      "Illuminate\\Auth\\Middleware\\Authenticate",
+      "App\\Http\\Middleware\\EnsurePasswordIsChanged"
+    ],
+    "path": "routes/api-session.php:35"
+  },
+  {
+    "domain": null,
+    "method": "GET|HEAD",
+    "uri": "api/v1/payment-events/{paymentEvent}/proof",
+    "name": "api.v1.payment-events.proof",
+    "action": "App\\Http\\Controllers\\Api\\V1\\PaymentHistoryController@proof",
+    "middleware": [
+      "web",
+      "Illuminate\\Auth\\Middleware\\Authenticate",
+      "App\\Http\\Middleware\\EnsurePasswordIsChanged"
+    ],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "GET|HEAD",
+    "uri": "api/v1/rentals",
+    "name": "api.v1.rentals.index",
+    "action": "App\\Http\\Controllers\\Api\\V1\\RentalController@index",
+    "middleware": [
+      "web",
+      "Illuminate\\Auth\\Middleware\\Authenticate",
+      "App\\Http\\Middleware\\EnsurePasswordIsChanged"
+    ],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "POST",
+    "uri": "api/v1/rentals",
+    "name": "api.v1.rentals.store",
+    "action": "App\\Http\\Controllers\\Api\\V1\\RentalController@store",
+    "middleware": [
+      "web",
+      "Illuminate\\Auth\\Middleware\\Authenticate",
+      "App\\Http\\Middleware\\EnsurePasswordIsChanged",
+      "App\\Http\\Middleware\\EnsureRole:admin"
+    ],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "GET|HEAD",
+    "uri": "api/v1/rentals/{rental}",
+    "name": "api.v1.rentals.show",
+    "action": "App\\Http\\Controllers\\Api\\V1\\RentalController@show",
+    "middleware": [
+      "web",
+      "Illuminate\\Auth\\Middleware\\Authenticate",
+      "App\\Http\\Middleware\\EnsurePasswordIsChanged"
+    ],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "PATCH",
+    "uri": "api/v1/rentals/{rental}/contract",
+    "name": "api.v1.rentals.contract.update",
+    "action": "App\\Http\\Controllers\\Api\\V1\\RentalController@updateContract",
+    "middleware": [
+      "web",
+      "Illuminate\\Auth\\Middleware\\Authenticate",
+      "App\\Http\\Middleware\\EnsurePasswordIsChanged",
+      "App\\Http\\Middleware\\EnsureRole:admin"
+    ],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "GET|HEAD",
+    "uri": "api/v1/rentals/{rental}/contract",
+    "name": "api.v1.rentals.contract.show",
+    "action": "App\\Http\\Controllers\\Api\\V1\\RentalController@showContract",
+    "middleware": [
+      "web",
+      "Illuminate\\Auth\\Middleware\\Authenticate",
+      "App\\Http\\Middleware\\EnsurePasswordIsChanged"
+    ],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "GET|HEAD",
+    "uri": "api/v1/rentals/{rental}/history",
+    "name": "api.v1.rentals.history",
+    "action": "App\\Http\\Controllers\\Api\\V1\\RentalHistoryController@index",
+    "middleware": [
+      "web",
+      "Illuminate\\Auth\\Middleware\\Authenticate",
+      "App\\Http\\Middleware\\EnsurePasswordIsChanged",
+      "App\\Http\\Middleware\\EnsureRole:admin"
+    ],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "POST",
+    "uri": "api/v1/rentals/{rental}/move-out",
+    "name": "api.v1.rentals.move-out",
+    "action": "App\\Http\\Controllers\\Api\\V1\\RentalController@moveOut",
+    "middleware": [
+      "web",
+      "Illuminate\\Auth\\Middleware\\Authenticate",
+      "App\\Http\\Middleware\\EnsurePasswordIsChanged",
+      "App\\Http\\Middleware\\EnsureRole:admin"
+    ],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "GET|HEAD",
+    "uri": "api/v1/repairs",
+    "name": "api.v1.repairs.index",
+    "action": "App\\Http\\Controllers\\Api\\V1\\RepairController@index",
+    "middleware": [
+      "web",
+      "Illuminate\\Auth\\Middleware\\Authenticate",
+      "App\\Http\\Middleware\\EnsurePasswordIsChanged"
+    ],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "POST",
+    "uri": "api/v1/repairs",
+    "name": "api.v1.repairs.store",
+    "action": "App\\Http\\Controllers\\Api\\V1\\RepairController@store",
+    "middleware": [
+      "web",
+      "Illuminate\\Auth\\Middleware\\Authenticate",
+      "App\\Http\\Middleware\\EnsurePasswordIsChanged"
+    ],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "GET|HEAD",
+    "uri": "api/v1/repairs/{repair}",
+    "name": "api.v1.repairs.show",
+    "action": "App\\Http\\Controllers\\Api\\V1\\RepairController@show",
+    "middleware": [
+      "web",
+      "Illuminate\\Auth\\Middleware\\Authenticate",
+      "App\\Http\\Middleware\\EnsurePasswordIsChanged"
+    ],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "PATCH",
+    "uri": "api/v1/repairs/{repair}/status",
+    "name": "api.v1.repairs.status",
+    "action": "App\\Http\\Controllers\\Api\\V1\\RepairController@update",
+    "middleware": [
+      "web",
+      "Illuminate\\Auth\\Middleware\\Authenticate",
+      "App\\Http\\Middleware\\EnsurePasswordIsChanged",
+      "App\\Http\\Middleware\\EnsureRole:admin"
+    ],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "GET|HEAD",
+    "uri": "api/v1/rooms",
+    "name": "api.v1.rooms.index",
+    "action": "App\\Http\\Controllers\\Api\\V1\\RoomController@index",
+    "middleware": [
+      "web",
+      "Illuminate\\Auth\\Middleware\\Authenticate",
+      "App\\Http\\Middleware\\EnsurePasswordIsChanged"
+    ],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "POST",
+    "uri": "api/v1/rooms",
+    "name": "api.v1.rooms.store",
+    "action": "App\\Http\\Controllers\\Api\\V1\\RoomController@store",
+    "middleware": [
+      "web",
+      "Illuminate\\Auth\\Middleware\\Authenticate",
+      "App\\Http\\Middleware\\EnsurePasswordIsChanged"
+    ],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "GET|HEAD",
+    "uri": "api/v1/rooms/{room}",
+    "name": "api.v1.rooms.show",
+    "action": "App\\Http\\Controllers\\Api\\V1\\RoomController@show",
+    "middleware": [
+      "web",
+      "Illuminate\\Auth\\Middleware\\Authenticate",
+      "App\\Http\\Middleware\\EnsurePasswordIsChanged"
+    ],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "PATCH",
+    "uri": "api/v1/rooms/{room}",
+    "name": "api.v1.rooms.update",
+    "action": "App\\Http\\Controllers\\Api\\V1\\RoomController@update",
+    "middleware": [
+      "web",
+      "Illuminate\\Auth\\Middleware\\Authenticate",
+      "App\\Http\\Middleware\\EnsurePasswordIsChanged"
+    ],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "DELETE",
+    "uri": "api/v1/rooms/{room}",
+    "name": "api.v1.rooms.destroy",
+    "action": "App\\Http\\Controllers\\Api\\V1\\RoomController@destroy",
+    "middleware": [
+      "web",
+      "Illuminate\\Auth\\Middleware\\Authenticate",
+      "App\\Http\\Middleware\\EnsurePasswordIsChanged",
+      "App\\Http\\Middleware\\EnsureRole:admin"
+    ],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "GET|HEAD",
+    "uri": "api/v1/rooms/{room}/meter-usage",
+    "name": "api.v1.rooms.meter-usage",
+    "action": "App\\Http\\Controllers\\Api\\V1\\MeterController@usage",
+    "middleware": [
+      "web",
+      "Illuminate\\Auth\\Middleware\\Authenticate",
+      "App\\Http\\Middleware\\EnsurePasswordIsChanged",
+      "App\\Http\\Middleware\\EnsureRole:admin"
+    ],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "GET|HEAD",
+    "uri": "api/v1/rooms/{room}/meters",
+    "name": "api.v1.rooms.meters.index",
+    "action": "App\\Http\\Controllers\\Api\\V1\\MeterController@index",
+    "middleware": [
+      "web",
+      "Illuminate\\Auth\\Middleware\\Authenticate",
+      "App\\Http\\Middleware\\EnsurePasswordIsChanged",
+      "App\\Http\\Middleware\\EnsureRole:admin"
+    ],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "POST",
+    "uri": "api/v1/rooms/{room}/meters",
+    "name": "api.v1.rooms.meters.store",
+    "action": "App\\Http\\Controllers\\Api\\V1\\MeterController@store",
+    "middleware": [
+      "web",
+      "Illuminate\\Auth\\Middleware\\Authenticate",
+      "App\\Http\\Middleware\\EnsurePasswordIsChanged",
+      "App\\Http\\Middleware\\EnsureRole:admin"
+    ],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "PATCH",
+    "uri": "api/v1/rooms/{room}/meters/{meter}",
+    "name": "api.v1.rooms.meters.update",
+    "action": "App\\Http\\Controllers\\Api\\V1\\MeterController@update",
+    "middleware": [
+      "web",
+      "Illuminate\\Auth\\Middleware\\Authenticate",
+      "App\\Http\\Middleware\\EnsurePasswordIsChanged",
+      "App\\Http\\Middleware\\EnsureRole:admin"
+    ],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "DELETE",
+    "uri": "api/v1/rooms/{room}/meters/{meter}",
+    "name": "api.v1.rooms.meters.destroy",
+    "action": "App\\Http\\Controllers\\Api\\V1\\MeterController@destroy",
+    "middleware": [
+      "web",
+      "Illuminate\\Auth\\Middleware\\Authenticate",
+      "App\\Http\\Middleware\\EnsurePasswordIsChanged",
+      "App\\Http\\Middleware\\EnsureRole:admin"
+    ],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "GET|HEAD",
+    "uri": "api/v1/tenants",
+    "name": "api.v1.tenants.index",
+    "action": "App\\Http\\Controllers\\Api\\V1\\TenantController@index",
+    "middleware": [
+      "web",
+      "Illuminate\\Auth\\Middleware\\Authenticate",
+      "App\\Http\\Middleware\\EnsurePasswordIsChanged"
+    ],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "POST",
+    "uri": "api/v1/tenants",
+    "name": "api.v1.tenants.store",
+    "action": "App\\Http\\Controllers\\Api\\V1\\TenantController@store",
+    "middleware": [
+      "web",
+      "Illuminate\\Auth\\Middleware\\Authenticate",
+      "App\\Http\\Middleware\\EnsurePasswordIsChanged"
+    ],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "GET|HEAD",
+    "uri": "api/v1/tenants/{tenant}",
+    "name": "api.v1.tenants.show",
+    "action": "App\\Http\\Controllers\\Api\\V1\\TenantController@show",
+    "middleware": [
+      "web",
+      "Illuminate\\Auth\\Middleware\\Authenticate",
+      "App\\Http\\Middleware\\EnsurePasswordIsChanged"
+    ],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "PATCH",
+    "uri": "api/v1/tenants/{tenant}",
+    "name": "api.v1.tenants.update",
+    "action": "App\\Http\\Controllers\\Api\\V1\\TenantController@update",
+    "middleware": [
+      "web",
+      "Illuminate\\Auth\\Middleware\\Authenticate",
+      "App\\Http\\Middleware\\EnsurePasswordIsChanged"
+    ],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "DELETE",
+    "uri": "api/v1/tenants/{tenant}",
+    "name": "api.v1.tenants.destroy",
+    "action": "App\\Http\\Controllers\\Api\\V1\\TenantController@destroy",
+    "middleware": [
+      "web",
+      "Illuminate\\Auth\\Middleware\\Authenticate",
+      "App\\Http\\Middleware\\EnsurePasswordIsChanged",
+      "App\\Http\\Middleware\\EnsureRole:admin"
+    ],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "POST",
+    "uri": "api/v1/tenants/{tenant}/account",
+    "name": "api.v1.tenants.account.store",
+    "action": "App\\Http\\Controllers\\Api\\V1\\TenantAccountController@store",
+    "middleware": [
+      "web",
+      "Illuminate\\Auth\\Middleware\\Authenticate",
+      "App\\Http\\Middleware\\EnsurePasswordIsChanged",
+      "App\\Http\\Middleware\\EnsureRole:admin"
+    ],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "GET|HEAD",
+    "uri": "api/v1/tenants/{tenant}/account",
+    "name": "api.v1.tenants.account.show",
+    "action": "App\\Http\\Controllers\\Api\\V1\\TenantAccountController@show",
+    "middleware": [
+      "web",
+      "Illuminate\\Auth\\Middleware\\Authenticate",
+      "App\\Http\\Middleware\\EnsurePasswordIsChanged",
+      "App\\Http\\Middleware\\EnsureRole:admin"
+    ],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "GET|HEAD",
+    "uri": "contracts",
+    "name": "contracts.index",
+    "action": "App\\Http\\Controllers\\ContractPageController@index",
+    "middleware": [
+      "web",
+      "Illuminate\\Auth\\Middleware\\Authenticate",
+      "App\\Http\\Middleware\\EnsurePasswordIsChanged",
+      "App\\Http\\Middleware\\EnsureRole:admin"
+    ],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "GET|HEAD",
+    "uri": "dashboard",
+    "name": "dashboard",
+    "action": "App\\Http\\Controllers\\DashboardController@index",
+    "middleware": [
+      "web",
+      "Illuminate\\Auth\\Middleware\\Authenticate",
+      "App\\Http\\Middleware\\EnsurePasswordIsChanged"
+    ],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "GET|HEAD",
+    "uri": "flux/editor.css",
+    "name": null,
+    "action": "Flux\\AssetManager@editorCss",
+    "middleware": [],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "GET|HEAD",
+    "uri": "flux/editor.js",
+    "name": null,
+    "action": "Flux\\AssetManager@editorJs",
+    "middleware": [],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "GET|HEAD",
+    "uri": "flux/editor.min.js",
+    "name": null,
+    "action": "Flux\\AssetManager@editorMinJs",
+    "middleware": [],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "GET|HEAD",
+    "uri": "flux/flags/{country}",
+    "name": "__flux.flag",
+    "action": "Flux\\AssetManager@flag",
+    "middleware": [],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "GET|HEAD",
+    "uri": "flux/flux.js",
+    "name": null,
+    "action": "Flux\\AssetManager@fluxJs",
+    "middleware": [],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "GET|HEAD",
+    "uri": "flux/flux.min.js",
+    "name": null,
+    "action": "Flux\\AssetManager@fluxMinJs",
+    "middleware": [],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "GET|HEAD",
+    "uri": "invoices",
+    "name": "invoices.index",
+    "action": "App\\Http\\Controllers\\InvoicePageController@index",
+    "middleware": [
+      "web",
+      "Illuminate\\Auth\\Middleware\\Authenticate",
+      "App\\Http\\Middleware\\EnsurePasswordIsChanged",
+      "App\\Http\\Middleware\\EnsureRole:admin,tenant"
+    ],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "GET|HEAD",
+    "uri": "invoices/history",
+    "name": "invoices.history",
+    "action": "App\\Http\\Controllers\\InvoicePageController@history",
+    "middleware": [
+      "web",
+      "Illuminate\\Auth\\Middleware\\Authenticate",
+      "App\\Http\\Middleware\\EnsurePasswordIsChanged",
+      "App\\Http\\Middleware\\EnsureRole:admin,tenant"
+    ],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "GET|HEAD",
+    "uri": "invoices/{invoice}",
+    "name": "invoices.show",
+    "action": "App\\Http\\Controllers\\InvoicePageController@show",
+    "middleware": [
+      "web",
+      "Illuminate\\Auth\\Middleware\\Authenticate",
+      "App\\Http\\Middleware\\EnsurePasswordIsChanged",
+      "App\\Http\\Middleware\\EnsureRole:admin,tenant"
+    ],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "GET|HEAD",
+    "uri": "livewire-491a80c9/css/{component}.css",
+    "name": null,
+    "action": "Closure",
+    "middleware": [],
+    "path": "vendor/livewire/livewire/src/Features/SupportCssModules/SupportCssModules.php:15"
+  },
+  {
+    "domain": null,
+    "method": "GET|HEAD",
+    "uri": "livewire-491a80c9/css/{component}.global.css",
+    "name": null,
+    "action": "Closure",
+    "middleware": [],
+    "path": "vendor/livewire/livewire/src/Features/SupportCssModules/SupportCssModules.php:48"
+  },
+  {
+    "domain": null,
+    "method": "GET|HEAD",
+    "uri": "livewire-491a80c9/js/{component}.js",
+    "name": null,
+    "action": "Closure",
+    "middleware": [],
+    "path": "vendor/livewire/livewire/src/Features/SupportJsModules/SupportJsModules.php:23"
+  },
+  {
+    "domain": null,
+    "method": "GET|HEAD",
+    "uri": "livewire-491a80c9/livewire.csp.min.js.map",
+    "name": null,
+    "action": "Livewire\\Mechanisms\\FrontendAssets\\FrontendAssets@cspMaps",
+    "middleware": [],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "GET|HEAD",
+    "uri": "livewire-491a80c9/livewire.js",
+    "name": null,
+    "action": "Livewire\\Mechanisms\\FrontendAssets\\FrontendAssets@returnJavaScriptAsFile",
+    "middleware": [],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "GET|HEAD",
+    "uri": "livewire-491a80c9/livewire.min.js.map",
+    "name": null,
+    "action": "Livewire\\Mechanisms\\FrontendAssets\\FrontendAssets@maps",
+    "middleware": [],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "GET|HEAD",
+    "uri": "livewire-491a80c9/preview-file/{filename}",
+    "name": "livewire.preview-file",
+    "action": "Livewire\\Features\\SupportFileUploads\\FilePreviewController@handle",
+    "middleware": [
+      "web"
+    ],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "POST",
+    "uri": "livewire-491a80c9/update",
+    "name": "default-livewire.update",
+    "action": "Livewire\\Mechanisms\\HandleRequests\\HandleRequests@handleUpdate",
+    "middleware": [
+      "web",
+      "Livewire\\Mechanisms\\HandleRequests\\RequireLivewireHeaders"
+    ],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "POST",
+    "uri": "livewire-491a80c9/upload-file",
+    "name": "livewire.upload-file",
+    "action": "Livewire\\Features\\SupportFileUploads\\FileUploadController@handle",
+    "middleware": [
+      "web",
+      "Illuminate\\Routing\\Middleware\\ThrottleRequests:60,1"
+    ],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "GET|HEAD",
+    "uri": "login",
+    "name": "login",
+    "action": "Laravel\\Fortify\\Http\\Controllers\\AuthenticatedSessionController@create",
+    "middleware": [
+      "web",
+      "Illuminate\\Auth\\Middleware\\RedirectIfAuthenticated:web"
+    ],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "POST",
+    "uri": "login",
+    "name": "login.store",
+    "action": "Laravel\\Fortify\\Http\\Controllers\\AuthenticatedSessionController@store",
+    "middleware": [
+      "web",
+      "Illuminate\\Auth\\Middleware\\RedirectIfAuthenticated:web",
+      "Illuminate\\Routing\\Middleware\\ThrottleRequests:login"
+    ],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "POST",
+    "uri": "logout",
+    "name": "logout",
+    "action": "Laravel\\Fortify\\Http\\Controllers\\AuthenticatedSessionController@destroy",
+    "middleware": [
+      "web",
+      "Illuminate\\Auth\\Middleware\\Authenticate:web"
+    ],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "GET|HEAD",
+    "uri": "meters",
+    "name": "meters.index",
+    "action": "App\\Http\\Controllers\\MaintenancePageController@meters",
+    "middleware": [
+      "web",
+      "Illuminate\\Auth\\Middleware\\Authenticate",
+      "App\\Http\\Middleware\\EnsurePasswordIsChanged",
+      "App\\Http\\Middleware\\EnsureRole:admin"
+    ],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "GET|HEAD",
+    "uri": "my/contracts",
+    "name": "my.contracts",
+    "action": "App\\Http\\Controllers\\RentalPageController@myContracts",
+    "middleware": [
+      "web",
+      "Illuminate\\Auth\\Middleware\\Authenticate",
+      "App\\Http\\Middleware\\EnsurePasswordIsChanged",
+      "App\\Http\\Middleware\\EnsureRole:tenant"
+    ],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "GET|HEAD",
+    "uri": "my/meters",
+    "name": "my.meters",
+    "action": "App\\Http\\Controllers\\TenantMeterPageController@index",
+    "middleware": [
+      "web",
+      "Illuminate\\Auth\\Middleware\\Authenticate",
+      "App\\Http\\Middleware\\EnsurePasswordIsChanged",
+      "App\\Http\\Middleware\\EnsureRole:tenant"
+    ],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "GET|HEAD",
+    "uri": "my/profile",
+    "name": "my.profile",
+    "action": "Illuminate\\Routing\\ViewController",
+    "middleware": [
+      "web",
+      "Illuminate\\Auth\\Middleware\\Authenticate",
+      "App\\Http\\Middleware\\EnsurePasswordIsChanged",
+      "App\\Http\\Middleware\\EnsureRole:tenant"
+    ],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "GET|HEAD",
+    "uri": "my/rentals",
+    "name": "my.rentals",
+    "action": "App\\Http\\Controllers\\RentalPageController@mine",
+    "middleware": [
+      "web",
+      "Illuminate\\Auth\\Middleware\\Authenticate",
+      "App\\Http\\Middleware\\EnsurePasswordIsChanged",
+      "App\\Http\\Middleware\\EnsureRole:tenant"
+    ],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "GET|HEAD",
+    "uri": "rentals",
+    "name": "rentals.index",
+    "action": "App\\Http\\Controllers\\RentalPageController@index",
+    "middleware": [
+      "web",
+      "Illuminate\\Auth\\Middleware\\Authenticate",
+      "App\\Http\\Middleware\\EnsurePasswordIsChanged",
+      "App\\Http\\Middleware\\EnsureRole:admin"
+    ],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "GET|HEAD",
+    "uri": "rentals/create",
+    "name": "rentals.create",
+    "action": "App\\Http\\Controllers\\RentalPageController@create",
+    "middleware": [
+      "web",
+      "Illuminate\\Auth\\Middleware\\Authenticate",
+      "App\\Http\\Middleware\\EnsurePasswordIsChanged",
+      "App\\Http\\Middleware\\EnsureRole:admin"
+    ],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "GET|HEAD",
+    "uri": "rentals/{rental}",
+    "name": "rentals.show",
+    "action": "App\\Http\\Controllers\\RentalPageController@show",
+    "middleware": [
+      "web",
+      "Illuminate\\Auth\\Middleware\\Authenticate",
+      "App\\Http\\Middleware\\EnsurePasswordIsChanged",
+      "App\\Http\\Middleware\\EnsureRole:admin,tenant"
+    ],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "GET|HEAD",
+    "uri": "repairs",
+    "name": "repairs.index",
+    "action": "App\\Http\\Controllers\\MaintenancePageController@repairs",
+    "middleware": [
+      "web",
+      "Illuminate\\Auth\\Middleware\\Authenticate",
+      "App\\Http\\Middleware\\EnsurePasswordIsChanged"
+    ],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "GET|HEAD",
+    "uri": "rooms",
+    "name": "rooms.index",
+    "action": "App\\Http\\Controllers\\RoomController@index",
+    "middleware": [
+      "web",
+      "Illuminate\\Auth\\Middleware\\Authenticate",
+      "App\\Http\\Middleware\\EnsurePasswordIsChanged",
+      "App\\Http\\Middleware\\EnsureRole:admin"
+    ],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "POST",
+    "uri": "rooms",
+    "name": "rooms.store",
+    "action": "App\\Http\\Controllers\\RoomController@store",
+    "middleware": [
+      "web",
+      "Illuminate\\Auth\\Middleware\\Authenticate",
+      "App\\Http\\Middleware\\EnsurePasswordIsChanged",
+      "App\\Http\\Middleware\\EnsureRole:admin"
+    ],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "GET|HEAD",
+    "uri": "rooms/create",
+    "name": "rooms.create",
+    "action": "App\\Http\\Controllers\\RoomController@create",
+    "middleware": [
+      "web",
+      "Illuminate\\Auth\\Middleware\\Authenticate",
+      "App\\Http\\Middleware\\EnsurePasswordIsChanged",
+      "App\\Http\\Middleware\\EnsureRole:admin"
+    ],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "PUT|PATCH",
+    "uri": "rooms/{room}",
+    "name": "rooms.update",
+    "action": "App\\Http\\Controllers\\RoomController@update",
+    "middleware": [
+      "web",
+      "Illuminate\\Auth\\Middleware\\Authenticate",
+      "App\\Http\\Middleware\\EnsurePasswordIsChanged",
+      "App\\Http\\Middleware\\EnsureRole:admin"
+    ],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "DELETE",
+    "uri": "rooms/{room}",
+    "name": "rooms.destroy",
+    "action": "App\\Http\\Controllers\\RoomController@destroy",
+    "middleware": [
+      "web",
+      "Illuminate\\Auth\\Middleware\\Authenticate",
+      "App\\Http\\Middleware\\EnsurePasswordIsChanged",
+      "App\\Http\\Middleware\\EnsureRole:admin"
+    ],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "GET|HEAD",
+    "uri": "rooms/{room}/edit",
+    "name": "rooms.edit",
+    "action": "App\\Http\\Controllers\\RoomController@edit",
+    "middleware": [
+      "web",
+      "Illuminate\\Auth\\Middleware\\Authenticate",
+      "App\\Http\\Middleware\\EnsurePasswordIsChanged",
+      "App\\Http\\Middleware\\EnsureRole:admin"
+    ],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "GET|HEAD",
+    "uri": "rooms/{room}/history",
+    "name": "rooms.history",
+    "action": "App\\Http\\Controllers\\RoomController@history",
+    "middleware": [
+      "web",
+      "Illuminate\\Auth\\Middleware\\Authenticate",
+      "App\\Http\\Middleware\\EnsurePasswordIsChanged",
+      "App\\Http\\Middleware\\EnsureRole:admin"
+    ],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "GET|HEAD|POST|PUT|PATCH|DELETE|OPTIONS",
+    "uri": "settings",
+    "name": null,
+    "action": "Illuminate\\Routing\\RedirectController",
+    "middleware": [
+      "web",
+      "Illuminate\\Auth\\Middleware\\Authenticate"
+    ],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "GET|HEAD",
+    "uri": "settings/appearance",
+    "name": "appearance.edit",
+    "action": "Livewire\\Mechanisms\\HandleRouting\\LivewirePageController",
+    "middleware": [
+      "web",
+      "Illuminate\\Auth\\Middleware\\Authenticate",
+      "App\\Http\\Middleware\\EnsurePasswordIsChanged"
+    ],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "GET|HEAD",
+    "uri": "settings/profile",
+    "name": "profile.edit",
+    "action": "Livewire\\Mechanisms\\HandleRouting\\LivewirePageController",
+    "middleware": [
+      "web",
+      "Illuminate\\Auth\\Middleware\\Authenticate",
+      "App\\Http\\Middleware\\EnsurePasswordIsChanged"
+    ],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "GET|HEAD",
+    "uri": "settings/security",
+    "name": "security.edit",
+    "action": "Livewire\\Mechanisms\\HandleRouting\\LivewirePageController",
+    "middleware": [
+      "web",
+      "Illuminate\\Auth\\Middleware\\Authenticate"
+    ],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "GET|HEAD",
+    "uri": "storage/{path}",
+    "name": "storage.local",
+    "action": "Closure",
+    "middleware": [],
+    "path": "vendor/laravel/framework/src/Illuminate/Filesystem/FilesystemServiceProvider.php:111"
+  },
+  {
+    "domain": null,
+    "method": "PUT",
+    "uri": "storage/{path}",
+    "name": "storage.local.upload",
+    "action": "Closure",
+    "middleware": [],
+    "path": "vendor/laravel/framework/src/Illuminate/Filesystem/FilesystemServiceProvider.php:119"
+  },
+  {
+    "domain": null,
+    "method": "GET|HEAD",
+    "uri": "tenants",
+    "name": "tenants.index",
+    "action": "App\\Http\\Controllers\\TenantController@index",
+    "middleware": [
+      "web",
+      "Illuminate\\Auth\\Middleware\\Authenticate",
+      "App\\Http\\Middleware\\EnsurePasswordIsChanged",
+      "App\\Http\\Middleware\\EnsureRole:admin"
+    ],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "POST",
+    "uri": "tenants",
+    "name": "tenants.store",
+    "action": "App\\Http\\Controllers\\TenantController@store",
+    "middleware": [
+      "web",
+      "Illuminate\\Auth\\Middleware\\Authenticate",
+      "App\\Http\\Middleware\\EnsurePasswordIsChanged",
+      "App\\Http\\Middleware\\EnsureRole:admin"
+    ],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "GET|HEAD",
+    "uri": "tenants/create",
+    "name": "tenants.create",
+    "action": "App\\Http\\Controllers\\TenantController@create",
+    "middleware": [
+      "web",
+      "Illuminate\\Auth\\Middleware\\Authenticate",
+      "App\\Http\\Middleware\\EnsurePasswordIsChanged",
+      "App\\Http\\Middleware\\EnsureRole:admin"
+    ],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "PUT|PATCH",
+    "uri": "tenants/{tenant}",
+    "name": "tenants.update",
+    "action": "App\\Http\\Controllers\\TenantController@update",
+    "middleware": [
+      "web",
+      "Illuminate\\Auth\\Middleware\\Authenticate",
+      "App\\Http\\Middleware\\EnsurePasswordIsChanged",
+      "App\\Http\\Middleware\\EnsureRole:admin"
+    ],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "DELETE",
+    "uri": "tenants/{tenant}",
+    "name": "tenants.destroy",
+    "action": "App\\Http\\Controllers\\TenantController@destroy",
+    "middleware": [
+      "web",
+      "Illuminate\\Auth\\Middleware\\Authenticate",
+      "App\\Http\\Middleware\\EnsurePasswordIsChanged",
+      "App\\Http\\Middleware\\EnsureRole:admin"
+    ],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "GET|HEAD",
+    "uri": "tenants/{tenant}/edit",
+    "name": "tenants.edit",
+    "action": "App\\Http\\Controllers\\TenantController@edit",
+    "middleware": [
+      "web",
+      "Illuminate\\Auth\\Middleware\\Authenticate",
+      "App\\Http\\Middleware\\EnsurePasswordIsChanged",
+      "App\\Http\\Middleware\\EnsureRole:admin"
+    ],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "GET|HEAD",
+    "uri": "up",
+    "name": null,
+    "action": "Closure",
+    "middleware": [],
+    "path": "vendor/laravel/framework/src/Illuminate/Foundation/Configuration/ApplicationBuilder.php:224"
+  },
+  {
+    "domain": null,
+    "method": "GET|HEAD",
+    "uri": "user/confirm-password",
+    "name": "password.confirm",
+    "action": "Laravel\\Fortify\\Http\\Controllers\\ConfirmablePasswordController@show",
+    "middleware": [
+      "web",
+      "Illuminate\\Auth\\Middleware\\Authenticate:web"
+    ],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "POST",
+    "uri": "user/confirm-password",
+    "name": "password.confirm.store",
+    "action": "Laravel\\Fortify\\Http\\Controllers\\ConfirmablePasswordController@store",
+    "middleware": [
+      "web",
+      "Illuminate\\Auth\\Middleware\\Authenticate:web"
+    ],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "GET|HEAD",
+    "uri": "user/confirmed-password-status",
+    "name": "password.confirmation",
+    "action": "Laravel\\Fortify\\Http\\Controllers\\ConfirmedPasswordStatusController@show",
+    "middleware": [
+      "web",
+      "Illuminate\\Auth\\Middleware\\Authenticate:web"
+    ],
+    "path": null
+  },
+  {
+    "domain": null,
+    "method": "GET|HEAD",
+    "uri": "user/dashboard",
+    "name": "user.dashboard",
+    "action": "App\\Http\\Controllers\\TenantDashboardController@index",
+    "middleware": [
+      "web",
+      "Illuminate\\Auth\\Middleware\\Authenticate",
+      "App\\Http\\Middleware\\EnsurePasswordIsChanged",
+      "App\\Http\\Middleware\\EnsureRole:tenant"
+    ],
+    "path": null
+  }
+]

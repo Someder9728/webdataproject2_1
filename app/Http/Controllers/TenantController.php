@@ -8,13 +8,16 @@ use App\Actions\Tenants\UpdateTenant;
 use App\Models\Tenant;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
 
 class TenantController extends Controller
 {
     public function index(Request $request): View
     {
-        $search = trim((string) $request->query('search', ''));
+        Gate::authorize('viewAny', Tenant::class);
+        $filters = $request->validate(['search' => ['nullable', 'string', 'max:100'], 'page' => ['nullable', 'integer', 'min:1']]);
+        $search = trim($filters['search'] ?? '');
         $tenants = Tenant::query()
             ->when($search !== '', function ($query) use ($search) {
                 $query->where(function ($filter) use ($search) {

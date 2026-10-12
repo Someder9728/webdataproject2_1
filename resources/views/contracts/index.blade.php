@@ -20,18 +20,18 @@
         <div class="card tenant-table-card">
             <div class="card-body border-bottom">
                 <label class="visually-hidden" for="rental-search">ค้นหาผู้เช่าหรือห้อง</label>
-                <div class="input-group" style="max-width: 440px">
+                <form method="GET" class="input-group" style="max-width: 640px">
                     <span class="input-group-text tenant-search-icon"><i class="bi bi-search"></i></span>
-                    <input id="rental-search" class="form-control tenant-search-input" type="search"
+                    <input id="rental-search" name="search" class="form-control tenant-search-input" type="search"
                         placeholder="ค้นหาชื่อผู้เช่าหรือเลขห้อง" value="{{ request('search', '') }}" autocomplete="off">
-                </div>
+                    <select name="status" class="form-select" aria-label="สถานะสัญญา"><option value="">ทั้งหมด</option>@foreach(['ACTIVE' => 'กำลังเช่า', 'EXPIRED' => 'หมดอายุ', 'ENDED' => 'สิ้นสุดแล้ว'] as $value => $label)<option value="{{ $value }}" @selected(($filters['status'] ?? '') === $value)>{{ $label }}</option>@endforeach</select>
+                    <button class="btn tenant-search-btn" type="submit">ค้นหา</button>
+                </form>
             </div>
 
-            <div id="rental-state" class="p-5 text-center text-secondary" role="status" aria-live="polite">
-                <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>กำลังโหลดข้อมูล...
-            </div>
 
-            <div id="rental-table-wrap" class="table-responsive d-none">
+
+            <div id="rental-table-wrap" class="table-responsive">
                 <table class="table tenant-table align-middle mb-0">
                     <thead class="table-light">
                         <tr>
@@ -42,17 +42,11 @@
                             @endif
                         </tr>
                     </thead>
-                    <tbody id="rental-table-body"></tbody>
+                    <tbody id="rental-table-body">@forelse($rentals as $rental)<tr><td>{{ $rental->contract?->c_number }}</td><td>{{ $rental->tenant?->t_Fname }} {{ $rental->tenant?->t_Lname }}</td><td>{{ $rental->room?->r_name }}</td><td>{{ $rental->contract?->c_start?->format('Y-m-d') }}</td><td>{{ $rental->contract?->c_end?->format('Y-m-d') ?? 'ไม่มีกำหนด' }}</td><td><span class="badge {{ $rental->contract?->c_status === 'ACTIVE' ? 'text-bg-success' : 'text-bg-secondary' }}">{{ ['ACTIVE' => 'กำลังเช่า', 'EXPIRED' => 'หมดอายุ', 'ENDED' => 'สิ้นสุดแล้ว'][$rental->contract?->c_status] ?? $rental->contract?->c_status }}</span></td><td><button type="button" class="btn btn-sm tenant-edit-btn" data-contract-id="{{ $rental->rt_id }}" data-contract-editable="{{ $rental->rt_status === 'ACTIVE' ? 'true' : 'false' }}">ดู/แก้ไข</button></td></tr>@empty<tr><td colspan="7" class="tenant-state text-center">ยังไม่มีสัญญาที่ตรงกับการค้นหา</td></tr>@endforelse</tbody>
                 </table>
             </div>
 
-            <div id="rental-pagination" class="d-none align-items-center justify-content-between gap-3 p-3">
-                <span id="rental-page-label" class="small text-secondary"></span>
-                <div class="btn-group">
-                    <button id="rental-prev" class="btn tenant-clear-btn" type="button">ก่อนหน้า</button>
-                    <button id="rental-next" class="btn tenant-clear-btn" type="button">ถัดไป</button>
-                </div>
-            </div>
+            <div class="p-3">{{ $rentals->links() }}</div>
         </div>
     </div>
 
@@ -164,59 +158,7 @@
             return body;
         };
 
-        const showState = (message, isError = false, retry = false) => {
-            tableWrap.classList.add('d-none');
-            pagination.classList.add('d-none');
-            state.className = `p-5 text-center ${isError ? 'text-danger' : 'text-secondary'}`;
-            state.innerHTML = `${escapeHtml(message)}${retry ? ' <button id="rental-retry" type="button" class="btn btn-sm tenant-edit-btn ms-2">ลองใหม่</button>' : ''}`;
-            document.getElementById('rental-retry')?.addEventListener('click', loadRentals);
-        };
-
-        async function loadRentals() {
-            activeRequest?.abort();
-            activeRequest = new AbortController();
-            showState('กำลังโหลดข้อมูล...');
-            const params = new URLSearchParams({ page: currentPage, per_page: 20 });
-            if (search.value.trim()) params.set('search', search.value.trim());
-            try {
-                const result = await apiRequest(`/api/v1/rentals?${params}`, { signal: activeRequest.signal });
-                let rows = result.data ?? [];
-                if (mode === 'contracts') rows = rows.filter(row => row.contract);
-                if (!rows.length) {
-                    showState(mode === 'contracts' ? 'ยังไม่มีสัญญาที่ตรงกับการค้นหา' : 'ยังไม่มีรายการการเช่า');
-                    return;
-                }
-                tbody.innerHTML = rows.map(rowHtml).join('');
-                state.classList.add('d-none');
-                tableWrap.classList.remove('d-none');
-                lastPage = Number(result.meta?.last_page ?? 1);
-                document.getElementById('rental-page-label').textContent = `หน้า ${Number(result.meta?.current_page ?? currentPage)} จาก ${lastPage} · ทั้งหมด ${Number(result.meta?.total ?? rows.length)} รายการ`;
-                document.getElementById('rental-prev').disabled = currentPage <= 1;
-                document.getElementById('rental-next').disabled = currentPage >= lastPage;
-                pagination.classList.remove('d-none');
-                pagination.classList.add('d-flex');
-            } catch (error) {
-                if (error.name === 'AbortError') return;
-                showState(error.message || 'โหลดข้อมูลไม่สำเร็จ', true, true);
-            }
-        }
-
-        function rowHtml(rental) {
-            const tenant = rental.tenant ? `${rental.tenant.t_Fname ?? ''} ${rental.tenant.t_Lname ?? ''}`.trim() : '—';
-            const room = rental.room?.r_name ?? '—';
-            const status = statusLabel(rental.rt_status);
-            const badge = rental.rt_status === 'ACTIVE' ? 'text-bg-success' : 'text-bg-secondary';
-            if (mode === 'contracts') {
-                return `<tr><td>${escapeHtml(rental.contract?.c_number ?? '—')}</td><td>${escapeHtml(tenant)}</td><td>${escapeHtml(room)}</td><td>${escapeHtml(rental.contract?.c_start ?? rental.rt_movein ?? '—')}</td><td>${escapeHtml(rental.contract?.c_end ?? 'ไม่มีกำหนด')}</td><td><span class="badge ${badge}">${escapeHtml(statusLabel(rental.contract?.c_status ?? rental.rt_status))}</span></td><td><button type="button" class="btn btn-sm tenant-edit-btn" data-contract-id="${Number(rental.rt_id)}" data-contract-editable="${rental.rt_status === 'ACTIVE' ? 'true' : 'false'}">ดู/แก้ไข</button></td></tr>`;
-            }
-            const contractButton = rental.contract
-                ? `<button type="button" class="btn btn-sm tenant-edit-btn" data-contract-id="${Number(rental.rt_id)}" data-contract-editable="${rental.rt_status === 'ACTIVE' ? 'true' : 'false'}">สัญญา</button>`
-                : '<span class="text-secondary small">ไม่มีสัญญา</span>';
-            const moveOutButton = rental.rt_status === 'ACTIVE'
-                ? `<button type="button" class="btn btn-sm btn-outline-danger" data-moveout-id="${Number(rental.rt_id)}" data-moveout-name="${escapeHtml(tenant)}" data-moveout-room="${escapeHtml(room)}" data-movein="${escapeHtml(rental.rt_movein ?? '')}">ย้ายออก</button>`
-                : '';
-            return `<tr><td>${escapeHtml(tenant)}</td><td>${escapeHtml(room)}</td><td>${escapeHtml(rental.rt_movein ?? '—')}</td><td>${escapeHtml(rental.rt_moveout ?? '—')}</td><td><span class="badge ${badge}">${escapeHtml(status)}</span></td><td>${contractButton}</td><td class="text-end text-nowrap">${moveOutButton}</td></tr>`;
-        }
+        async function loadRentals() { window.location.reload(); }
 
         const today = () => {
             const date = new Date();
@@ -323,18 +265,6 @@
             }
         });
 
-        document.getElementById('rental-prev').addEventListener('click', () => {
-            if (currentPage > 1) { currentPage--; loadRentals(); }
-        });
-        document.getElementById('rental-next').addEventListener('click', () => {
-            if (currentPage < lastPage) { currentPage++; loadRentals(); }
-        });
-        search.addEventListener('input', () => {
-            clearTimeout(debounce);
-            debounce = setTimeout(() => { currentPage = 1; loadRentals(); }, 300);
-        });
-
-        loadRentals();
     });
     </script>
 </x-layouts::app.sidebar>

@@ -5,6 +5,7 @@ use App\Models\AuditEvent;
 use App\Models\Invoice;
 use App\Models\Meter;
 use App\Models\Rental;
+use App\Models\Repair;
 use App\Models\Room;
 use App\Models\Tenant;
 use App\Models\User;
@@ -180,4 +181,99 @@ test('timeline titles match contract edit direction', function () {
         ->and($title($event(['c_end' => null], ['c_end' => '2026-12-31'])))->toBe('กำหนดวันสิ้นสุดสัญญา')
         ->and($title($event([], [], 'CONTRACT_EXTENDED')))->toBe('ต่อสัญญา')
         ->and($title($event(['c_status' => 'ACTIVE'], ['c_status' => 'EXPIRED'])))->toBe('แก้ไขสัญญา');
+});
+
+test('invoice index renders initial rows and isolates tenants before javascript', function () {
+    ($this->makeInvoice)($this->ownRental, '2026-08', 'UNPAID');
+    ($this->makeInvoice)($this->otherRental, '2026-09', 'PAID', '2026-10-02');
+    $this->actingAs($this->ownerUser)->get('/invoices')->assertOk()->assertSee('A101')->assertDontSee('B202')->assertDontSee("IV.fetchAll('/api/v1/invoices'", false);
+    $this->actingAs($this->admin)->get('/invoices?status=paid&month=2026-09')->assertOk()->assertSee('B202')->assertDontSee('A101');
+    $this->actingAs($this->admin)->get('/invoices?q=zzz')->assertSee('ไม่พบใบแจ้งหนี้ที่ตรงกับเงื่อนไข');
+    $this->actingAs($this->admin)->get('/invoices?status=invalid')->assertSessionHasErrors('status');
+});
+
+test('tenant dashboard renders contract monthly rate rather than partial invoice rent', function () {
+    $invoice = ($this->makeInvoice)($this->ownRental, '2026-09', 'UNPAID');
+    $invoice->update(['i_rent' => '1750.00']);
+    ($this->makeInvoice)($this->otherRental, '2026-08', 'UNPAID');
+    $this->actingAs($this->ownerUser)->get('/user/dashboard')->assertOk()->assertSee('฿3,500.00/เดือน')->assertDontSee('฿1,750.00/เดือน')->assertDontSee('B202')->assertDontSee('getAll(', false);
+    $empty = User::factory()->create(['u_role' => 'tenant', 'must_change_password' => false]);
+    $this->actingAs($empty)->get('/user/dashboard')->assertOk()->assertSee('ยังไม่มีห้องเช่า')->assertDontSee('A101');
+});
+
+test('admin dashboard renders server totals and previews without initial api calls', function () {
+    ($this->makeInvoice)($this->ownRental, '2026-09', 'UNPAID');
+    $this->actingAs($this->admin)->get('/dashboard')->assertOk()->assertSee('฿3,994.00')->assertSee('สมชาย')->assertDontSee('window.dashboardApi.get()', false);
+    $this->actingAs($this->admin)->get('/dashboard?month=bad')->assertSessionHasErrors('month');
+});
+
+test('contract index renders exact end date filters and validates pagination', function () {
+    $this->actingAs($this->admin)->get('/contracts')->assertOk()->assertSee('CT-0001')->assertSee('2026-12-31')->assertDontSee('api/v1/rentals?${params}', false);
+    $this->actingAs($this->admin)->get('/contracts?search=zzz')->assertSee('ยังไม่มีสัญญาที่ตรงกับการค้นหา');
+    $this->actingAs($this->admin)->get('/contracts?status=ENDED')->assertDontSee('CT-0001');
+    $this->actingAs($this->admin)->get('/contracts?page=0')->assertSessionHasErrors('page');
+    $this->actingAs($this->ownerUser)->get('/contracts')->assertForbidden();
+});
+
+test('rental create options exclude occupied rooms and active tenants in initial html', function () {
+    $available = Room::create(['r_name' => 'FREE303', 'r_floor' => 3, 'r_type' => 'single', 'r_rent' => '3000', 'r_status' => 'VACANT']);
+    $tenant = Tenant::create(['t_Fname' => 'ว่างพร้อมเข้า', 't_Lname' => 'ทดสอบ', 't_tel' => '0833333333']);
+    $this->actingAs($this->admin)->get('/rentals/create')->assertOk()->assertSee('FREE303')->assertSee('ว่างพร้อมเข้า')->assertDontSee('A101')->assertDontSee('สมชาย')->assertDontSee('fetch(API_TENANTS', false);
+});
+
+test('meter initial history shows cancellation and invoice lock with room pagination', function () {
+    $invoice = ($this->makeInvoice)($this->ownRental, '2026-08', 'UNPAID');
+    $cancelled = Meter::create(['rooms_r_id' => $this->roomA->getKey(), 'm_date' => '2026-09-01', 'm_water' => '109', 'm_elec' => '1051']);
+    $cancelled->delete();
+    $this->actingAs($this->admin)->get('/meters?room='.$this->roomA->getKey())->assertOk()->assertSee('2026-09-01 · ยกเลิก')->assertSee('ล็อก: ใช้ในบิลแล้วหรือรายการยกเลิก')->assertSee('meter-initial', false);
+    $this->actingAs($this->admin)->get('/meters?room=99999')->assertNotFound();
+    $this->actingAs($this->ownerUser)->get('/meters')->assertForbidden();
+});
+
+test('repair list renders room names and isolates tenant rows', function () {
+    foreach ([[$this->ownRental, 'OWN-REPAIR'], [$this->otherRental, 'OTHER-REPAIR']] as [$rental, $name]) {
+        Repair::create(['rp_name' => $name, 'rp_description' => 'รายละเอียด', 'rp_type' => 'ROOM', 'rp_status' => 'REPORTED', 'rooms_r_id' => $rental->rooms_r_id, 'tenants_t_id' => $rental->tenants_t_id, 'reported_by_user_id' => $rental->tenants_t_id === $this->owner->getKey() ? $this->ownerUser->getKey() : $this->admin->getKey()]);
+    }
+    $this->actingAs($this->ownerUser)->get('/repairs')->assertOk()->assertSee('OWN-REPAIR')->assertSee('A101')->assertDontSee('OTHER-REPAIR')->assertDontSee('B202');
+    $this->actingAs($this->admin)->get('/repairs?rp_status=COMPLETED')->assertDontSee('OWN-REPAIR');
+    $this->actingAs($this->admin)->get('/repairs?rp_status=bad')->assertSessionHasErrors('rp_status');
+});
+
+test('room and tenant lists render on server and room history matches exact room id', function () {
+    $this->actingAs($this->admin)->get('/rooms')->assertOk()->assertSee('A101')->assertSee('B202')->assertDontSee('window.roomApi.getAll', false);
+    $this->actingAs($this->admin)->get('/rooms?floor=2')->assertOk()->assertSee('B202')->assertDontSee('A101');
+    $this->actingAs($this->admin)->get('/tenants?search=สมชาย')->assertOk()->assertSee('สมชาย')->assertDontSee('สมศรี')->assertDontSee('window.tenantApi.getAll', false);
+    $this->actingAs($this->admin)->get('/rooms/'.$this->roomA->getKey().'/history')->assertOk()->assertJsonFragment(['detail' => 'สมชาย เจ้าของ'])->assertJsonMissing(['detail' => 'สมศรี คนอื่น']);
+    $this->actingAs($this->ownerUser)->get('/rooms/'.$this->roomA->getKey().'/history')->assertForbidden();
+});
+
+test('invoice pagination preserves filters and renders only one database page', function () {
+    $original = ($this->makeInvoice)($this->ownRental, '2026-08', 'UNPAID');
+    for ($i = 1; $i <= 21; $i++) {
+        $copy = $original->replicate();
+        $copy->period_start = '2026-09-'.str_pad((string) $i, 2, '0', STR_PAD_LEFT);
+        $copy->period_end = $copy->period_start->copy()->addDay();
+        $copy->save();
+        $copy->payment()->create(['p_amount' => $copy->i_total, 'p_status' => 'UNPAID']);
+    }
+    $this->actingAs($this->admin)->get('/invoices?q=A101&month=2026-09&status=overdue')->assertOk()->assertViewHas('invoices', fn ($items) => $items->total() === 21 && $items->count() === 20)->assertSee('page=2', false)->assertSee('month=2026-09', false);
+    $this->actingAs($this->admin)->get('/invoices?q=A101&month=2026-09&status=overdue&page=2')->assertOk()->assertViewHas('invoices', fn ($items) => $items->count() === 1);
+});
+
+test('ssr pages escape stored text and invoice search accepts display numbers', function () {
+    $invoice = ($this->makeInvoice)($this->ownRental, '2026-09', 'UNPAID');
+    $this->roomA->update(['r_name' => '<script>alert(1)</script>']);
+    $this->actingAs($this->admin)->get('/invoices?q='.$invoice->number())->assertOk()->assertViewHas('invoices', fn ($items) => $items->total() === 1)->assertSee('&lt;script&gt;alert(1)&lt;/script&gt;', false)->assertDontSee('<script>alert(1)</script>', false);
+});
+
+test('guest cannot load new ssr business pages or room history', function () {
+    foreach (['/invoices', '/contracts', '/meters', '/repairs', '/user/dashboard', '/rentals/create', '/rooms/'.$this->roomA->getKey().'/history'] as $url) {
+        $this->get($url)->assertRedirect(route('login'));
+    }
+});
+
+test('ssr meter flags keep an unbilled opening boundary editable but not cancellable', function () {
+    $meter = Meter::create(['rooms_r_id' => $this->roomA->getKey(), 'm_date' => '2026-08-01', 'm_water' => '100', 'm_elec' => '1000']);
+    $this->actingAs($this->admin)->get('/meters?room='.$this->roomA->getKey())->assertOk()
+        ->assertViewHas('meterRows', fn ($rows) => $rows[$meter->getKey()]['can_edit'] === true && $rows[$meter->getKey()]['can_delete'] === false && $rows[$meter->getKey()]['date_locked'] === true);
 });
