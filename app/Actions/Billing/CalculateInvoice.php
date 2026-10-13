@@ -236,6 +236,11 @@ class CalculateInvoice
 
     private function decimal(mixed $value, string $field): BigDecimal
     {
+        if (($value === null || $value === '') && in_array($field, ['water_rate', 'elec_rate'], true)) {
+            $label = $field === 'water_rate' ? 'ค่าน้ำ' : 'ค่าไฟ';
+            $this->fail($field, 'ยังไม่ได้กำหนดอัตรา'.$label.'ต่อหน่วย กรุณาให้ผู้ดูแลระบบตั้งค่าก่อนออกใบแจ้งหนี้');
+        }
+
         if (
             ! is_scalar($value) ||
             ! preg_match(
