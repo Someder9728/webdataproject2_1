@@ -31,7 +31,7 @@
                 @elseif($isAdmin && $invoice->payment?->p_status === 'PENDING')<button type="button" class="rt-btn rt-btn--sm" data-payment="review" data-invoice="{{ $invoice->getKey() }}">ตรวจสอบ</button>@endif</td>
             </tr>
         @empty <tr><td colspan="{{ $isAdmin ? 10 : 9 }}" class="rt-state">ไม่พบใบแจ้งหนี้ที่ตรงกับเงื่อนไข</td></tr> @endforelse
-        </tbody></table></div><div class="p-3">{{ $invoices->links() }}</div>
+        </tbody></table></div><div class="p-3">{{ $invoices->links('pagination::bootstrap-5') }}</div>
     </section>
 </div>
 <script>

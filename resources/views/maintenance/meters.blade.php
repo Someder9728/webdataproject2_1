@@ -7,10 +7,13 @@
             ต้องมีค่าตรงวันเริ่มและวันสิ้นสุดก่อนออกบิล</p>
         <p role="alert" class="text-danger small text-break" id="work-error"></p>
         <p role="status" class="text-secondary small" id="work-status" aria-live="polite"></p>
-        <label class="form-label d-block mb-3">ห้อง<select class="form-select mt-2" id="meter-room">
+        <form method="GET" action="{{ route('meters.index') }}" class="mb-3">
+        <label class="form-label d-block">ห้อง<select class="form-select mt-2" id="meter-room" name="room" onchange="this.form.requestSubmit()">
                 <option value="">เลือกห้อง</option>@foreach($rooms as $room)<option value="{{ $room->r_id }}" @selected($selectedRoom?->getKey() === $room->getKey())>
                     {{ $room->r_name }}</option>@endforeach
             </select></label>
+        <button type="submit" class="btn tenant-clear-btn">ดูประวัติมิเตอร์</button>
+        </form>
         <section class="tenant-search-card p-4">
             <h2 class="h6 fw-semibold mb-3">บันทึกมิเตอร์</h2>
             <form id="meter-form">
@@ -54,13 +57,13 @@
                         </tr>
                     </thead>
                     <tbody id="meter-rows">@forelse($meters as $meter)@php($row = $meterRows[$meter->getKey()])<tr><td>{{ $row['m_date'] }}{{ $row['status'] === 'CANCELLED' ? ' · ยกเลิก' : '' }}</td><td>{{ $row['m_water'] }}</td><td>{{ $row['m_elec'] }}</td><td>
-@if($row['status'] !== 'CANCELLED')<button class="btn btn-sm tenant-edit-btn" type="button" data-meter-action="start" data-meter-id="{{ $meter->getKey() }}">ต้นช่วง</button><button class="btn btn-sm tenant-edit-btn" type="button" data-meter-action="end" data-meter-id="{{ $meter->getKey() }}">ปลายช่วง</button>@endif
-@if($row['can_edit'])<button class="btn btn-sm tenant-edit-btn" type="button" data-meter-action="edit" data-meter-id="{{ $meter->getKey() }}">แก้ไข</button>@else<span class="small text-secondary">ล็อก: ใช้ในบิลแล้วหรือรายการยกเลิก</span>@endif
+@if($row['status'] !== 'CANCELLED')<button class="btn btn-sm tenant-edit-btn" type="button" data-meter-action="start" data-meter-id="{{ $meter->getKey() }}">ต้นช่วง</button><span>    </span><button class="btn btn-sm tenant-edit-btn" type="button" data-meter-action="end" data-meter-id="{{ $meter->getKey() }}">ปลายช่วง</button>@endif
+@if($row['can_edit'])<button class="btn btn-sm tenant-edit-btn" type="button" data-meter-action="edit" data-meter-id="{{ $meter->getKey() }}">แก้ไข</button>@else<span>    </span><span class="small text-secondary">ล็อก: ใช้ในบิลแล้วหรือรายการยกเลิก</span>@endif
 @if($row['can_delete'])<button class="btn btn-sm tenant-delete-btn" type="button" data-meter-action="cancel" data-meter-id="{{ $meter->getKey() }}">ยกเลิกรายการ</button>@endif
 </td></tr>@empty<tr><td colspan="4" class="tenant-state text-center">{{ $selectedRoom ? 'ยังไม่มีรายการ' : 'เลือกห้องเพื่อดูประวัติมิเตอร์' }}</td></tr>@endforelse</tbody>
                 </table>
             </div>
-            <div class="mt-3">{{ $meters->links() }}</div><button type="button" class="btn tenant-clear-btn" id="reload">โหลดใหม่</button>
+            <div class="mt-3">{{ $meters->links('pagination::bootstrap-5') }}</div><button type="button" class="btn tenant-clear-btn" id="reload">โหลดใหม่</button>
         </section>
         <section class="tenant-search-card p-4">
             <h2 class="h6 fw-semibold mb-3">หน่วยที่ใช้ระหว่างสองรายการ</h2>

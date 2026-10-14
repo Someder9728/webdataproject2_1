@@ -564,7 +564,7 @@
                     <div class="room-card {{ $statusClass }}">
                         <div class="room-card-header"><div><div class="room-card-number">ห้อง {{ $room->r_name }}</div><div class="room-card-type">ชั้น {{ $room->r_floor }} · {{ $room->r_type }}</div></div><div class="room-dot {{ $statusClass }}"></div></div>
                         <span class="room-status-badge {{ $statusClass }}">{{ ['VACANT' => 'ว่าง', 'OCCUPIED' => 'มีผู้พัก', 'MAINTENANCE' => 'ปิดปรับปรุง'][$room->r_status] ?? $room->r_status }}</span>
-                        @if(in_array($room->r_status, ['OCCUPIED', 'มีผู้พัก'], true))<div class="room-tenant">ผู้เช่า</div><div class="room-tenant-name">—</div>@endif
+                        @if(in_array($room->r_status, ['OCCUPIED', 'มีผู้พัก'], true))<div class="room-tenant">ผู้เช่า</div><div class="room-tenant-name">{{ trim(($room->rentals->first()?->tenant?->t_Fname ?? '').' '.($room->rentals->first()?->tenant?->t_Lname ?? '')) ?: '—' }}</div>@endif
                         <div class="room-price">฿{{ number_format((float)$room->r_rent, 2) }}<span>/เดือน</span></div>
                         <div class="room-actions"><button type="button" class="room-action-btn" data-room-history="{{ $room->r_id }}" data-room-name="{{ $room->r_name }}">ประวัติห้อง</button><a class="room-action-btn" href="{{ route('rooms.edit', $room) }}">แก้ไข</a></div>
                     </div>
@@ -604,7 +604,7 @@
                                 สถานะ
                             </th>
 
-                            <th class="text-center">
+                            <th>ผู้เช่าปัจจุบัน</th><th class="text-center">
                                 จัดการ
                             </th>
 
@@ -613,7 +613,7 @@
                     </thead>
 
 
-                    <tbody id="roomTableBody">@forelse($rooms as $room)<tr><td>{{ $room->r_name }}</td><td>{{ $room->r_floor }}</td><td>{{ $room->r_type }}</td><td>฿{{ number_format((float)$room->r_rent, 2) }}</td><td>{{ ['VACANT' => 'ว่าง', 'OCCUPIED' => 'มีผู้พัก', 'MAINTENANCE' => 'ปิดปรับปรุง'][$room->r_status] ?? $room->r_status }}</td><td><a class="btn btn-sm room-edit-btn" href="{{ route('rooms.edit', $room) }}">แก้ไข</a><button class="btn btn-sm btn-outline-primary" type="button" data-room-history="{{ $room->r_id }}" data-room-name="{{ $room->r_name }}">ประวัติ</button><form class="d-inline" method="POST" action="{{ route('rooms.destroy', $room) }}" onsubmit="return confirm('ยืนยันลบห้องนี้?')">@csrf @method('DELETE')<button class="btn btn-sm room-delete-btn" type="submit">ลบ</button></form></td></tr>@empty<tr><td colspan="6" class="text-center py-5">ไม่พบข้อมูลห้องพัก</td></tr>@endforelse</tbody>
+                    <tbody id="roomTableBody">@forelse($rooms as $room)<tr><td>{{ $room->r_name }}</td><td>{{ $room->r_floor }}</td><td>{{ $room->r_type }}</td><td>฿{{ number_format((float)$room->r_rent, 2) }}</td><td>{{ ['VACANT' => 'ว่าง', 'OCCUPIED' => 'มีผู้พัก', 'MAINTENANCE' => 'ปิดปรับปรุง'][$room->r_status] ?? $room->r_status }}</td><td>{{ trim(($room->rentals->first()?->tenant?->t_Fname ?? '').' '.($room->rentals->first()?->tenant?->t_Lname ?? '')) ?: '—' }}</td><td><a class="btn btn-sm room-edit-btn" href="{{ route('rooms.edit', $room) }}">แก้ไข</a><button class="btn btn-sm btn-outline-primary" type="button" data-room-history="{{ $room->r_id }}" data-room-name="{{ $room->r_name }}">ประวัติ</button><form class="d-inline" method="POST" action="{{ route('rooms.destroy', $room) }}" onsubmit="return confirm('ยืนยันลบห้องนี้?')">@csrf @method('DELETE')<button class="btn btn-sm room-delete-btn" type="submit">ลบ</button></form></td></tr>@empty<tr><td colspan="7" class="text-center py-5">ไม่พบข้อมูลห้องพัก</td></tr>@endforelse</tbody>
 
                 </table>
 
@@ -624,7 +624,7 @@
 
         {{-- PAGINATION --}}
 
-        <div id="roomPagination" class="d-flex justify-content-center py-4">{{ $rooms->links() }}</div>
+        <div id="roomPagination" class="d-flex justify-content-center py-4">{{ $rooms->links('pagination::bootstrap-5') }}</div>
 
     </div>
 

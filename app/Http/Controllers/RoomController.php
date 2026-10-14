@@ -20,6 +20,7 @@ class RoomController extends Controller
         $filters = $request->validate(['search' => ['nullable', 'string', 'max:100'], 'floor' => ['nullable', 'integer', 'min:1'], 'status' => ['nullable', 'in:VACANT,OCCUPIED,MAINTENANCE'], 'page' => ['nullable', 'integer', 'min:1']]);
         $search = trim($filters['search'] ?? '');
         $rooms = Room::query()
+            ->with(['rentals' => fn ($query) => $query->where('rt_status', 'ACTIVE')->whereNull('rt_moveout')->with('tenant')])
             ->when($search !== '', function ($query) use ($search) {
                 $query->where(function ($filter) use ($search) {
                     $filter->where('r_name', 'like', '%'.$search.'%');

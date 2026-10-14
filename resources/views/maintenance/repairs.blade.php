@@ -38,7 +38,7 @@
                     </tr>
                 </thead>
                 <tbody id="repair-rows">@forelse($repairs as $repair)<tr><td>{{ $repair->rp_name }}</td><td>{{ $repair->rp_type === 'ROOM' ? 'ห้องพัก' : 'ส่วนกลาง' }}</td><td>{{ $repair->room?->r_name ?? 'พื้นที่ส่วนกลาง' }}</td><td><span class="badge {{ ['REPORTED' => 'text-bg-warning', 'IN_PROGRESS' => 'text-bg-primary', 'COMPLETED' => 'text-bg-success'][$repair->rp_status] }}">{{ ['REPORTED' => 'แจ้งแล้ว', 'IN_PROGRESS' => 'กำลังซ่อม', 'COMPLETED' => 'เสร็จสิ้น'][$repair->rp_status] }}</span></td><td><button class="btn btn-sm tenant-edit-btn" type="button" data-repair-detail="{{ $repair->rp_id }}">ประวัติ</button>@if($isAdmin && $repair->rp_status !== 'COMPLETED')<button class="btn btn-sm tenant-edit-btn" type="button" data-repair-next="{{ $repair->rp_id }}" data-status="{{ $repair->rp_status }}">{{ $repair->rp_status === 'REPORTED' ? 'กำลังซ่อม' : 'เสร็จสิ้น' }}</button>@endif</td></tr>@empty<tr><td colspan="5" class="tenant-state text-center">ยังไม่มีรายการ</td></tr>@endforelse</tbody></table></div>
-            <div class="mt-3">{{ $repairs->links() }}</div><button class="btn tenant-clear-btn" id="reload" type="button">โหลดใหม่</button>
+            <div class="mt-3">{{ $repairs->links('pagination::bootstrap-5') }}</div><button class="btn tenant-clear-btn" id="reload" type="button">โหลดใหม่</button>
         </section>
         <section class="tenant-search-card p-4" id="repair-detail" hidden><h2 class="h6 fw-semibold mb-3">รายละเอียดและประวัติ</h2><p id="repair-description" class="text-break"></p><ol id="repair-history"></ol></section>
     </div>

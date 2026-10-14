@@ -46,7 +46,7 @@
                 </table>
             </div>
 
-            <div class="p-3">{{ $rentals->links() }}</div>
+            <div class="p-3">{{ $rentals->links('pagination::bootstrap-5') }}</div>
         </div>
     </div>
 

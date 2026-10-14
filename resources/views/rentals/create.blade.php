@@ -56,9 +56,9 @@
                     <span class="rt-hint">ระบบกำหนดเป็นวันปัจจุบันเสมอ</span>
                 </div>
                 <div class="rt-form-field">
-                    <label for="f-end">วันที่ออก (ประมาณ)</label>
+                    <label for="f-end">วันสิ้นสุดสัญญา</label>
                     <input type="date" id="f-end" name="c_end" class="rt-input">
-                    <span class="rt-hint">เว้นว่าง = ไม่กำหนด · นับรวมวันที่เลือกเป็นวันสุดท้ายของสัญญา</span>
+                    <!-- <span class="rt-hint">เว้นว่าง = ไม่กำหนด · นับรวมวันที่เลือกเป็นวันสุดท้ายของสัญญา</span> -->
                     <span class="rt-field-error" id="err-end"></span>
                 </div>
             </div>

@@ -146,7 +146,7 @@
 
             {{-- API PAGINATION --}}
 
-            <div id="tenantPagination" class="d-flex justify-content-center">{{ $tenants->links() }}</div>
+            <div id="tenantPagination" class="d-flex justify-content-center">{{ $tenants->links('pagination::bootstrap-5') }}</div>
 
         </div>
 
