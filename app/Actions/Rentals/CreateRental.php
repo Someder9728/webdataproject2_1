@@ -68,7 +68,7 @@ class CreateRental
             ];
 
             $validated = Validator::make($data, [
-                'rt_movein' => ['required', 'date_format:Y-m-d', 'after_or_equal:'.$today],
+                'rt_movein' => ['required', 'date_format:Y-m-d'],
                 'tenants_t_id' => ['required', 'integer', 'min:1'],
                 'rooms_r_id' => ['required', 'integer', 'min:1'],
                 'c_end' => [
@@ -153,6 +153,8 @@ class CreateRental
                     'rt_movein' => $scheduled ? null : $moveIn,
                     'scheduled_movein_at' => $moveIn,
                     'rt_status' => $scheduled ? 'SCHEDULED' : 'ACTIVE',
+                    'is_backdated' => $moveIn < $today,
+                    'recorded_on' => $today,
                     'contract' => $contract->only([
                         'c_id',
                         'c_number',

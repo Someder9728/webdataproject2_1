@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\Billing\NextBillingPeriod;
 use App\Actions\Rentals\CreateRental;
 use App\Actions\Rentals\ScheduleMoveOut;
 use App\Models\AuditEvent;
@@ -34,8 +35,8 @@ test('future reservation has no actual movein or meter requirement and no room o
     $this->actingAs($this->admin)->getJson('/api/v1/dashboard')->assertOk()->assertJsonPath('data.scheduled_rentals', 1);
 });
 
-test('rejects past start invalid contract end and overlapping pending reservation', function () {
-    $this->actingAs($this->admin)->postJson('/api/v1/rentals', [...$this->payload, 'rt_movein' => '2026-10-14'])->assertUnprocessable()->assertJsonValidationErrors('rt_movein');
+test('rejects missing historical opening meter invalid contract end and overlapping pending reservation', function () {
+    $this->actingAs($this->admin)->postJson('/api/v1/rentals', [...$this->payload, 'rt_movein' => '2026-10-14'])->assertUnprocessable()->assertJsonValidationErrors('rooms_r_id');
     $this->postJson('/api/v1/rentals', [...$this->payload, 'c_end' => '2026-10-31'])->assertUnprocessable()->assertJsonValidationErrors('c_end');
     ($this->scheduled)();
     $this->postJson('/api/v1/rentals', $this->payload)->assertConflict();
@@ -135,4 +136,29 @@ test('actual moveout with pending next rental clears schedule and bills to actua
     $this->travelTo('2026-11-01 05:00:00');
     Meter::create(['rooms_r_id' => $this->room->getKey(), 'm_date' => '2026-11-01', 'm_water' => '102', 'm_elec' => '1020']);
     $this->postJson('/api/v1/rentals/'.$pending->getKey().'/activate')->assertOk();
+});
+
+test('backdated occupied rental retains actual start current creation time and historical billing boundary', function () {
+    Meter::create(['rooms_r_id' => $this->room->getKey(), 'm_date' => '2026-09-15', 'm_water' => '100', 'm_elec' => '1000']);
+    $this->actingAs($this->admin)->postJson('/api/v1/rentals', [...$this->payload, 'rt_movein' => '2026-09-15'])->assertCreated();
+    $rental = Rental::sole();
+    expect($rental->rt_status)->toBe('ACTIVE')->and($rental->rt_movein->toDateString())->toBe('2026-09-15')
+        ->and($rental->contract->c_start->toDateString())->toBe('2026-09-15')
+        ->and($rental->created_at->toDateString())->toBe('2026-10-15')
+        ->and($this->room->fresh()->r_status)->toBe('OCCUPIED');
+    $audit = AuditEvent::where('action', 'rental_created')->sole();
+    expect($audit->actor_user_id)->toBe($this->admin->getKey())->and($audit->new_values['is_backdated'])->toBeTrue()
+        ->and(app(NextBillingPeriod::class)->handle($rental))->toBe(['period_start' => '2026-09-15', 'period_end' => '2026-10-01']);
+    $this->assertDatabaseCount('invoices', 0);
+    $this->postJson('/api/v1/invoices/preview', ['rentals_rt_id' => $rental->getKey(), 'period_start' => '2026-09-15', 'period_end' => '2026-10-01'])->assertUnprocessable();
+    Meter::create(['rooms_r_id' => $this->room->getKey(), 'm_date' => '2026-10-01', 'm_water' => '110', 'm_elec' => '1020']);
+    $this->postJson('/api/v1/invoices/preview', ['rentals_rt_id' => $rental->getKey(), 'period_start' => '2026-09-15', 'period_end' => '2026-10-01'])->assertOk();
+});
+
+test('backdated rental cannot overlap an ended historical rental even when room is vacant', function () {
+    Rental::create(['tenants_t_id' => $this->tenant->getKey(), 'rooms_r_id' => $this->room->getKey(), 'rt_movein' => '2026-09-01', 'rt_moveout' => '2026-09-20', 'rt_status' => 'ENDED']);
+    Meter::create(['rooms_r_id' => $this->room->getKey(), 'm_date' => '2026-09-15', 'm_water' => '100', 'm_elec' => '1000']);
+    $this->actingAs($this->admin)->postJson('/api/v1/rentals', [...$this->payload, 'rt_movein' => '2026-09-15'])->assertConflict();
+    $this->assertDatabaseCount('rentals', 1);
+    $this->assertDatabaseCount('contracts', 0);
 });
