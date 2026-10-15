@@ -25,15 +25,16 @@ class RentalPageController extends Controller
         return view('rentals.index', [
             'search' => $search,
             'active' => $rentals()->where('rt_status', 'ACTIVE')->orderByDesc('rt_movein')->orderByDesc('rt_id')->get(),
-            'ended' => $rentals()->where('rt_status', '<>', 'ACTIVE')->orderByDesc('rt_moveout')->orderByDesc('rt_id')->paginate(20)->withQueryString(),
+            'scheduled' => $rentals()->where('rt_status', 'SCHEDULED')->orderBy('scheduled_movein_at')->get(),
+            'ended' => $rentals()->whereIn('rt_status', ['ENDED', 'CANCELLED'])->orderByDesc('rt_moveout')->orderByDesc('rt_id')->paginate(20)->withQueryString(),
         ]);
     }
 
     public function create(): View
     {
         Gate::authorize('create', Rental::class);
-        $tenants = Tenant::whereDoesntHave('rentals', fn ($q) => $q->where('rt_status', 'ACTIVE'))->orderBy('t_Fname')->get(['t_id', 't_Fname', 't_Lname', 't_tel']);
-        $rooms = Room::where('r_status', 'VACANT')->whereDoesntHave('rentals', fn ($q) => $q->where('rt_status', 'ACTIVE'))->orderBy('r_name')->get(['r_id', 'r_name', 'r_type', 'r_rent']);
+        $tenants = Tenant::whereHas('user')->orderBy('t_Fname')->get(['t_id', 't_Fname', 't_Lname', 't_tel']);
+        $rooms = Room::query()->orderBy('r_name')->get(['r_id', 'r_name', 'r_type', 'r_rent']);
 
         return view('rentals.create', compact('tenants', 'rooms'));
     }
@@ -69,14 +70,15 @@ class RentalPageController extends Controller
             'priceLocked' => $record->invoices()->withTrashed()->exists(),
             'lockReason' => $lockReason,
             'timeline' => RentalTimeline::build($record, $contract, $events),
+            'lifecycleEvents' => AuditEvent::with('actor')->where('entity_type', 'rentals')->where('entity_id', $record->getKey())->whereIn('action', ['rental_activated', 'moveout_schedule_changed', 'scheduled_rental_cancelled', 'rental_moved_out'])->orderByDesc('ae_id')->get(),
         ]);
     }
 
     public function mine(Request $request): View
     {
         return view('tenant.rentals', [
-            'current' => $this->tenantRentals($request)->where('rt_status', 'ACTIVE')->get(),
-            'history' => $this->tenantRentals($request)->where('rt_status', '<>', 'ACTIVE')->orderByDesc('rt_movein')->paginate(20),
+            'current' => $this->tenantRentals($request)->whereIn('rt_status', ['ACTIVE', 'SCHEDULED'])->get(),
+            'history' => $this->tenantRentals($request)->whereIn('rt_status', ['ENDED', 'CANCELLED'])->orderByDesc('rt_movein')->paginate(20),
         ]);
     }
 

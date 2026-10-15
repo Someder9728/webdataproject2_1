@@ -2,7 +2,6 @@
 
 namespace App\Actions\Repairs;
 
-use App\Models\AuditEvent;
 use App\Models\Repair;
 use App\Models\User;
 use App\Support\SqliteTransaction;
@@ -38,13 +37,7 @@ class UpdateRepairStatus
             $repair->histories()->create([
                 'rph_name' => $repair->rp_name, 'rph_description' => $repair->rp_description,
                 'rph_type' => $repair->rp_type, 'rph_status' => $repair->rp_status,
-                'changed_by_user_id' => $actor->getKey(),
-            ]);
-            AuditEvent::create([
-                'actor_user_id' => $actor->getKey(), 'entity_type' => 'repairs',
-                'entity_id' => $repair->getKey(), 'action' => 'repair_status_changed',
-                'old_values' => ['rp_status' => $old],
-                'new_values' => ['rp_status' => $repair->rp_status],
+                'changed_by_user_id' => $actor->getKey(), 'previous_status' => $old,
             ]);
 
             return $repair;

@@ -2,7 +2,6 @@
 
 namespace App\Actions\Payments;
 
-use App\Models\AuditEvent;
 use App\Models\Invoice;
 use App\Models\Payment;
 use App\Models\User;
@@ -84,21 +83,6 @@ class RecordWalkInPayment
                 'proof_path' => null,
                 'reason' => null,
                 'note' => trim($validated['note']),
-            ]);
-
-            AuditEvent::create([
-                'actor_user_id' => $currentActor->getKey(),
-                'entity_type' => 'payments',
-                'entity_id' => $payment->getKey(),
-                'action' => 'walk_in_payment_recorded',
-                'old_values' => ['p_status' => $oldStatus],
-                'new_values' => [
-                    'p_status' => 'PAID',
-                    'p_amount' => $currentInvoice->i_total,
-                    'p_date' => $validated['payment_date'],
-                    'p_type' => $validated['method'],
-                    'note' => trim($validated['note']),
-                ],
             ]);
 
             return $payment;

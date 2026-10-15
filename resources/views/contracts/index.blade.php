@@ -24,7 +24,7 @@
                     <span class="input-group-text tenant-search-icon"><i class="bi bi-search"></i></span>
                     <input id="rental-search" name="search" class="form-control tenant-search-input" type="search"
                         placeholder="ค้นหาชื่อผู้เช่าหรือเลขห้อง" value="{{ request('search', '') }}" autocomplete="off">
-                    <select name="status" class="form-select" aria-label="สถานะสัญญา"><option value="">ทั้งหมด</option>@foreach(['ACTIVE' => 'กำลังเช่า', 'EXPIRED' => 'หมดอายุ', 'ENDED' => 'สิ้นสุดแล้ว'] as $value => $label)<option value="{{ $value }}" @selected(($filters['status'] ?? '') === $value)>{{ $label }}</option>@endforeach</select>
+                    <select name="status" class="form-select" aria-label="สถานะสัญญา"><option value="">ทั้งหมด</option>@foreach(['ACTIVE' => 'กำลังเช่า', 'EXPIRED' => 'หมดอายุ', 'ENDED' => 'สิ้นสุดแล้ว', 'SCHEDULED' => 'รอเริ่มสัญญา', 'CANCELLED' => 'ยกเลิกแล้ว'] as $value => $label)<option value="{{ $value }}" @selected(($filters['status'] ?? '') === $value)>{{ $label }}</option>@endforeach</select>
                     <button class="btn tenant-search-btn" type="submit">ค้นหา</button>
                 </form>
             </div>
@@ -42,7 +42,7 @@
                             @endif
                         </tr>
                     </thead>
-                    <tbody id="rental-table-body">@forelse($rentals as $rental)<tr><td>{{ $rental->contract?->c_number }}</td><td>{{ $rental->tenant?->t_Fname }} {{ $rental->tenant?->t_Lname }}</td><td>{{ $rental->room?->r_name }}</td><td>{{ $rental->contract?->c_start?->format('Y-m-d') }}</td><td>{{ $rental->contract?->c_end?->format('Y-m-d') ?? 'ไม่มีกำหนด' }}</td><td><span class="badge {{ $rental->contract?->c_status === 'ACTIVE' ? 'text-bg-success' : 'text-bg-secondary' }}">{{ ['ACTIVE' => 'กำลังเช่า', 'EXPIRED' => 'หมดอายุ', 'ENDED' => 'สิ้นสุดแล้ว'][$rental->contract?->c_status] ?? $rental->contract?->c_status }}</span></td><td><button type="button" class="btn btn-sm tenant-edit-btn" data-contract-id="{{ $rental->rt_id }}" data-contract-editable="{{ $rental->rt_status === 'ACTIVE' ? 'true' : 'false' }}">ดู/แก้ไข</button></td></tr>@empty<tr><td colspan="7" class="tenant-state text-center">ยังไม่มีสัญญาที่ตรงกับการค้นหา</td></tr>@endforelse</tbody>
+                    <tbody id="rental-table-body">@forelse($rentals as $rental)<tr><td>{{ $rental->contract?->c_number }}</td><td>{{ $rental->tenant?->t_Fname }} {{ $rental->tenant?->t_Lname }}</td><td>{{ $rental->room?->r_name }}</td><td>{{ $rental->contract?->c_start?->format('Y-m-d') }}</td><td>{{ $rental->contract?->c_end?->format('Y-m-d') ?? 'ไม่มีกำหนด' }}</td><td><span class="badge {{ $rental->contract?->c_status === 'ACTIVE' ? 'text-bg-success' : 'text-bg-secondary' }}">{{ ['ACTIVE' => 'กำลังเช่า', 'EXPIRED' => 'หมดอายุ', 'ENDED' => 'สิ้นสุดแล้ว', 'SCHEDULED' => 'รอเริ่มสัญญา', 'CANCELLED' => 'ยกเลิกแล้ว'][$rental->contract?->c_status] ?? $rental->contract?->c_status }}</span></td><td><button type="button" class="btn btn-sm tenant-edit-btn" data-contract-id="{{ $rental->rt_id }}" data-contract-editable="{{ $rental->rt_status === 'ACTIVE' ? 'true' : 'false' }}">ดู/แก้ไข</button></td></tr>@empty<tr><td colspan="7" class="tenant-state text-center">ยังไม่มีสัญญาที่ตรงกับการค้นหา</td></tr>@endforelse</tbody>
                 </table>
             </div>
 

@@ -15,6 +15,7 @@ class TenantMeterPageController extends Controller
         $rentals = Rental::query()
             ->with('room')
             ->where('tenants_t_id', $tenantId)
+            ->whereIn('rt_status', ['ACTIVE', 'ENDED'])->whereNotNull('rt_movein')
             ->orderByDesc('rt_movein')
             ->get();
 

@@ -1,6 +1,8 @@
 @php
     $canEditContract = auth()->user()?->u_role === 'admin';
     [$statusText, $statusClass] = match ($contract?->c_status) {
+        'SCHEDULED' => ['รอเริ่มสัญญา', 'rt-badge--info'],
+        'CANCELLED' => ['ยกเลิกแล้ว', 'rt-badge--off'],
         'ACTIVE' => ['มีผล', 'rt-badge--ok'],
         'EXPIRED' => ['หมดอายุ (ยังพักอยู่)', 'rt-badge--warn'],
         'ENDED' => ['สิ้นสุด', 'rt-badge--off'],

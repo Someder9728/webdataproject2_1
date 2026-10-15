@@ -36,6 +36,10 @@ class DashboardSummary
                     'vacant' => Room::whereIn('r_status', ['VACANT', 'ว่าง'])->count(),
                     'occupied' => Room::whereIn('r_status', ['OCCUPIED', 'มีผู้พัก'])->count(),
                 ],
+                'scheduled_rentals' => Rental::where('rt_status', 'SCHEDULED')->count(),
+                'scheduled_moveouts' => Rental::where('rt_status', 'ACTIVE')->whereNotNull('scheduled_moveout_at')->count(),
+                'due_moveins' => Rental::where('rt_status', 'SCHEDULED')->whereDate('scheduled_movein_at', '<=', now('Asia/Bangkok')->toDateString())->count(),
+                'due_moveouts' => Rental::where('rt_status', 'ACTIVE')->whereDate('scheduled_moveout_at', '<=', now('Asia/Bangkok')->toDateString())->count(),
                 'active_rentals' => Rental::where('rt_status', 'ACTIVE')->count(),
                 'invoices' => ['count' => (clone $invoices)->count(), 'amount' => $this->money((clone $invoices)->pluck('i_total'))],
                 'payments' => [

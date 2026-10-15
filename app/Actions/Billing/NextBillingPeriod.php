@@ -10,6 +10,7 @@ class NextBillingPeriod
     /** @return array{period_start: string, period_end: string} */
     public function handle(Rental $rental): array
     {
+        abort_unless(in_array($rental->rt_status, ['ACTIVE', 'ENDED'], true) && $rental->rt_movein !== null, 409, 'ยังออกบิลไม่ได้จนกว่าจะยืนยันเข้าอยู่จริง');
         $cursor = $rental->rt_movein->toDateString();
         $limit = $rental->rt_moveout?->toDateString();
         $gapEnd = null;

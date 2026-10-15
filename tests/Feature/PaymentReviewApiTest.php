@@ -159,8 +159,9 @@ test('admin reviews proof and preserves payment snapshot', function (string $dec
     expect($event->from_status)->toBe('PENDING');
     expect($event->to_status)->toBe($status);
     expect($event->proof_path)->toBe($path);
-    expect(AuditEvent::count())->toBe(1);
-    expect(json_encode(AuditEvent::first()->new_values))->not->toContain($path);
+    expect(AuditEvent::count())->toBe(2);
+    // Private proof paths are retained centrally, while history API redacts them.
+    expect(AuditEvent::first()->new_values['history']['proof_path'])->toBe($path);
 })->with([['approve', 'PAID'], ['reject', 'REJECTED']]);
 
 test('guest and tenant cannot review proof', function () {
@@ -168,7 +169,7 @@ test('guest and tenant cannot review proof', function () {
     $this->postJson($this->reviewUrl, $payload)->assertUnauthorized();
     $this->actingAs($this->owner)->postJson($this->reviewUrl, $payload)->assertForbidden();
     expect($this->payment->fresh()->p_status)->toBe('PENDING');
-    expect(AuditEvent::count())->toBe(0);
+    expect(AuditEvent::count())->toBe(1);
 });
 
 test('action independently rejects restricted actors', function (string $restriction) {
@@ -201,7 +202,7 @@ test('review validates decision version and rejection reason', function (array $
     $this->actingAs($this->admin)->postJson($this->reviewUrl, $payload)
         ->assertUnprocessable()->assertJsonValidationErrors($field);
     expect($this->payment->fresh()->p_status)->toBe('PENDING');
-    expect(AuditEvent::count())->toBe(0);
+    expect(AuditEvent::count())->toBe(1);
 })->with([
     [['decision' => 'invalid', 'expected_event_id' => 1], 'decision'],
     [['decision' => 'approve'], 'expected_event_id'],
@@ -215,7 +216,7 @@ test('non pending payments cannot be reviewed', function (string $status) {
         'decision' => 'approve', 'expected_event_id' => $this->submittedEvent->getKey(),
     ])->assertConflict();
     expect($this->payment->fresh()->p_status)->toBe($status);
-    expect(AuditEvent::count())->toBe(0);
+    expect(AuditEvent::count())->toBe(1);
 })->with(['UNPAID', 'PAID', 'REJECTED']);
 
 test('duplicate decision creates only one review event and audit', function () {
@@ -223,7 +224,7 @@ test('duplicate decision creates only one review event and audit', function () {
     $this->actingAs($this->admin)->postJson($this->reviewUrl, $payload)->assertOk();
     $this->postJson($this->reviewUrl, $payload)->assertConflict();
     expect($this->payment->events()->count())->toBe(2);
-    expect(AuditEvent::count())->toBe(1);
+    expect(AuditEvent::count())->toBe(2);
 });
 
 test('old review cannot approve a resubmitted proof', function () {
@@ -255,7 +256,7 @@ test('approval refuses missing proof or mismatched amount', function (string $pr
         'decision' => 'approve', 'expected_event_id' => $this->submittedEvent->getKey(),
     ])->assertConflict();
     expect($this->payment->fresh()->p_status)->toBe('PENDING');
-    expect(AuditEvent::count())->toBe(0);
+    expect(AuditEvent::count())->toBe(1);
 })->with(['file', 'amount']);
 
 test('audit failure rolls back decision and review event without removing proof', function () {
@@ -274,6 +275,6 @@ test('audit failure rolls back decision and review event without removing proof'
     }
     expect($this->payment->fresh()->p_status)->toBe('PENDING');
     expect($this->payment->events()->count())->toBe(1);
-    expect(AuditEvent::count())->toBe(0);
+    expect(AuditEvent::count())->toBe(1);
     Storage::disk('payment_proofs')->assertExists($this->payment->p_proof);
 });

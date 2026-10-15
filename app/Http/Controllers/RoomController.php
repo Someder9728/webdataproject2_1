@@ -38,7 +38,7 @@ class RoomController extends Controller
     public function history(Room $room): JsonResponse
     {
         Gate::authorize('view', $room);
-        $rentals = $room->rentals()->with('tenant')->orderByDesc('rt_id')->limit(50)->get()->map(fn ($r) => ['type' => 'การเช่า', 'date' => $r->rt_movein->toDateString(), 'detail' => trim(($r->tenant->t_Fname ?? '').' '.($r->tenant->t_Lname ?? '')), 'status' => $r->rt_status]);
+        $rentals = $room->rentals()->with('tenant')->orderByDesc('rt_id')->limit(50)->get()->map(fn ($r) => ['type' => 'การเช่า', 'date' => ($r->rt_movein ?? $r->scheduled_movein_at)?->toDateString(), 'detail' => trim(($r->tenant->t_Fname ?? '').' '.($r->tenant->t_Lname ?? '')), 'status' => $r->rt_status]);
         $invoices = Invoice::with('payment')->whereHas('rental', fn ($q) => $q->where('rooms_r_id', $room->getKey()))->orderByDesc('i_id')->limit(50)->get()->map(fn ($i) => ['type' => 'ใบแจ้งหนี้', 'date' => $i->i_date->toDateString(), 'detail' => $i->number().' · ฿'.$i->i_total, 'status' => $i->payment->p_status ?? '—']);
         $repairs = $room->repairs()->orderByDesc('rp_id')->limit(50)->get()->map(fn ($r) => ['type' => 'แจ้งซ่อม', 'date' => $r->created_at?->format('Y-m-d'), 'detail' => $r->rp_name, 'status' => $r->rp_status]);
 

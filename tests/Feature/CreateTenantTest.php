@@ -2,6 +2,7 @@
 
 use App\Actions\Tenants\CreateTenant;
 use App\Models\AuditEvent;
+use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Validation\ValidationException;
@@ -36,7 +37,7 @@ test('admin creates tenant with normalized data and audit', function () {
         ->and($tenant->t_mail)->toBeNull()
         ->and($tenant->t_address)->toBe('Test address');
 
-    $audit = AuditEvent::sole();
+    $audit = AuditEvent::where('action', 'tenant_created')->sole();
 
     expect($audit->actor_user_id)->toBe($this->admin->getKey())
         ->and($audit->entity_type)->toBe('tenants')
@@ -45,7 +46,8 @@ test('admin creates tenant with normalized data and audit', function () {
         ->and($audit->new_values['t_tel'])->toBe('0812345678');
 
     $this->assertDatabaseCount('tenants', 1);
-    $this->assertDatabaseCount('users', $userCount);
+    $this->assertDatabaseCount('users', $userCount + 1);
+    expect(Tenant::firstOrFail()->user)->not->toBeNull();
 });
 
 test('client cannot assign tenant id or create account fields', function () {
@@ -65,7 +67,7 @@ test('client cannot assign tenant id or create account fields', function () {
         'u_username' => 'injected-account',
     ]);
 
-    $audit = AuditEvent::sole();
+    $audit = AuditEvent::where('action', 'tenant_created')->sole();
 
     expect(array_key_exists('u_role', $audit->new_values))->toBeFalse()
         ->and(array_key_exists('t_id', $audit->new_values))->toBeFalse();

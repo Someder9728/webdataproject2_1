@@ -45,6 +45,7 @@ class CalculateInvoice
             );
         }
 
+        abort_unless(in_array($rental->rt_status, ['ACTIVE', 'ENDED'], true) && $rental->rt_movein !== null, 409, 'ยังออกบิลไม่ได้จนกว่าจะยืนยันเข้าอยู่จริง');
         $contract = $rental->contract()->first();
 
         if (! $contract) {

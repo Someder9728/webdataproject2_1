@@ -76,11 +76,14 @@
         const detailButton = event.target.closest('[data-repair-detail]');
         if (detailButton) run(() => detail(Number(detailButton.dataset.repairDetail)));
         const nextButton = event.target.closest('[data-repair-next]');
-        if (nextButton) run(async () => {
+        if (nextButton && !busy) {
             const next = {REPORTED:'IN_PROGRESS', IN_PROGRESS:'COMPLETED'}[nextButton.dataset.status];
-            await api(`/repairs/${nextButton.dataset.repairNext}/status`, 'PATCH', {expected_status:nextButton.dataset.status, rp_status:next});
-            await load();
-        });
+            if (!next || !window.confirm(`ยืนยันเปลี่ยนสถานะงานซ่อม #${nextButton.dataset.repairNext} จาก ${labels[nextButton.dataset.status]} เป็น ${labels[next]} หรือไม่?`)) return;
+            run(async () => {
+                await api(`/repairs/${nextButton.dataset.repairNext}/status`, 'PATCH', {expected_status:nextButton.dataset.status, rp_status:next});
+                await load();
+            });
+        }
     });
     function selection() {
         $('usage-selection').textContent = `ต้นช่วง: ${start?.m_date || 'ยังไม่เลือก'} → ปลายช่วง: ${end?.m_date || 'ยังไม่เลือก'}`;
@@ -93,7 +96,7 @@
         $('repair-description').replaceChildren();
         [data.rp_name, ...(data.rp_description || '').split('\n')].forEach(line => { const paragraph = document.createElement('p'); paragraph.className = 'mb-2'; paragraph.textContent = line; $('repair-description').append(paragraph); });
         $('repair-history').replaceChildren();
-        data.histories.forEach(history => { const el = document.createElement('li'); el.textContent = `${labels[history.rph_status]} · ${new Date(history.created_at).toLocaleString('th-TH')} · ผู้ดำเนินการ #${history.changed_by_user_id}`; $('repair-history').append(el); });
+        data.histories.forEach(history => { const el = document.createElement('li'); el.textContent = `${labels[history.rph_status]} · ${new Date(history.created_at).toLocaleString('th-TH', {timeZone: 'Asia/Bangkok'})} · ผู้ดำเนินการ #${history.changed_by_user_id}`; $('repair-history').append(el); });
     }
     $('reload').onclick = () => run(async () => {
         if (root.dataset.maintenance === 'meters') { editing = start = end = null; $('meter-edit-section').hidden = true; selection(); }
@@ -101,6 +104,10 @@
     });
     if (root.dataset.maintenance === 'meters') {
         $('meter-room').onchange = () => { const url = new URL(window.location.href); url.searchParams.delete('page'); if ($('meter-room').value) url.searchParams.set('room', $('meter-room').value); else url.searchParams.delete('room'); window.location.assign(url); };
+        $('meter-form').elements.m_date.onchange = event => {
+            if (!$('meter-room').value) return;
+            const url = new URL(window.location.href); url.searchParams.delete('page'); url.searchParams.set('m_date', event.target.value); window.location.assign(url);
+        };
         $('meter-edit-cancel').onclick = () => { if (!busy) { editing = null; $('meter-edit-section').hidden = true; } };
         $('meter-edit-form').onsubmit = event => {
             event.preventDefault();
@@ -140,6 +147,7 @@
             $('repair-form').onsubmit = event => {
                 event.preventDefault();
                 const body = Object.fromEntries(new FormData(event.target));
+                if (busy || !window.confirm('ยืนยันส่งรายการแจ้งซ่อมนี้หรือไม่?')) return;
                 run(async () => { await api('/repairs', 'POST', body); event.target.elements.rp_name.value = ''; event.target.elements.rp_description.value = ''; page = 1; $('repair-filter').value = ''; await load(); });
             };
         }

@@ -58,15 +58,16 @@
             <section class="rt-card" aria-labelledby="rental-card-title">
                 <div class="rt-card-head">
                     <h2 class="rt-card-title" id="rental-card-title">ข้อมูลการเช่า</h2>
-                    <span id="d-status" class="rt-badge {{ $isActive ? 'rt-badge--ok' : 'rt-badge--off' }}">{{ $isActive ? 'กำลังเช่า' : 'สิ้นสุดแล้ว' }}</span>
+                    <span id="d-status" class="rt-badge {{ $isActive ? 'rt-badge--ok' : 'rt-badge--off' }}">{{ (['ACTIVE' => 'กำลังเช่า', 'SCHEDULED' => 'รอเข้าอยู่', 'ENDED' => 'สิ้นสุดแล้ว', 'CANCELLED' => 'ยกเลิกแล้ว'][$rental->rt_status] ?? $rental->rt_status) }}</span>
                 </div>
                 <div class="rt-fields rt-fields--3">
                     <div><span class="rt-field-label">วันที่เข้าพัก</span><span class="rt-field-value" id="d-movein">{{ $rental->rt_movein?->format('Y-m-d') ?? '-' }}</span></div>
                     <div><span class="rt-field-label">วันที่ย้ายออก</span><span class="rt-field-value" id="d-moveout">{{ $rental->rt_moveout?->format('Y-m-d') ?? '-' }}</span></div>
-                    <div><span class="rt-field-label">สถานะ</span><span class="rt-field-value" id="d-status-text">{{ $isActive ? 'กำลังเช่าอยู่' : 'สิ้นสุดแล้ว' }}</span></div>
+                    <div><span class="rt-field-label">สถานะ</span><span class="rt-field-value" id="d-status-text">{{ (['ACTIVE' => 'กำลังเช่า', 'SCHEDULED' => 'รอเข้าอยู่', 'ENDED' => 'สิ้นสุดแล้ว', 'CANCELLED' => 'ยกเลิกแล้ว'][$rental->rt_status] ?? $rental->rt_status) }}</span></div>
                 </div>
             </section>
 
+            @include('rentals._lifecycle')
             @include('rentals.contract')
 
             <section class="rt-card rt-card--flush" aria-labelledby="timeline-title">

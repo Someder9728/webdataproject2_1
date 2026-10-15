@@ -215,10 +215,11 @@ test('contract index renders exact end date filters and validates pagination', f
     $this->actingAs($this->ownerUser)->get('/contracts')->assertForbidden();
 });
 
-test('rental create options exclude occupied rooms and active tenants in initial html', function () {
+test('rental create lists occupied rooms for date based reservations with server rendered options', function () {
     $available = Room::create(['r_name' => 'FREE303', 'r_floor' => 3, 'r_type' => 'single', 'r_rent' => '3000', 'r_status' => 'VACANT']);
     $tenant = Tenant::create(['t_Fname' => 'ว่างพร้อมเข้า', 't_Lname' => 'ทดสอบ', 't_tel' => '0833333333']);
-    $this->actingAs($this->admin)->get('/rentals/create')->assertOk()->assertSee('FREE303')->assertSee('ว่างพร้อมเข้า')->assertDontSee('A101')->assertDontSee('สมชาย')->assertDontSee('fetch(API_TENANTS', false);
+    User::factory()->create(['u_role' => 'tenant', 'tenants_t_id' => $tenant->getKey()]);
+    $this->actingAs($this->admin)->get('/rentals/create')->assertOk()->assertSee('FREE303')->assertSee('ว่างพร้อมเข้า')->assertSee('A101')->assertSee('สมชาย')->assertDontSee('fetch(API_TENANTS', false);
 });
 
 test('meter initial history shows cancellation and invoice lock with room pagination', function () {
@@ -276,4 +277,17 @@ test('ssr meter flags keep an unbilled opening boundary editable but not cancell
     $meter = Meter::create(['rooms_r_id' => $this->roomA->getKey(), 'm_date' => '2026-08-01', 'm_water' => '100', 'm_elec' => '1000']);
     $this->actingAs($this->admin)->get('/meters?room='.$this->roomA->getKey())->assertOk()
         ->assertViewHas('meterRows', fn ($rows) => $rows[$meter->getKey()]['can_edit'] === true && $rows[$meter->getKey()]['can_delete'] === false && $rows[$meter->getKey()]['date_locked'] === true);
+});
+
+test('meter autofill uses latest active reading on or before selected date and supports an empty room', function () {
+    Meter::create(['rooms_r_id' => $this->roomA->getKey(), 'm_date' => '2026-09-01', 'm_water' => '100', 'm_elec' => '1000']);
+    Meter::create(['rooms_r_id' => $this->roomA->getKey(), 'm_date' => '2026-10-01', 'm_water' => '110', 'm_elec' => '1100']);
+    $cancelled = Meter::create(['rooms_r_id' => $this->roomA->getKey(), 'm_date' => '2026-10-05', 'm_water' => '115', 'm_elec' => '1150']);
+    $cancelled->delete();
+    $url = '/meters?room='.$this->roomA->getKey();
+    $this->actingAs($this->admin)->get($url.'&m_date=2026-09-15')->assertOk()
+        ->assertViewHas('latestMeter', fn ($m) => $m->m_water === '100.00')->assertViewHas('readingDate', '2026-09-15');
+    $this->get($url.'&m_date=2026-10-10')->assertOk()->assertViewHas('latestMeter', fn ($m) => $m->m_water === '110.00');
+    $this->get('/meters?room='.$this->roomB->getKey())->assertOk()->assertViewHas('latestMeter', null);
+    $this->get($url.'&m_date=wrong')->assertSessionHasErrors('m_date');
 });

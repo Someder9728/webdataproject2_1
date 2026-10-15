@@ -2,8 +2,11 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Actions\Rentals\ActivateRental;
+use App\Actions\Rentals\CancelScheduledRental;
 use App\Actions\Rentals\CreateRental;
 use App\Actions\Rentals\MoveOutRental;
+use App\Actions\Rentals\ScheduleMoveOut;
 use App\Actions\Rentals\UpdateContract;
 use App\Http\Controllers\Controller;
 use App\Models\Rental;
@@ -141,6 +144,8 @@ class RentalController extends Controller
         return [
             'rt_id' => $r->rt_id,
             'rt_status' => $r->rt_status,
+            'scheduled_movein_at' => $r->scheduled_movein_at?->toDateString(),
+            'scheduled_moveout_at' => $r->scheduled_moveout_at?->toDateString(),
             'rt_movein' => optional($r->rt_movein)->format('Y-m-d'),
             'rt_moveout' => optional($r->rt_moveout)->format('Y-m-d'),
             'tenant' => $r->tenant ? [
@@ -169,6 +174,7 @@ class RentalController extends Controller
         $rental = $action->handle(
             $request->user(),
             $request->only([
+                'rt_movein',
                 'tenants_t_id',
                 'rooms_r_id',
                 'c_end',
@@ -181,5 +187,30 @@ class RentalController extends Controller
             'data' => $this->transform($rental),
             'message' => 'รับผู้เช่าเข้าพักสำเร็จ',
         ], 201);
+    }
+
+    public function activate(Request $request, Rental $rental, ActivateRental $action): JsonResponse
+    {
+        $record = $action->handle($request->user(), $rental);
+
+        return response()->json(['data' => $this->transform($record), 'message' => 'ยืนยันเข้าอยู่สำเร็จ']);
+    }
+
+    public function schedule(Request $request, Rental $rental, ScheduleMoveOut $action): JsonResponse
+    {
+        $input = $request->only(['scheduled_moveout_at', 'reason']);
+        if ($request->isMethod('delete')) {
+            $input['scheduled_moveout_at'] = null;
+        }
+        $record = $action->handle($request->user(), $rental, $input);
+
+        return response()->json(['data' => $this->transform($record->load(['room', 'tenant', 'contract'])), 'message' => 'บันทึกกำหนดการสำเร็จ']);
+    }
+
+    public function cancel(Request $request, Rental $rental, CancelScheduledRental $action): JsonResponse
+    {
+        $record = $action->handle($request->user(), $rental, $request->only('reason'));
+
+        return response()->json(['data' => $this->transform($record->load(['room', 'tenant', 'contract'])), 'message' => 'ยกเลิกการจองแล้ว']);
     }
 }

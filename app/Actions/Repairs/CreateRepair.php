@@ -2,7 +2,6 @@
 
 namespace App\Actions\Repairs;
 
-use App\Models\AuditEvent;
 use App\Models\Rental;
 use App\Models\Repair;
 use App\Models\User;
@@ -54,11 +53,6 @@ class CreateRepair
                 'rph_type' => $repair->rp_type,
                 'rph_status' => 'REPORTED',
                 'changed_by_user_id' => $actor->getKey(),
-            ]);
-            AuditEvent::create([
-                'actor_user_id' => $actor->getKey(),
-                'entity_type' => 'repairs', 'entity_id' => $repair->getKey(),
-                'action' => 'repair_created', 'new_values' => $repair->getAttributes(),
             ]);
 
             return $repair;

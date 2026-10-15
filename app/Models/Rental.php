@@ -11,7 +11,9 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
- * @property CarbonInterface $rt_movein
+ * @property CarbonInterface|null $rt_movein
+ * @property CarbonInterface|null $scheduled_movein_at
+ * @property CarbonInterface|null $scheduled_moveout_at
  * @property CarbonInterface|null $rt_moveout
  */
 class Rental extends Model
@@ -20,6 +22,8 @@ class Rental extends Model
 
     protected $fillable = [
         'rt_movein',
+        'scheduled_movein_at',
+        'scheduled_moveout_at',
         'rt_moveout',
         'rt_status',
         'rooms_r_id',
@@ -77,6 +81,8 @@ class Rental extends Model
     {
         return [
             'rt_movein' => 'date',
+            'scheduled_movein_at' => 'date',
+            'scheduled_moveout_at' => 'date',
             'rt_moveout' => 'date',
         ];
     }

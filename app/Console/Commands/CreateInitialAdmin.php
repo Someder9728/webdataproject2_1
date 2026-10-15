@@ -15,11 +15,11 @@ class CreateInitialAdmin extends Command
 
     public function handle(): int
     {
-        if (User::where('u_role', 'admin')->exists()) {
-            $this->error('มีบัญชี Admin แล้ว ไม่สร้างบัญชีเริ่มต้นซ้ำ');
+        // if (User::where('u_role', 'admin')->exists()) {
+        //     $this->error('มีบัญชี Admin แล้ว ไม่สร้างบัญชีเริ่มต้นซ้ำ');
 
-            return self::FAILURE;
-        }
+        //     return self::FAILURE;
+        // }
 
         $username = Str::lower(trim(
             (string) $this->ask('ชื่อผู้ใช้ Admin')

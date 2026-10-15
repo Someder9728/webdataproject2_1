@@ -71,7 +71,7 @@
                                 <td class="rt-link">{{ $rental->room?->r_name ?? '-' }}</td>
                                 <td>{{ $rental->rt_movein?->format('Y-m-d') ?? '-' }}</td>
                                 <td>{{ $rental->rt_moveout?->format('Y-m-d') ?? '-' }}</td>
-                                <td><span class="rt-badge rt-badge--off">สิ้นสุดแล้ว</span></td>
+                                <td><span class="rt-badge rt-badge--off">{{ $rental->rt_status === 'CANCELLED' ? 'ยกเลิกแล้ว' : 'สิ้นสุดแล้ว' }}</span></td>
                                 <td class="rt-actions"><a href="{{ route('rentals.show', $rental->rt_id) }}" class="rt-btn rt-btn--sm rt-btn--soft">ดูรายละเอียด</a></td>
                             </tr>
                         @empty
@@ -83,6 +83,7 @@
         </section>
     </div>
 
+<section class="rt-card"><h2 class="rt-card-title">รอเข้าอยู่</h2><div class="rt-table-wrap"><table class="rt-table"><thead><tr><th>ผู้เช่า</th><th>ห้อง</th><th>กำหนดเข้าพัก</th><th>จัดการ</th></tr></thead><tbody>@forelse($scheduled as $rental)<tr><td>{{ $rental->tenant?->t_Fname }} {{ $rental->tenant?->t_Lname }}</td><td>{{ $rental->room?->r_name }}</td><td>{{ $rental->scheduled_movein_at?->format('d/m/Y') }}</td><td><a class="rt-btn rt-btn--sm" href="{{ route('rentals.show', $rental) }}">ดูและยืนยันเข้าอยู่</a></td></tr>@empty<tr><td colspan="4">ไม่มีรายการรอเข้าอยู่</td></tr>@endforelse</tbody></table></div></section>
     @include('rentals._pager', ['paginator' => $ended])
 
     @include('rentals._move-out-modal')

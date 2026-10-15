@@ -2,7 +2,6 @@
 
 namespace App\Actions\Payments;
 
-use App\Models\AuditEvent;
 use App\Models\Invoice;
 use App\Models\Payment;
 use App\Models\User;
@@ -120,22 +119,6 @@ class SubmitPaymentProof
                     'proof_path' => $path,
                     'reason' => null,
                     'note' => null,
-                ]);
-
-                AuditEvent::create([
-                    'actor_user_id' => $currentActor->getKey(),
-                    'entity_type' => 'payments',
-                    'entity_id' => $payment->getKey(),
-                    'action' => 'payment_proof_submitted',
-                    'old_values' => [
-                        'p_status' => $oldStatus,
-                    ],
-                    'new_values' => [
-                        'p_status' => 'PENDING',
-                        'p_amount' => $currentInvoice->i_total,
-                        'p_date' => $validated['payment_date'],
-                        'p_type' => 'TRANSFER',
-                    ],
                 ]);
 
                 return $payment;

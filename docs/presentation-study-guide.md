@@ -129,7 +129,7 @@ Local main อัปเดตถึง 8e10853 แล้ว มี commit 367e43
 
 บทพูด: ความสัมพันธ์ระยะยาวไม่เหมือนข้อจำกัดในสถานะปัจจุบัน ห้องหนึ่งมีการเช่าได้หลายครั้งในประวัติ แต่มี ACTIVE ได้หนึ่งรายการในเวลาเดียวกัน สัญญาเป็นหนึ่งต่อหนึ่งกับการเช่าในโครงสร้างปัจจุบัน เพราะ contracts.rentals_rt_id มี unique ส่วน Payment เป็นหนึ่งต่อหนึ่งกับ Invoice และใช้ Event เก็บการดำเนินการหลายครั้ง
 
-ภาพ: ERD เฉพาะตารางหลัก แยก AuditEvent และ RepairHistory เป็นข้อมูลประวัติ หลีกเลี่ยงการวาด User กับ Tenant เป็น cardinality ที่ยังไม่ตรวจ constraint จริง
+ภาพ: ERD เฉพาะตารางหลัก ใช้ AuditEvent เป็นที่เก็บประวัติส่วนกลาง ส่วน RepairHistory/PaymentEvent อ่านผ่าน View ไม่ใช่ตารางเก็บประวัติแยก หลีกเลี่ยงการวาด User กับ Tenant เป็น cardinality ที่ยังไม่ตรวจ constraint จริง
 
 หลักฐาน: database/migrations/2026_09_11_121744_create_contracts_table.php, 2026_09_11_122241_create_payments_table.php, 2026_09_15_091651_add_unique_constraints_to_rooms_rentals_and_meters.php
 
@@ -220,7 +220,7 @@ UpdateInvoice อนุญาตเฉพาะ Payment UNPAID ไม่มี E
 4. ตาม CreateRental ทีละบล็อก จด input, Validator, Gate, query ตรวจ ACTIVE, Meter วันนี้, write ทั้งหมด และ Audit ลองอธิบายโดยไม่เปิดโค้ดแล้วกลับมาเช็ก
 5. ตาม InvoiceController ถึง IssueInvoice และ CalculateInvoice แยก preview กับ persist ให้ชัด NextBillingPeriod เลือกช่วงว่างแรก ส่วน Calculator ตัดสินว่าช่วงนั้นออกบิลได้หรือไม่
 6. อ่าน UpdateInvoice ดูว่ากฎห้ามแก้ขึ้นกับ Payment/Event อย่างไร แล้วทดลองแยก due-only กับ period change บนข้อมูลจำลอง
-7. อ่าน SubmitPaymentProof, ReviewPaymentProof, RecordWalkInPayment และ migration payment_events จดทุก transition จากโค้ดจริง ยังต้องอ่าน submit/walk-in แบบเต็มเพื่อยืนยันรายละเอียดการอัปโหลดและรับเงิน
+7. อ่าน SubmitPaymentProof, ReviewPaymentProof, RecordWalkInPayment และ migration centralize_payment_and_repair_history จดทุก transition จากโค้ดจริง ยังต้องอ่าน submit/walk-in แบบเต็มเพื่อยืนยันรายละเอียดการอัปโหลดและรับเงิน
 8. อ่าน MoveOutRental ตั้งแต่ตรวจสถานะถึง gap loop เขียนตัวอย่างมีบิลกลางเดือนแต่ขาดบิลก่อนหน้า แล้วตาม cursor ทีละรอบ
 9. อ่าน RecordMeterReading, CorrectMeterReading, CancelMeterReading และ MeterController ตรวจเงื่อนไขยกเลิก/แก้/restore ก่อนตอบรายละเอียด Meter locking ยังต้องตรวจ source ทั้งก้อนล่าสุด
 10. อ่าน RepairController, CreateRepair, UpdateRepairStatus, RepairPolicy และ maintenance.js เปรียบเทียบ request กับ JSON ที่นำไป render
@@ -293,3 +293,22 @@ UpdateInvoice อนุญาตเฉพาะ Payment UNPAID ไม่มี E
 อ่าน phpunit.xml และ tests/Pest.php เพื่อยืนยันว่าใช้ฐานข้อมูลทดสอบแยกก่อนรัน คำสั่ง composer test ใน source ปัจจุบันรวม config clear, Pint check, PHPStan และ artisan test การรันสำเร็จต้องเก็บผลและ commit ที่ตรงกัน ไม่ใช้เพียงจำนวน test มายืนยันว่าทุก flow UI ผ่าน
 
 ใน VS Code ใช้ breakpoint ที่ Controller และ Action หรือเปิด Network tab ดู request/response เพื่อ walk through หนึ่งกรณีสำเร็จและหนึ่งกรณีล้มเหลว ไม่ต้องเขียนระบบใหม่ทั้งหมดเพื่อเรียนรู้ ระบบที่มีอยู่เป็นตัวอย่างให้ไล่ execution และข้อมูลได้
+
+
+### อัตราน้ำไฟสำหรับทดลองบน local (13 ตุลาคม 2569)
+
+ตั้งค่า local เป็นน้ำ 10.20 บาท/หน่วย และไฟ 4.42 บาท/หน่วย สำหรับทดสอบและนำเสนอเท่านั้น ไม่ใช่อัตราเรียกเก็บจริงของหอพักในขอนแก่น น้ำอ้างอิงขั้น 0–10 ลบ.ม. ของที่อยู่อาศัยในตารางพื้นที่ทั่วไปของ กปภ.; ไฟปัดจากฐานขั้นเกิน 400 หน่วย 4.4217 บาทของกิจการขนาดเล็ก กฟภ. ระบบปัจจุบันคิดราคาคงที่ ไม่คำนวณขั้นบันได ค่า Ft ภาษี หรือค่าบริการเพิ่มเติม ก่อนเรียกเก็บจริงต้องกำหนดอัตราของหอพักจากข้อมูลที่ยืนยันแล้ว
+
+แหล่งอ้างอิง: https://www.pwa.co.th/contents/service/table-price และ https://www.pea.co.th/sites/default/files/documents/tariff/Electricity_Tariff_2015.pdf
+
+กำหนดผ่าน DORMITORY_WATER_RATE และ DORMITORY_ELEC_RATE ใน .env จากนั้นใช้ php artisan config:clear; ไม่ต้อง build หน้าเว็บใหม่ อัตราในบิลเดิมยังใช้ snapshot ของบิลเดิม เมื่ออัตราว่าง ระบบแจ้งให้ตั้งค่าค่าน้ำหรือค่าไฟก่อนออกบิล
+
+
+## อัปเดต Rental Lifecycle และ Tenant Account 15 ตุลาคม 2569
+
+ระบบรองรับ SCHEDULED → ACTIVE → ENDED และ SCHEDULED → CANCELLED แยกวันนัดจากวันเข้าจริง Billing เริ่มจากวันเข้าจริงหลังยืนยันและมีมิเตอร์ตรงวัน กำหนดย้ายออกยังไม่ทำให้หยุดคิดบิล การสร้าง Tenant สร้างบัญชีพร้อมกันใน transaction เดียว อ่านกฎ ข้อจำกัด FK และวิธีรวมงานเพิ่มเติมที่ docs/task01-task02-handoff.md
+
+
+## อัปเดตประวัติส่วนกลางและ Git ล่าสุด 15 ตุลาคม 2569
+
+ฐาน source main 8afe0c7 พร้อมงาน local ปัจจุบัน เก็บ Payment/Repair history ที่ audit_events แห่งเดียว payment_events และ repair_histories เป็น read-only views รวมมี 19 ตารางจริงและ 2 View รักษา legacy ID กับการตรวจ expected_event_id เดิม FK ที่มีจริงต่างจากกฎขั้นต่ำที่ workflow บังคับ อ่านรายละเอียดและผลทดสอบใน docs/central-audit-handoff.md

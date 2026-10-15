@@ -44,12 +44,16 @@
 
             <div class="card-body p-4">
 
-                <form action="{{ route('tenants.store') }}" method="POST">
+                <form action="{{ route('tenants.store') }}" method="POST" onsubmit="return confirm('ยืนยันสร้างผู้เช่าและบัญชีเข้าใช้งานหรือไม่?')">
 
                     @csrf
 
                     {{-- NAME --}}
                     <div class="row g-4">
+<div class="col-12"><h2 class="h5">บัญชีเข้าใช้งานของผู้เช่า</h2><p class="text-secondary">ระบบสร้างผู้เช่าและบัญชีพร้อมกัน ผู้เช่าต้องเปลี่ยนรหัสผ่านเมื่อเข้าสู่ระบบครั้งแรก</p></div>
+<div class="col-md-6"><label class="form-label" for="account-username">ชื่อผู้ใช้</label><input class="form-control" id="account-username" name="account[u_username]" value="{{ old('account.u_username') }}" pattern="[a-z0-9._-]{3,45}" minlength="3" maxlength="45" autocomplete="off" required></div>
+<div class="col-md-6"><label class="form-label" for="account-password">รหัสผ่านชั่วคราว</label><input class="form-control" id="account-password" type="password" name="account[password]" minlength="12" maxlength="72" autocomplete="new-password" required></div>
+<div class="col-md-6"><label class="form-label" for="account-password-confirm">ยืนยันรหัสผ่าน</label><input class="form-control" id="account-password-confirm" type="password" name="account[password_confirmation]" minlength="12" maxlength="72" autocomplete="new-password" required></div>
 
                         <div class="col-md-6">
 

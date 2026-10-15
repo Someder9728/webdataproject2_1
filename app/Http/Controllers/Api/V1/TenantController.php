@@ -102,12 +102,13 @@ class TenantController extends Controller
                 't_tel',
                 't_mail',
                 't_address',
+                'account',
             ])
         );
 
         return response()->json([
-            'data' => $tenant->only(self::COLUMNS),
-            'message' => 'สร้างข้อมูลผู้เช่าสำเร็จ',
+            'data' => [...$tenant->only(self::COLUMNS), 'account' => ['u_username' => $tenant->user->u_username, 'must_change_password' => true]],
+            'message' => 'สร้างผู้เช่าและบัญชีสำเร็จ หากไม่ได้ระบุรหัสผ่าน ให้ตั้งรหัสใหม่ในหน้าจัดการบัญชี',
         ], 201);
     }
 
@@ -125,6 +126,7 @@ class TenantController extends Controller
                 't_tel',
                 't_mail',
                 't_address',
+                'account',
             ])
         );
 

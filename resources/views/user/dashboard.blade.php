@@ -44,12 +44,12 @@
                 <span class="tenant-dashboard-label">ห้องของฉัน</span>
                 <div class="tenant-room-line">
                     <div class="tenant-room-number" id="tenant-room-number">{{ $current?->room?->r_name ?? '—' }}</div>
-                    <div><div class="tenant-dashboard-value" id="tenant-room-name">{{ $current ? 'ห้อง '.$current->room?->r_name : 'ยังไม่มีห้องเช่า' }}</div><div class="tenant-dashboard-meta" id="tenant-room-detail">{{ $current?->room ? 'ชั้น '.$current->room->r_floor : 'ยังไม่พบรายการเช่าในบัญชีนี้' }}</div><span class="tenant-status active" id="tenant-rental-status">{{ $current ? ($current->rt_status === 'ACTIVE' ? 'กำลังเช่า' : 'สิ้นสุดการเช่า') : 'ไม่มีรายการ' }}</span></div>
+                    <div><div class="tenant-dashboard-value" id="tenant-room-name">{{ $current ? 'ห้อง '.$current->room?->r_name : 'ยังไม่มีห้องเช่า' }}</div><div class="tenant-dashboard-meta" id="tenant-room-detail">{{ $current?->room ? 'ชั้น '.$current->room->r_floor : 'ยังไม่พบรายการเช่าในบัญชีนี้' }}</div><span class="tenant-status active" id="tenant-rental-status">{{ $current ? (['ACTIVE' => 'กำลังเช่า', 'SCHEDULED' => 'รอเข้าอยู่', 'ENDED' => 'สิ้นสุดการเช่า', 'CANCELLED' => 'ยกเลิกแล้ว'][$current->rt_status] ?? $current->rt_status) : 'ไม่มีรายการ' }}</span></div>
                 </div>
                 <hr class="tenant-dashboard-separator">
                 <div class="tenant-dashboard-split">
                     <div><span class="tenant-dashboard-label">สัญญาเช่า</span><strong id="tenant-rent">{{ $current?->contract ? '฿'.number_format((float)$current->contract->c_rent, 2).'/เดือน' : '—' }}</strong></div>
-                    <div><span class="tenant-dashboard-label">เริ่มเข้าพัก</span><strong id="tenant-movein" style="color:#142c4a">{{ $current?->rt_movein?->format('d/m/Y') ?? '—' }}</strong></div>
+                    <div><span class="tenant-dashboard-label">{{ $current?->rt_movein === null && $current?->rt_status === 'SCHEDULED' ? 'กำหนดเข้าพัก' : 'เริ่มเข้าพัก' }}</span><strong id="tenant-movein" style="color:#142c4a">{{ ($current?->rt_movein ?? $current?->scheduled_movein_at)?->format('d/m/Y') ?? '—' }}</strong></div>
                 </div>
             </article>
 

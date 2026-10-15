@@ -2,12 +2,14 @@
 
 namespace App\Actions\Tenants;
 
+use App\Actions\Accounts\CreateTenantAccount;
 use App\Models\AuditEvent;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 
 class CreateTenant
 {
@@ -78,7 +80,18 @@ class CreateTenant
                 ]),
             ]);
 
-            return $tenant;
+            // Legacy clients may omit account details; provision an inaccessible random
+            // initial password and let the admin reset it through account management.
+            $account = $input['account'] ?? null;
+            if ($account === null) {
+                $password = Str::random(32);
+                $account = ['u_username' => 'tenant_'.Str::lower(Str::random(12)),
+                    'password' => $password, 'password_confirmation' => $password];
+            }
+            Validator::make(['account' => $account], ['account' => ['required', 'array']])->validate();
+            app(CreateTenantAccount::class)->handle($currentActor, $tenant, $account);
+
+            return $tenant->load('user');
         }, 3);
     }
 }

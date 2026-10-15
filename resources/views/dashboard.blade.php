@@ -726,4 +726,4 @@
 
 
 
-</x-layouts::app.sidebar>
+<section class="tenant-search-card p-4"><h2 class="h5">กำหนดการเช่า</h2><p>รอเข้าอยู่ {{ $dashboard['scheduled_rentals'] }} รายการ (ถึงกำหนด {{ $dashboard['due_moveins'] }}) · รอย้ายออก {{ $dashboard['scheduled_moveouts'] }} รายการ (ถึงกำหนด {{ $dashboard['due_moveouts'] }})</p><a class="btn tenant-edit-btn" href="{{ route('rentals.index') }}">จัดการการเช่า</a></section></x-layouts::app.sidebar>

@@ -38,14 +38,15 @@ test('admin creates tenant through api with audit', function () {
         't_tel' => '0812345678',
     ]);
 
-    $audit = AuditEvent::sole();
+    $audit = AuditEvent::where('action', 'tenant_created')->sole();
 
     expect((string) $audit->entity_id)->toBe((string) $id)
         ->and($audit->actor_user_id)->toBe($this->admin->getKey())
         ->and($audit->action)->toBe('tenant_created');
 
     $this->assertDatabaseCount('tenants', 1);
-    $this->assertDatabaseCount('users', $userCount);
+    $this->assertDatabaseCount('users', $userCount + 1);
+    expect(Tenant::firstOrFail()->user)->not->toBeNull();
 
     // รายการที่สร้างต้องอ่านผ่าน API เดิมได้
     $this->getJson('/api/v1/tenants/'.$id)
@@ -141,7 +142,7 @@ test('api ignores injected identity and account fields', function () {
         ->assertJsonMissingPath('data.u_username');
 
     expect($response->json('data.t_id'))->not->toBe(999999)
-        ->and(AuditEvent::sole()->actor_user_id)
+        ->and(AuditEvent::where('action', 'tenant_created')->sole()->actor_user_id)
         ->toBe($this->admin->getKey());
 
     $this->assertDatabaseMissing('users', [

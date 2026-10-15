@@ -8,6 +8,7 @@ use App\Models\Rental;
 use App\Models\Room;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Services\RentalAvailabilityService;
 use App\Support\SqliteTransaction;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Validator;
@@ -39,6 +40,7 @@ class CreateRental
             $data = [];
 
             foreach ([
+                'rt_movein',
                 'tenants_t_id',
                 'rooms_r_id',
                 'c_end',
@@ -58,6 +60,7 @@ class CreateRental
                 $data['c_end'] = null;
             }
 
+            $data['rt_movein'] ??= $today;
             $moneyRules = [
                 'required',
                 'numeric',
@@ -65,12 +68,13 @@ class CreateRental
             ];
 
             $validated = Validator::make($data, [
+                'rt_movein' => ['required', 'date_format:Y-m-d', 'after_or_equal:'.$today],
                 'tenants_t_id' => ['required', 'integer', 'min:1'],
                 'rooms_r_id' => ['required', 'integer', 'min:1'],
                 'c_end' => [
                     'nullable',
                     'date_format:Y-m-d',
-                    'after_or_equal:'.$today,
+                    'after_or_equal:'.$data['rt_movein'],
                 ],
                 'c_rent' => $moneyRules,
                 'c_deposit' => $moneyRules,
@@ -91,24 +95,19 @@ class CreateRental
                 ]);
             }
 
-            abort_unless($room->r_status === 'VACANT', 409);
-
-            $hasActiveRental = Rental::query()
-                ->where('rt_status', 'ACTIVE')
-                ->where(function ($query) use ($tenant, $room) {
-                    $query->where('tenants_t_id', $tenant->getKey())
-                        ->orWhere('rooms_r_id', $room->getKey());
-                })
-                ->exists();
-
-            abort_if($hasActiveRental, 409);
+            $moveIn = $validated['rt_movein'];
+            $scheduled = $moveIn > $today;
+            app(RentalAvailabilityService::class)->assertAvailable((int) $room->getKey(), (int) $tenant->getKey(), $moveIn);
+            if (! $scheduled) {
+                abort_unless($room->r_status === 'VACANT', 409);
+            }
 
             $hasOpeningMeter = Meter::query()
                 ->where('rooms_r_id', $room->getKey())
-                ->whereDate('m_date', $today)
+                ->whereDate('m_date', $moveIn)
                 ->exists();
 
-            if (! $hasOpeningMeter) {
+            if (! $scheduled && ! $hasOpeningMeter) {
                 throw ValidationException::withMessages([
                     'rooms_r_id' => 'ต้องบันทึกมิเตอร์ของห้อง ณ วันเข้าพักก่อน',
                 ]);
@@ -117,9 +116,10 @@ class CreateRental
             $rental = Rental::create([
                 'tenants_t_id' => $tenant->getKey(),
                 'rooms_r_id' => $room->getKey(),
-                'rt_movein' => $today,
+                'rt_movein' => $scheduled ? null : $moveIn,
+                'scheduled_movein_at' => $moveIn,
                 'rt_moveout' => null,
-                'rt_status' => 'ACTIVE',
+                'rt_status' => $scheduled ? 'SCHEDULED' : 'ACTIVE',
             ]);
 
             $contract = $rental->contract()->create([
@@ -129,15 +129,17 @@ class CreateRental
                     '0',
                     STR_PAD_LEFT
                 ),
-                'c_start' => $today,
+                'c_start' => $moveIn,
                 'c_end' => $validated['c_end'] ?? null,
                 'c_rent' => $validated['c_rent'],
                 'c_deposit' => $validated['c_deposit'],
-                'c_status' => 'ACTIVE',
+                'c_status' => $scheduled ? 'SCHEDULED' : 'ACTIVE',
             ]);
 
-            $room->r_status = 'OCCUPIED';
-            $room->save();
+            if (! $scheduled) {
+                $room->r_status = 'OCCUPIED';
+                $room->save();
+            }
 
             AuditEvent::create([
                 'actor_user_id' => $actor->getKey(),
@@ -148,8 +150,9 @@ class CreateRental
                 'new_values' => [
                     'tenants_t_id' => $tenant->getKey(),
                     'rooms_r_id' => $room->getKey(),
-                    'rt_movein' => $today,
-                    'rt_status' => 'ACTIVE',
+                    'rt_movein' => $scheduled ? null : $moveIn,
+                    'scheduled_movein_at' => $moveIn,
+                    'rt_status' => $scheduled ? 'SCHEDULED' : 'ACTIVE',
                     'contract' => $contract->only([
                         'c_id',
                         'c_number',
@@ -162,15 +165,18 @@ class CreateRental
                 ],
             ]);
 
-            AuditEvent::create([
-                'actor_user_id' => $actor->getKey(),
-                'entity_type' => 'rooms',
-                'entity_id' => $room->getKey(),
-                'action' => 'room_updated',
-                'old_values' => ['r_status' => 'VACANT'],
-                'new_values' => ['r_status' => 'OCCUPIED'],
-                'reason' => 'รับเข้าพัก Rental '.$rental->getKey(),
-            ]);
+            if (! $scheduled) {
+                AuditEvent::create([
+                    'actor_user_id' => $actor->getKey(),
+                    'entity_type' => 'rooms',
+                    'entity_id' => $room->getKey(),
+                    'action' => 'room_updated',
+                    'old_values' => ['r_status' => 'VACANT'],
+                    'new_values' => ['r_status' => 'OCCUPIED'],
+                    'reason' => 'รับเข้าพัก Rental '.$rental->getKey(),
+                ]);
+
+            }
 
             return $rental->load(['tenant', 'room', 'contract']);
         });

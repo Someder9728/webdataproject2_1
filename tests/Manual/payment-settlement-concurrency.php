@@ -489,7 +489,7 @@ foreach ($cases as [$caseName, $initialStatus, $operationA, $operationB]) {
         $payment = $payment->fresh();
         $event = $payment->events()->reorder()
             ->orderByDesc('pe_id')->firstOrFail();
-        $audit = AuditEvent::query()->sole();
+        $audit = AuditEvent::query()->orderByDesc('ae_id')->firstOrFail();
 
         settlementRaceCheck(
             Payment::count() === 1

@@ -45,14 +45,14 @@ class TenantController extends Controller
 
     public function store(Request $request, CreateTenant $action): RedirectResponse
     {
-        $action->handle($request->user(), $request->only(['t_Fname', 't_Lname', 't_tel', 't_mail', 't_address']));
+        $action->handle($request->user(), $request->only(['t_Fname', 't_Lname', 't_tel', 't_mail', 't_address', 'account']));
 
         return redirect()->route('tenants.index')->with('success', 'บันทึกข้อมูลสำเร็จ');
     }
 
     public function update(Request $request, Tenant $tenant, UpdateTenant $action): RedirectResponse
     {
-        $action->handle($request->user(), $tenant, $request->only(['t_Fname', 't_Lname', 't_tel', 't_mail', 't_address']));
+        $action->handle($request->user(), $tenant, $request->only(['t_Fname', 't_Lname', 't_tel', 't_mail', 't_address', 'account']));
 
         return redirect()->route('tenants.index')->with('success', 'แก้ไขข้อมูลสำเร็จ');
     }

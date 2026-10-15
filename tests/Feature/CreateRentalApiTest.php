@@ -49,7 +49,7 @@ test('admin creates rental contract room status and audit together', function ()
     $response = $this->actingAs($this->admin)
         ->postJson('/api/v1/rentals', [
             ...$this->payload,
-            'rt_movein' => '2000-01-01',
+            'rt_movein' => now('Asia/Bangkok')->toDateString(),
             'rt_status' => 'ENDED',
             'c_number' => 'FORGED',
         ])

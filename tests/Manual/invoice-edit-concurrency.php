@@ -610,7 +610,7 @@ foreach ($cases as [
             'Unexpected audit or payment event count.'
         );
 
-        $audit = AuditEvent::sole();
+        $audit = AuditEvent::orderByDesc('ae_id')->firstOrFail();
         $expectedFiles = [];
 
         if ($editWon) {

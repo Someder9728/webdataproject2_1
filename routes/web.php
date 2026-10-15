@@ -5,6 +5,7 @@ use App\Http\Controllers\ContractPageController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\InvoicePageController;
 use App\Http\Controllers\MaintenancePageController;
+use App\Http\Controllers\RentalLifecycleController;
 use App\Http\Controllers\RentalPageController;
 use App\Http\Controllers\RoomController;
 use App\Http\Controllers\TenantController;
@@ -16,6 +17,10 @@ Route::view('/', 'welcome')->name('home');
 
 Route::middleware(['auth', 'password.changed', 'role:admin'])
     ->group(function () {
+        Route::post('/rentals', [RentalLifecycleController::class, 'store'])->name('rentals.store');
+        Route::post('/rentals/{rental}/activate', [RentalLifecycleController::class, 'activate'])->whereNumber('rental')->name('rentals.activate');
+        Route::post('/rentals/{rental}/schedule-moveout', [RentalLifecycleController::class, 'schedule'])->whereNumber('rental')->name('rentals.schedule-moveout');
+        Route::post('/rentals/{rental}/cancel', [RentalLifecycleController::class, 'cancel'])->whereNumber('rental')->name('rentals.cancel');
         Route::get('/rentals', [RentalPageController::class, 'index'])
             ->name('rentals.index');
         Route::get('/rentals/create', [RentalPageController::class, 'create'])

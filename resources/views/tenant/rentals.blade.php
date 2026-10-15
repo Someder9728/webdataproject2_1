@@ -12,7 +12,7 @@
         <div class="tenant-table-card table-responsive">
             <table class="table tenant-table"><thead><tr><th>ห้อง</th><th>วันเข้าพัก</th><th>วันย้ายออก</th><th>สถานะ</th><th>รายละเอียด</th></tr></thead>
                 <tbody>@forelse($history as $rental)
-                    <tr><td>{{ $rental->room?->r_name ?? '—' }}</td><td>{{ $rental->rt_movein->toDateString() }}</td><td>{{ $rental->rt_moveout?->toDateString() ?? '—' }}</td><td><span class="badge text-bg-secondary">สิ้นสุดแล้ว</span></td><td><a class="btn btn-sm tenant-edit-btn" href="{{ route('rentals.show', $rental->getKey()) }}">ดูรายละเอียด</a></td></tr>
+                    <tr><td>{{ $rental->room?->r_name ?? '—' }}</td><td>{{ $rental->rt_movein?->toDateString() ?? '—' }}</td><td>{{ $rental->rt_moveout?->toDateString() ?? '—' }}</td><td><span class="badge text-bg-secondary">{{ ['ENDED' => 'สิ้นสุดแล้ว', 'CANCELLED' => 'ยกเลิกแล้ว'][$rental->rt_status] ?? $rental->rt_status }}</span></td><td><a class="btn btn-sm tenant-edit-btn" href="{{ route('rentals.show', $rental->getKey()) }}">ดูรายละเอียด</a></td></tr>
                 @empty <tr><td colspan="5" class="tenant-state text-center">ยังไม่มีประวัติการเช่า</td></tr> @endforelse</tbody>
             </table>
         </div>

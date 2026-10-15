@@ -19,7 +19,7 @@ class RentalTimeline
     {
         $room = $rental->room->r_name;
         $items = [
-            ['date' => $rental->rt_movein->format('Y-m-d'), 'order' => 0, 'kind' => '', 'title' => 'ย้ายเข้า', 'desc' => "ห้อง {$room}"],
+            ['date' => ($rental->rt_movein ?? $rental->scheduled_movein_at)?->format('Y-m-d') ?? '', 'order' => 0, 'kind' => '', 'title' => $rental->rt_movein === null ? 'กำหนดเข้าพัก' : 'ย้ายเข้า', 'desc' => "ห้อง {$room}"],
         ];
 
         if ($contract) {

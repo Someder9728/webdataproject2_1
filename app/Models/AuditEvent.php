@@ -23,6 +23,7 @@ class AuditEvent extends Model
         'old_values',
         'new_values',
         'reason',
+        'created_at',
     ];
 
     protected function casts(): array

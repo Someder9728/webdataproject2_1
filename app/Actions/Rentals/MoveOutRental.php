@@ -46,6 +46,7 @@ class MoveOutRental
 
             abort_unless(
                 $rental->rt_status === 'ACTIVE'
+                    && $rental->rt_movein !== null
                     && $rental->rt_moveout === null,
                 409,
                 'การเช่านี้ไม่ได้อยู่ในสถานะพร้อมย้ายออก'
@@ -106,7 +107,8 @@ class MoveOutRental
             $overlappingRental = Rental::withTrashed()
                 ->where('rooms_r_id', $room->getKey())
                 ->where('rt_id', '<>', $rental->getKey())
-                ->whereDate('rt_movein', '<', $moveOut)
+                ->where('rt_status', '<>', 'CANCELLED')
+                ->whereRaw('coalesce(rt_movein, scheduled_movein_at) < ?', [$moveOut])
                 ->where(function ($query) use ($moveIn) {
                     $query->whereNull('rt_moveout')
                         ->orWhereDate('rt_moveout', '>', $moveIn);
@@ -215,6 +217,7 @@ class MoveOutRental
             }
 
             $oldRental = [
+                'scheduled_moveout_at' => $rental->scheduled_moveout_at?->toDateString(),
                 'rt_status' => $rental->rt_status,
                 'rt_moveout' => null,
             ];
@@ -226,6 +229,7 @@ class MoveOutRental
 
             $oldRoom = ['r_status' => $room->r_status];
 
+            $rental->scheduled_moveout_at = null;
             $rental->rt_moveout = $moveOut;
             $rental->rt_status = 'ENDED';
             $rental->save();
@@ -245,6 +249,7 @@ class MoveOutRental
                 'action' => 'rental_moved_out',
                 'old_values' => $oldRental,
                 'new_values' => [
+                    'scheduled_moveout_at' => null,
                     'rt_status' => 'ENDED',
                     'rt_moveout' => $moveOut,
                     'closing_meter_id' => $closingMeter->getKey(),

@@ -16,14 +16,15 @@
         </form>
         <section class="tenant-search-card p-4">
             <h2 class="h6 fw-semibold mb-3">บันทึกมิเตอร์</h2>
+            @if($latestMeter)<p class="small text-secondary">เติมค่าจากมิเตอร์วันที่ {{ $latestMeter->m_date->format('d/m/Y') }} กรุณาตรวจและแก้เป็นค่าที่อ่านได้จริงก่อนบันทึก</p>@else<p class="small text-secondary">ยังไม่มีมิเตอร์ก่อนหรือในวันที่เลือก กรุณากรอกค่าเริ่มต้น</p>@endif
             <form id="meter-form">
                 <div class="d-flex flex-wrap gap-3">
                     <label class="form-label d-block mb-3">วันที่<input class="form-control mt-2" name="m_date"
-                            type="date" required value="{{ now('Asia/Bangkok')->toDateString() }}"></label>
+                            type="date" required value="{{ $readingDate }}"></label>
                     <label class="form-label d-block mb-3">เลขมิเตอร์น้ำ<input class="form-control mt-2" name="m_water"
-                            type="number" min="0" max="99999999.99" step="0.01" required></label>
+                            type="number" min="0" max="99999999.99" step="0.01" value="{{ $latestMeter?->m_water }}" required></label>
                     <label class="form-label d-block mb-3">เลขมิเตอร์ไฟ<input class="form-control mt-2" name="m_elec"
-                            type="number" min="0" max="99999999.99" step="0.01" required></label>
+                            type="number" min="0" max="99999999.99" step="0.01" value="{{ $latestMeter?->m_elec }}" required></label>
                 </div><button class="btn tenant-add-btn" type="submit">บันทึก</button>
             </form>
         </section>

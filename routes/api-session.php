@@ -148,6 +148,9 @@ Route::prefix('api/v1')
             ->whereNumber('rental')
             ->name('rentals.contract.show');
 
+        Route::post('/rentals/{rental}/activate', [RentalController::class, 'activate'])->whereNumber('rental')->middleware('role:admin')->name('rentals.activate');
+        Route::match(['post', 'patch', 'delete'], '/rentals/{rental}/schedule-moveout', [RentalController::class, 'schedule'])->whereNumber('rental')->middleware('role:admin')->name('rentals.schedule-moveout');
+        Route::post('/rentals/{rental}/cancel', [RentalController::class, 'cancel'])->whereNumber('rental')->middleware('role:admin')->name('rentals.cancel');
         Route::post('/rentals', [RentalController::class, 'store'])
             ->middleware('role:admin')
             ->name('rentals.store');

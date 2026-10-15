@@ -16,11 +16,14 @@ class MaintenancePageController extends Controller
     {
         $actor = $request->user();
         abort_unless($actor->is_active && ! $actor->must_change_password && $actor->u_role === 'admin', 403);
-        $filters = $request->validate(['room' => ['nullable', 'integer', 'min:1'], 'page' => ['nullable', 'integer', 'min:1']]);
+        $filters = $request->validate(['room' => ['nullable', 'integer', 'min:1'], 'page' => ['nullable', 'integer', 'min:1'], 'm_date' => ['nullable', 'date_format:Y-m-d']]);
         $selectedRoom = isset($filters['room']) ? Room::whereKey($filters['room'])->firstOrFail() : null;
         $meters = Meter::withTrashed()->where('rooms_r_id', $selectedRoom?->getKey() ?? 0)->orderByDesc('m_date')->orderByDesc('m_id')->paginate(20)->withQueryString();
 
-        return view('maintenance.meters', ['rooms' => Room::orderBy('r_name')->get(['r_id', 'r_name']), 'selectedRoom' => $selectedRoom, 'meters' => $meters, 'meterRows' => $presenter->rows($meters->items())]);
+        $readingDate = $filters['m_date'] ?? now('Asia/Bangkok')->toDateString();
+        $latestMeter = $selectedRoom?->meters()->whereDate('m_date', '<=', $readingDate)->orderByDesc('m_date')->orderByDesc('m_id')->first();
+
+        return view('maintenance.meters', ['readingDate' => $readingDate, 'latestMeter' => $latestMeter, 'rooms' => Room::orderBy('r_name')->get(['r_id', 'r_name']), 'selectedRoom' => $selectedRoom, 'meters' => $meters, 'meterRows' => $presenter->rows($meters->items())]);
     }
 
     public function repairs(Request $request): View

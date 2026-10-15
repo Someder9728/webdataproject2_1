@@ -30,7 +30,7 @@ class MeterPresentation
         $events = AuditEvent::where('entity_type', 'meters')->whereIn('entity_id', $ids)->selectRaw('entity_id, max(ae_id) as latest_id')->groupBy('entity_id')->pluck('latest_id', 'entity_id');
 
         return $meters->mapWithKeys(function (Meter $meter) use ($usedIds, $rentals, $events) {
-            $boundary = $rentals->contains(fn ($r) => (int) $r->rooms_r_id === (int) $meter->rooms_r_id && in_array($meter->m_date->toDateString(), [$r->rt_movein->toDateString(), $r->rt_moveout?->toDateString()], true));
+            $boundary = $rentals->contains(fn ($r) => (int) $r->rooms_r_id === (int) $meter->rooms_r_id && in_array($meter->m_date->toDateString(), [$r->rt_movein?->toDateString(), $r->rt_moveout?->toDateString()], true));
             $used = in_array($meter->getKey(), $usedIds);
 
             return [$meter->getKey() => ['m_id' => $meter->getKey(), 'rooms_r_id' => $meter->rooms_r_id, 'm_date' => $meter->m_date->toDateString(), 'm_water' => $meter->m_water, 'm_elec' => $meter->m_elec,

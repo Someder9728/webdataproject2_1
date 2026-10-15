@@ -2,7 +2,6 @@
 
 namespace App\Actions\Payments;
 
-use App\Models\AuditEvent;
 use App\Models\Invoice;
 use App\Models\Payment;
 use App\Models\User;
@@ -82,19 +81,7 @@ class ReviewPaymentProof
                 'proof_path' => $payment->p_proof,
                 'reason' => $reason,
                 'note' => null,
-            ]);
-
-            AuditEvent::create([
-                'actor_user_id' => $currentActor->getKey(),
-                'entity_type' => 'payments',
-                'entity_id' => $payment->getKey(),
-                'action' => $approved ? 'payment_approved' : 'payment_rejected',
-                'old_values' => ['p_status' => 'PENDING'],
-                'new_values' => [
-                    'p_status' => $status,
-                    'p_reject_reason' => $reason,
-                    'reviewed_event_id' => $event->getKey(),
-                ],
+                'audit_reviewed_event_id' => $event->getKey(),
             ]);
 
             return $payment;

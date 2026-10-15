@@ -163,6 +163,7 @@ foreach (['UNPAID', 'REJECTED'] as $initialStatus) {
             ]);
         }
         $baselineEvents = PaymentEvent::count();
+        $baselineAudits = AuditEvent::count();
         DB::disconnect('sqlite');
         foreach (['a', 'b'] as $label) {
             $process = new Process([PHP_BINARY, __FILE__, 'worker', $dir, $label, (string) $actor->getKey(), (string) $invoice->getKey()], $root);
@@ -184,7 +185,7 @@ foreach (['UNPAID', 'REJECTED'] as $initialStatus) {
         proofRaceCheck($statuses === [200, 409], 'Expected [200,409], got '.json_encode($statuses));
         proofRaceCheck(max(array_column($results, 'started')) < min(array_column($results, 'finished')), 'Worker executions did not overlap.');
         proofRaceCheck(Payment::count() === 1 && Invoice::count() === 1, 'Unexpected extra payment or invoice.');
-        proofRaceCheck(PaymentEvent::count() === $baselineEvents + 1 && AuditEvent::count() === 1, 'Expected one new payment event and audit.');
+        proofRaceCheck(PaymentEvent::count() === $baselineEvents + 1 && AuditEvent::count() === $baselineAudits + 1, 'Expected one new payment event and audit.');
         $payment = $payment->fresh();
         proofRaceCheck($payment->p_status === 'PENDING' && $payment->p_reject_reason === null, 'Unexpected final payment state.');
         proofRaceCheck($payment->p_amount === '3494.00' && $payment->p_type === 'TRANSFER', 'Unexpected payment amount or method.');
